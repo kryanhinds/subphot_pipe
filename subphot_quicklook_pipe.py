@@ -1,6 +1,8 @@
 
 #!/Users/kryanhinds/miniconda/envs/subphot/bin python3
 # from drizzle import drizzle,doblot
+
+from skimage import transform
 import logging
 from subphot_align_quick import sextract,mode
 import matplotlib
@@ -1150,7 +1152,7 @@ class subtracted_phot(subphot_data):
         self.bkg_sub_removal_time = self.t_bkg_sub_end - self.t_bkg_sub_start
 
         if self.termoutp!='quiet':
-            self.sp_logger.info(info_g+f' Background subtraction time:{round(self.bkg_sub_removal_time, 0)} seconds')
+            self.sp_logger.info(info_g+f' Background subtraction time: {round(self.bkg_sub_removal_time, 0)} seconds')
 
        
         self.bkg_error = self.bkg.background_rms
@@ -1202,14 +1204,15 @@ class subtracted_phot(subphot_data):
         self.t_cosmic_end = time.time()
         self.cosmic_removal_time = self.t_cosmic_end - self.t_cosmic_start
         if self.termoutp!='quiet':
-            self.sp_logger.info(info_g+' Cosmic Removal time: '+"%.1f" % round(self.cosmic_removal_time, 0)+'seconds')
+            self.sp_logger.info(info_g+' Cosmic Removal time: '+"%.1f" % round(self.cosmic_removal_time, 0)+' seconds')
         # sys.exit(1)
         
         return self.sci_img_name
 
 
 
-    def find_dist_to_border(self,sci_data,ref_data,sci_match_coords,sci_phot_tab,ref_match_coords,ref_phot_tabX=15,D=60):
+    def find_dist_to_border(self,sci_data,ref_data,sci_match_coords,sci_phot_tab,ref_match_coords,ref_phot_tab,X=15,D=60):
+        # print(len(sci_match_coords),len(ref_match_coords))
         sci_keep_pix,sci_keep_sky = [],[]
         ref_keep_pix,ref_keep_sky = [],[]
 
@@ -1222,22 +1225,22 @@ class subtracted_phot(subphot_data):
         low_ref,high_ref = 0,y_ref_len
         left_ref,right_ref= 0,x_ref_len
 
-        for i in range(len(sci_match_coords)):
+        for h in range(len(sci_match_coords)):
             found_sci_low,found_sci_high,found_sci_left,found_sci_right = False,False,False,False
             found_ref_low,found_ref_high,found_ref_left,found_ref_right = False,False,False,False
 
             #check if they are close to the boundary where all pixels left, right, up or down are 0 or at a bound where all pixels left, right, up or down are <0
-            sci_x,sci_y = int(sci_match_coords[i][0]),int(sci_match_coords[i][1])
-            sci_ra,sci_dec = sci_phot_tab['ra'][i],sci_phot_tab['dec'][i]
-            ref_x,ref_y = int(ref_match_coords[i][0]),int(ref_match_coords[i][1])
-            ref_ra,ref_dec = ref_phot_tab['ra'][i],ref_phot_tab['dec'][i]
+            sci_x,sci_y = int(sci_match_coords[h][0]),int(sci_match_coords[h][1])
+            sci_ra,sci_dec = sci_phot_tab['ra'][h],sci_phot_tab['dec'][h]
+            ref_x,ref_y = int(ref_match_coords[h][0]),int(ref_match_coords[h][1])
+            ref_ra,ref_dec = ref_phot_tab['ra'][h],ref_phot_tab['dec'][h]
 
             for i in range(20,x_sci_len-20):
                 j=x_sci_len-i-1
-                if all(sci_data[:i,sci_y]==0) and any(sci_data[i:i+X,sci_y]==0)==False and found_sci_high==False:low_sci_y,found_sci_high = i,True
-                if all(sci_data[j:,sci_y]==0) and any(sci_data[j-X:j,sci_y]==0)==False and found_sci_low==False:high_sci_y,found_sci_low = j,True
-                if all(ref_data[:i,ref_y]==0) and any(ref_data[i:i+X,ref_y]==0)==False and found_ref_high==False:low_ref_y,found_ref_high = i,True
-                if all(ref_data[j:,ref_y]==0) and any(ref_data[j-X:j,ref_y]==0)==False and found_ref_low==False:high_ref_y,found_ref_low = j,True
+                if all(sci_data[:i,sci_y]==0) and any(sci_data[i:i+X,sci_y]==0)==False and found_sci_high==False:low_sci,found_sci_high = i,True
+                if all(sci_data[j:,sci_y]==0) and any(sci_data[j-X:j,sci_y]==0)==False and found_sci_low==False:high_sci,found_sci_low = j,True
+                if all(ref_data[:i,ref_y]==0) and any(ref_data[i:i+X,ref_y]==0)==False and found_ref_high==False:low_ref,found_ref_high = i,True
+                if all(ref_data[j:,ref_y]==0) and any(ref_data[j-X:j,ref_y]==0)==False and found_ref_low==False:high_ref,found_ref_low = j,True
             
             for i in range(20,y_sci_len-20):
                 j=y_sci_len-i-1
@@ -1248,14 +1251,14 @@ class subtracted_phot(subphot_data):
 
 
             # print('for the sci star',sci_x,sci_y)
-            self.sp_logger.info(info_g+f" For star in scicence at {sci_x}, {sci_y}:"),self.sp_logger.info(info_g+f" - Borders left & right: {left_sci}, {right_sci}"),self.sp_logger.info(info_g+f" - Borders up & down: {low_sci_y}, {high_sci_y} ")
-            sci_left_dist,sci_right_dist,sci_up_dist,sci_down_dist = abs(sci_x-left_sci),abs(sci_x-right_sci),abs(sci_y-low_sci_y),abs(sci_y-high_sci_y)
+            self.sp_logger.info(info_g+f" For star in scicence #{h} at {sci_x}, {sci_y}:"),self.sp_logger.info(info_g+f" - Borders left & right: {left_sci}, {right_sci}"),self.sp_logger.info(info_g+f" - Borders up & down: {low_sci}, {high_sci} ")
+            sci_left_dist,sci_right_dist,sci_up_dist,sci_down_dist = abs(sci_x-left_sci),abs(sci_x-right_sci),abs(sci_y-low_sci),abs(sci_y-high_sci)
             self.sp_logger.info(info_g+f" - Distance left & right: {sci_left_dist}, {sci_right_dist}"),self.sp_logger.info(info_g+f" - Distance up, down: {sci_up_dist}, {sci_down_dist}")
             sci_far_from_border = (sci_left_dist>60 and sci_right_dist>60 and sci_up_dist>60 and sci_down_dist>60)
             self.sp_logger.info(info_g+f" Star is sci 20 pix from all border? {sci_far_from_border}")
 
-            self.sp_logger.info(info_g+f" For star in reference at {ref_x}, {ref_y}:"),self.sp_logger.info(info_g+f" - Borders left & right: {left_ref}, {right_ref}"),self.sp_logger.info(info_g+f" - Borders up & down: {low_ref_y}, {high_ref_y} ")
-            ref_left_dist,ref_right_dist,ref_up_dist,ref_down_dist = abs(ref_x-left_ref),abs(ref_x-right_ref),abs(ref_y-low_ref_y),abs(ref_y-high_ref_y)
+            self.sp_logger.info(info_g+f" For star in reference at {ref_x}, {ref_y}:"),self.sp_logger.info(info_g+f" - Borders left & right: {left_ref}, {right_ref}"),self.sp_logger.info(info_g+f" - Borders up & down: {low_ref}, {high_ref} ")
+            ref_left_dist,ref_right_dist,ref_up_dist,ref_down_dist = abs(ref_x-left_ref),abs(ref_x-right_ref),abs(ref_y-low_ref),abs(ref_y-high_ref)
             self.sp_logger.info(info_g+f" - Distance left & right: {ref_left_dist}, {ref_right_dist}"),self.sp_logger.info(info_g+f" - Distance up, down: {ref_up_dist}, {ref_down_dist}")
             ref_far_from_border = (ref_left_dist>60 and ref_right_dist>60 and ref_up_dist>60 and ref_down_dist>60)
             self.sp_logger.info(info_g+f" Star is ref 20 pix from all border? {ref_far_from_border}")
@@ -1719,21 +1722,24 @@ class subtracted_phot(subphot_data):
                 self.upd_indx=np.where(self.d2d<=1/3600.*u.deg)[0]
                 d2d_ = self.d2d[self.upd_indx]
                 if len(self.upd_indx)<=5:
-                    self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius: 1->2')
-                    self.upd_indx=np.where(self.d2d<=2/3600.*u.deg)[0]
+                    m=2
+                    self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius: 1->'+str(m))
+                    self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
                     d2d_ = self.d2d[self.upd_indx]
                     if len(self.upd_indx)<=5:
-                        self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 2->5')
-                        self.upd_indx=np.where(self.d2d<=5/3600.*u.deg)[0]
+                        m=5
+                        self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 2->'+str(m))
+                        self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
                         d2d_ = self.d2d[self.upd_indx]
                         if len(self.upd_indx)<=9:
-                            self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->7.5')
-                            self.upd_indx=np.where(self.d2d<=7./3600.*u.deg)[0]
+                            m=10
+                            self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->'+str(m))
+                            self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
                             d2d_ = self.d2d[self.upd_indx]
                 # self.sp_logger.info(self.indx[self.upd_indx])
                 #convert d2d to arcsec
                 d2d_ = d2d_.to(u.arcsec)
-                self.sp_logger.info(info_g+' Catalog stars in PS1/SDSS found = '+str(len(self.upd_indx))+', in a '+str(round(3600*(7/60),6))+ 'arcsec search radius')
+                self.sp_logger.info(info_g+' Catalog stars in PS1/SDSS found = '+str(len(self.upd_indx))+', in a '+str(round(3600*(m/60),6))+ ' arcsec search radius')
 
 
             
@@ -1790,72 +1796,18 @@ class subtracted_phot(subphot_data):
                 # new_ind = list(self.sci_ali_photTab['id'].value)
                 self.matched_star_coords_pix = self.matched_star_coords_pix[cond]
                 self.matched_ref_coords_pix = self.matched_ref_coords_pix[cond]
-                def find_dist_to_border(self,data,coords,phot_tab,X=15,D=60):
-                    self.sci_keep_pix,self.ref_keep_pix = [],[]
-                    self.sci_keep_sky,self.ref_keep_sky = [],[]
-                    x_sci_len,y_sci_len = self.sci_ali_img_hdu.data.shape
-                    x_ref_len,y_ref_len = self.ref_ali_img_hdu.data.shape
-                    low_sci_y,high_sci_y = 0,y_sci_len
-                    left_sci,right_sci = 0,x_sci_len
-                    low_ref_y,high_ref_y = 0,y_ref_len
-                    left_ref,right_ref = 0,x_ref_len
+                bord_dists = self.find_dist_to_border(sci_data=self.sci_ali_img_hdu.data,
+                                                        ref_data=self.ref_ali_img_hdu.data,
+                                                        sci_match_coords=self.matched_star_coords_pix,
+                                                        ref_match_coords=self.matched_ref_coords_pix,
+                                                        sci_phot_tab=self.sci_ali_photTab,
+                                                        ref_phot_tab=self.ref_ali_photTab,
+                                                        X=15,D=60) 
+                #        return {'sci_keep_pix':sci_keep_pix,'ref_keep_pix':ref_keep_pix,'sci_keep_sky':sci_keep_sky,'ref_keep_sky':ref_keep_sky}
+                self.matched_star_coords_pix = bord_dists['sci_keep_pix']
+                self.matched_ref_coords_pix = bord_dists['ref_keep_pix']
 
-                    # print(self.sci_ali_img_hdu.data)
-                    # sys.exit()
-                    for i in range(len(self.matched_star_coords_pix)):
-                        found_sci_low,found_sci_high,found_ref_low,found_ref_high = False,False,False,False
-                        found_sci_left,found_sci_right,found_ref_left,found_ref_right = False,False,False,False
-                        #check if they are close to the boundary where all pixels left, right, up or down are 0 or at a bound where all pixels left, right, up or down are <0
-                        sci_x,sci_y = int(self.matched_star_coords_pix[i][0]),int(self.matched_star_coords_pix[i][1])
-                        ref_x,ref_y = int(self.matched_ref_coords_pix[i][0]),int(self.matched_ref_coords_pix[i][1])
-                        sci_ra,sci_dec = self.sci_ali_photTab['ra'][i],self.sci_ali_photTab['dec'][i]
-                        ref_ra,ref_dec = self.ref_ali_photTab['ra'][i],self.ref_ali_photTab['dec'][i]
-                        
-                        self.ref_ali_img_hdu.data = np.nan_to_num(self.ref_ali_img_hdu.data)
-
-                        X=15
-                        for i in range(20,x_sci_len-20):
-                            j=x_sci_len-i-1
-                            if all(self.sci_ali_img_hdu.data[:i,sci_y]==0) and any(self.sci_ali_img_hdu.data[i:i+X,sci_y]==0)==False and found_sci_high==False:low_sci_y,found_sci_high = i,True
-                            if all(self.sci_ali_img_hdu.data[j:,sci_y]==0) and any(self.sci_ali_img_hdu.data[j-X:j,sci_y]==0)==False and found_sci_low==False:high_sci_y,found_sci_low = j,True
-                            if all(self.ref_ali_img_hdu.data[:i,ref_y]==0) and any(self.ref_ali_img_hdu.data[i:i+X,ref_y]==0)==False and found_ref_high==False:low_ref_y,found_ref_high = i,True
-                            if all(self.ref_ali_img_hdu.data[j:,ref_y]==0) and any(self.ref_ali_img_hdu.data[j-X:j,ref_y]==0)==False and found_ref_low==False:high_ref_y,found_ref_low = j,True
-                        
-                        for i in range(20,y_sci_len-20):
-                            j=y_sci_len-i-1
-                            if all(self.sci_ali_img_hdu.data[sci_x,:i]==0) and any(self.sci_ali_img_hdu.data[sci_x,i:i+X]==0)==False and found_sci_left==False:left_sci,found_sci_left = i,True
-                            if all(self.sci_ali_img_hdu.data[sci_x,j:]==0) and any(self.sci_ali_img_hdu.data[sci_x,j-X:j]==0)==False and found_sci_right==False:right_sci,found_sci_right = j,True
-                            if all(self.ref_ali_img_hdu.data[ref_x,:i]==0) and any(self.ref_ali_img_hdu.data[ref_x,i:i+X]==0)==False and found_ref_left==False:left_ref,found_ref_left = i,True
-                            if all(self.ref_ali_img_hdu.data[ref_x,j:]==0) and any(self.ref_ali_img_hdu.data[ref_x,j-X:j]==0)==False and found_ref_right==False:right_ref,found_ref_right = j,True
-
-
-                        # print('for the sci star',sci_x,sci_y)
-                        self.sp_logger.info(info_g+f" For star in scicence at {sci_x}, {sci_y}:"),self.sp_logger.info(info_g+f" - Borders left & right: {left_sci}, {right_sci}"),self.sp_logger.info(info_g+f" - Borders up & down: {low_sci_y}, {high_sci_y} ")
-                        sci_left_dist,sci_right_dist,sci_up_dist,sci_down_dist = abs(sci_x-left_sci),abs(sci_x-right_sci),abs(sci_y-low_sci_y),abs(sci_y-high_sci_y)
-                        self.sp_logger.info(info_g+f" - Distance left & right: {sci_left_dist}, {sci_right_dist}"),self.sp_logger.info(info_g+f" - Distance up, down: {sci_up_dist}, {sci_down_dist}")
-                        sci_far_from_border = (sci_left_dist>60 and sci_right_dist>60 and sci_up_dist>60 and sci_down_dist>60)
-                        self.sp_logger.info(info_g+f" Star is sci 20 pix from all border? {sci_far_from_border}")
-
-                        self.sp_logger.info(info_g+f" For star in reference at {ref_x}, {ref_y}:"),self.sp_logger.info(info_g+f" - Borders left & right: {left_ref}, {right_ref}"),self.sp_logger.info(info_g+f" - Borders up & down: {low_ref_y}, {high_ref_y} ")
-                        ref_left_dist,ref_right_dist,ref_up_dist,ref_down_dist = abs(ref_x-left_ref),abs(ref_x-right_ref),abs(ref_y-low_ref_y),abs(ref_y-high_ref_y)
-                        self.sp_logger.info(info_g+f" - Distance left & right: {ref_left_dist}, {ref_right_dist}")
-                        self.sp_logger.info(info_g+f" - Distance up, down: {ref_up_dist}, {ref_down_dist}")
-                        ref_far_from_border = (ref_left_dist>60 and ref_right_dist>60 and ref_up_dist>60 and ref_down_dist>60)
-                        self.sp_logger.info(info_g+f" Star is ref 20 pix from all border? {ref_far_from_border}")
-
-                        if sci_far_from_border==True and ref_far_from_border==True:
-                            self.sp_logger.info(info_g+f" Keeping star sci: {sci_x}, {sci_y}, ref: {ref_x}, {ref_y}")
-                            self.sci_keep_pix.append([sci_x,sci_y]),self.ref_keep_pix.append([ref_x,ref_y])
-                            self.sci_keep_sky.append([sci_ra.value,sci_dec.value]),self.ref_keep_sky.append([ref_ra.value,ref_dec.value])
-                        else:
-                            self.sp_logger.info(warn_y+f" Removing star sci: {sci_x}, {sci_y}, ref: {ref_x}, {ref_y}")
-
-                        self.sp_logger.info(info_g+f" ")
-                    
-                    return keep_inds
-
-
-
+        
                 matched_ref_pixs,matched_sci_pix = [],[]
 
 
@@ -1886,14 +1838,13 @@ class subtracted_phot(subphot_data):
                     self.matched_star_coords_pix = wcs_to_pixels(self.sci_ali_name,self.matched_catalog[['ra','dec']])
 
             
-                from skimage import transform
-                import cv2
+                # import cv2
 
-                self.matched_ref_coords_pix = self.ref_keep_pix
-                self.matched_star_coords_pix = self.sci_keep_pix
+                # self.matched_ref_coords_pix = self.ref_keep_pix
+                # self.matched_star_coords_pix = self.sci_keep_pix
 
 
-                save_to_reg = True
+                save_to_reg = False
                 if save_to_reg: 
                     if not os.path.exists(self.data1_path+'region_files'):os.makedirs(self.data1_path+'region_files')
                     self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_sci.reg')
@@ -1919,34 +1870,111 @@ class subtracted_phot(subphot_data):
                 # for i in range(len(self.matched_star_coords_pix)):
                     # print(self.matched_star_coords_pix[i],self.matched_ref_coords_pix[i])
                 # from skimage.metrics import mean_squared_error
+                # self.sp_logger(info_g+f" Finding the transformation between science and reference to correct for distortion")
+                self.tform_ref_sci,self.tform_sci_ref = transform.PolynomialTransform(),transform.PolynomialTransform()
+
+                self.tform_ref_sci.estimate(self.matched_ref_coords_pix,
+                                            self.matched_star_coords_pix, 
+                                            order=1)#,weights=self.tform_w)
+                self.tform_ref_sci1 = transform.warp(self.sci_ali_img_hdu.data, 
+                                            self.tform_ref_sci,
+                                            output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
+                                            order=3,)
+                self.align_success = True
+                new_sci_ali = fits.open(self.sci_ali_name)
+                new_sci_ali[0].data = self.tform_ref_sci1
+                new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}.fits'), 
+                                    overwrite=True)
+                # self.sp_logger(info_g+f" Warped science using polynomial order 1")
+
+                self.tform_ref_sci,self.tform_sci_ref = transform.PolynomialTransform(),transform.PolynomialTransform()
+                self.tform_ref_sci.estimate(self.matched_ref_coords_pix,
+                                            self.matched_star_coords_pix, 
+                                            order=3)#,weights=self.tform_w)
+                self.tform_ref_sci3 = transform.warp(self.sci_ali_img_hdu.data, 
+                                            self.tform_ref_sci,
+                                            output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
+                                            order=3,)
+
+                self.align_success = True
+                new_sci_ali = fits.open(self.sci_ali_name)
+                new_sci_ali[0].data = self.tform_ref_sci3
+                new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{3}.fits'), 
+                                    overwrite=True)
+                # self.sp_logger(info_g+f" Warped science using polynomial order 3")
+
                 self.tform_order = 2
                 self.tform_ref_sci,self.tform_sci_ref = transform.PolynomialTransform(),transform.PolynomialTransform()
-                self.tform_ref_sci.estimate(self.matched_ref_coords_pix,self.matched_star_coords_pix, order=self.tform_order)#,weights=self.tform_w)
-                self.tform_sci_ref.estimate(self.matched_star_coords_pix,self.matched_ref_coords_pix, order=self.tform_order)#,weights=self.tform_w)
-                # print(self.tform)
-                # self.tform = transform.estimate_transform('polynomial',self.matched_star_coords_pix,self.matched_ref_coords_pix, order=self.tform_order)
-                self.tform_ref_sci = transform.warp(self.sci_ali_img_hdu.data, self.tform_ref_sci,
-                output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),order=3,)#
-                # mode='edge')
-                self.tform_sci_ref = transform.warp(self.sci_ali_img_hdu.data, self.tform_sci_ref,
-                output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),order=3,)#
-                # mode='edge')
+                self.tform_ref_sci.estimate(self.matched_ref_coords_pix,
+                                            self.matched_star_coords_pix, 
+                                            order=self.tform_order)#,weights=self.tform_w)
+                self.tform_ref_sci2 = transform.warp(self.sci_ali_img_hdu.data, 
+                                                    self.tform_ref_sci,
+                                                    output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
+                                                    order=3,)
+                # self.sp_logger(info_g+f" Warped science using polynomial order 2")
                 self.align_success = True
-                # print(self.tform.params)
-
-
-
-                # new_sci_ali = fits.open(self.sci_ali_name)
-                # new_sci_ali[0].data = self.tform_sci_ref
-                # new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_sci_ref_warped_order{self.tform_order}.fits'), overwrite=True)
-
                 new_sci_ali = fits.open(self.sci_ali_name)
-                new_sci_ali[0].data = self.tform_ref_sci
-                new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{self.tform_order}.fits'), overwrite=True)
+                new_sci_ali[0].data = self.tform_ref_sci1
+                new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}.fits'), overwrite=True)
 
-                self.sci_ali_name = self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{self.tform_order}.fits')
+                self.sci_ali_name = self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}.fits')
+                
+                def add_circles(ax, coords, color='yellow'):
+                    for x, y in coords:
+                        circle = plt.Circle((x, y), 10, color=color, fill=False)
+                        ax.add_artist(circle)
 
-                # os.system('pyt')
+                fig_poly_coll,axes = plt.subplots(2,2,figsize=(12,12))
+                self.vmin,self.vmax = visualization.ZScaleInterval().get_limits(self.sci_ali_img_hdu.data)
+                self.rvmin,self.rvmax = visualization.ZScaleInterval().get_limits(self.ref_ali_img_hdu.data)
+                a1,a2,a3,a4 = axes[0,0],axes[0,1],axes[1,0],axes[1,1]
+                
+                a1.imshow(self.sci_ali_img_hdu.data,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+                a1.set_title('Science not warped')
+                add_circles(a1,self.matched_ref_coords_pix)
+                
+                a2.imshow(self.tform_ref_sci1,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+                a2.set_title('Warped by Polynomial order 1')
+                add_circles(a2,self.matched_ref_coords_pix)
+
+                a3.imshow(self.tform_ref_sci2,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+                a3.set_title('Warped by Polynomial order 2')
+                add_circles(a3,self.matched_ref_coords_pix)
+
+                a4.imshow(self.tform_ref_sci3,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+                a4.set_title('Warper by Polynomial order 3')
+                add_circles(a4,self.matched_ref_coords_pix)
+
+
+                fig_sci_ali,axes_sci = plt.subplots(figsize=(12,12))
+                axes_sci.imshow(self.sci_ali_img_hdu.data,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+                add_circles(axes_sci,self.matched_ref_coords_pix)
+
+                fig_ref_ali,axes_ref = plt.subplots(figsize=(12,12))
+                axes_ref.imshow(self.ref_ali_img_hdu.data,cmap='gray',vmin=self.rvmin,vmax=self.rvmax)
+                add_circles(axes_ref,self.matched_ref_coords_pix)
+
+
+
+                    
+                    
+
+                
+                
+
+
+                fig_poly_coll.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_poly_collage.pdf')
+                fig_sci_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_sci.pdf')
+                fig_ref_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_ref.pdf')
+
+                # print(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_poly_collage.pdf')
+                # print(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_sci.pdf')
+                # print(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_ref.pdf')
+
+
+                # # os.system('pyt')
+
                 # sys.exit()
                     
 
@@ -2328,8 +2356,11 @@ class subtracted_phot(subphot_data):
         # print(self.sci_ali_name)
         # sys.exit(1)
         sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.opath+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
+        self.sp_logger.info(info_g+' Creating PSFex catalog with SExtractor')
 
-        os.system(sextractor_command)
+        sex_status = os.system(sextractor_command)
+        self.sp_logger.info(info_g+' SExtractor status: '+str(sex_status))
+
         
 
         if os.path.exists(self.data1_path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits'):
@@ -2340,8 +2371,10 @@ class subtracted_phot(subphot_data):
         self.files_to_clean.append(self.data1_path+f'out/sci_subsym_{self.rand_nums_string}.fits')
         self.files_to_clean.append(self.data1_path+f'out/sci_moffat_{self.rand_nums_string}.fits')
 
+        self.sp_logger.info(info_g+' Running PSFex with SExtractor catalog'+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+        psfex_status = os.system(psfex_path+" "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+        self.sp_logger.info(info_g+' PSFex status: '+str(psfex_status))
 
-        os.system(psfex_path+" "+self.data1_path+f"config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
         self.files_to_clean.append(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
         # self.sp_logger.info(psfex.PSFEx(path+f'config_files/prepsfex_{self.rand_nums_string}.cat'))
         # sys.exit(1)
