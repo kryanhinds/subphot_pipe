@@ -25,15 +25,15 @@ args = parser.parse_args()
 
 def query_recent_data(DATE,proposals=['all'],email_to=email_to):
 
-    today_phot_files = [f for f in os.listdir(path+'photometry_date/'+DATE) if f!='cut_outs' and f!='morning_rup']
-    if os.path.exists(path+'photometry_date/'+DATE+'/morning_rup'):
-        today_mrup_phot_files = [f for f in os.listdir(path+'photometry_date/'+DATE+'/morning_rup') if f!='cut_outs' and f!='morning_rup']
+    today_phot_files = [f for f in os.listdir(data1_path+'photometry_date/'+DATE) if f!='cut_outs' and f!='morning_rup']
+    if os.path.exists(data1_path+'photometry_date/'+DATE+'/morning_rup'):
+        today_mrup_phot_files = [f for f in os.listdir(data1_path+'photometry_date/'+DATE+'/morning_rup') if f!='cut_outs' and f!='morning_rup']
 
         if len(today_mrup_phot_files)!=len(today_phot_files): #finding the files in today_phot_files that aren't in today_mrup_phot_files
             for i in today_phot_files:
                 if i not in today_mrup_phot_files:
                     try:
-                        os.system('cp '+path+'photometry_date/'+DATE+'/'+i+' '+path+'photometry_date/'+DATE+'/morning_rup/'+i)
+                        os.system('cp '+data1_path+'photometry_date/'+DATE+'/'+i+' '+data1_path+'photometry_date/'+DATE+'/morning_rup/'+i)
                     except Exception as e:
                         print(f'Failed to copy across {i} to photometry_data/{DATE}/morning_rup',e)
   
@@ -48,8 +48,8 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
     prop_names=[] #the names of objects in the proposals specified
     # print(os.path.exists(f"{path}/photometry_date/{DATE}/morning_rup"))
     # sys.exit()
-    if os.path.exists(f"{path}/photometry_date/{DATE}/morning_rup"):
-        names = pd.DataFrame([event_name.split("_",1)[0] for event_name in os.listdir(f"{path}photometry_date/{DATE}/morning_rup")],columns=['name'])
+    if os.path.exists(f"{data1_path}/photometry_date/{DATE}/morning_rup"):
+        names = pd.DataFrame([event_name.split("_",1)[0] for event_name in os.listdir(f"{data1_path}photometry_date/{DATE}/morning_rup")],columns=['name'])
         names = np.asarray(names.drop_duplicates())
 
     data={}
@@ -58,12 +58,12 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
     measured_phot=False
     if len(names)==0:
         counter=0
-        if os.path.exists(f'/data1/khinds/data/Quicklook/{DATE}'):
-            fits_names = [file_ for file_ in os.listdir(f'/data1/khinds/data/Quicklook/{DATE}') if file_.endswith('.fits')]
+        if os.path.exists(data1_path+f'Quicklook/{DATE}'):
+            fits_names = [file_ for file_ in os.listdir(data1_path+f'Quicklook/{DATE}') if file_.endswith('.fits')]
             print(fits_names)
             if len(fits_names)>0:
                 for k in fits_names:
-                    sci_img_hdu = fits.open(f'/data1/khinds/data/Quicklook/{DATE}/{k}')
+                    sci_img_hdu = fits.open(data1_path+f'Quicklook/{DATE}/{k}')
                     sci_head = sci_img_hdu[0].header
                     sci_obj,sci_filt,sci_mjd,sci_prop,sci_ra,sci_dec,sci_see = sci_head['OBJECT'], sci_head['FILTER1'],sci_head['MJD'],sci_head['PROPID'],sci_head['CAT-RA'],sci_head['CAT-DEC'],sci_head['L1SEESEC']
       
@@ -104,22 +104,22 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
         for n in range(len(names)):
             name=names[n][0]
             today_phot_files = []
-            today_phot_files = [x for x in os.listdir(f'{path}photometry_date/{DATE}/morning_rup')]
+            today_phot_files = [x for x in os.listdir(f'{data1_path}photometry_date/{DATE}/morning_rup')]
             today_phot_data = pd.DataFrame(columns=['ztfid','filter','mjd','mag','mag_err','prop_id','stack','ra','dec','see'])
 
             for f in range(len(today_phot_files)):
 
-                d1 = open(f'{path}photometry_date/{DATE}/morning_rup/{today_phot_files[f]}', 'r')
+                d1 = open(f'{data1_path}photometry_date/{DATE}/morning_rup/{today_phot_files[f]}', 'r')
                 data1 = np.asarray(d1.readlines()[0].split(' ')[:-1])
  
              
                 today_fits_info = re.sub("photometry.txt","phot_info.txt",today_phot_files[f])
-                if os.path.exists(f'{path}phot_fits_info/{today_fits_info}'):
+                if os.path.exists(f'{data1_path}phot_fits_info/{today_fits_info}'):
                     pass
                 else:
                     today_fits_info = re.sub("photometry.txt","stacked_phot_info.txt",today_phot_files[f])
              
-                d2 = open(f'{path}phot_fits_info/{today_fits_info}', 'r')
+                d2 = open(f'{data1_path}phot_fits_info/{today_fits_info}', 'r')
                 data2 = np.asarray(d2.readlines()[0].split(','))
 
 
@@ -136,7 +136,12 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
              
 
          
-            data[f'{name}'] = {'data':today_phot_data,'g_lc':f'{path}light_curves/{name}/{name}_g_LC.png','r_lc':f'{path}light_curves/{name}/{name}_r_LC.png','i_lc':f'{path}light_curves/{name}/{name}_i_LC.png','z_lc':f'{path}light_curves/{name}/{name}_z_LC.png'}
+            data[f'{name}'] = {'data':today_phot_data,
+                            'g_lc':f'{data1_path}light_curves/{name}/{name}_g_LC.png',
+                            'r_lc':f'{data1_path}light_curves/{name}/{name}_r_LC.png',
+                            'i_lc':f'{data1_path}light_curves/{name}/{name}_i_LC.png',
+                            'z_lc':f'{data1_path}light_curves/{name}/{name}_z_LC.png',
+                            'u_lc':f'{data1_path}light_curves/{name}/{name}_u_LC.png',}
 
 
     
@@ -144,13 +149,13 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
     spec=[]
     spec_objects=[]
     [objects.append(NAME) for NAME in data.keys()]
-    if os.path.exists(f"{data1_path}data/Quicklook/{DATE}/spec"):
-        all_spectra = os.listdir(f"{data1_path}data/Quicklook/{DATE}/spec")
+    if os.path.exists(f"{data1_path}Quicklook/{DATE}/spec"):
+        all_spectra = os.listdir(f"{data1_path}Quicklook/{DATE}/spec")
         spec = [all_spectra[s] for s in range(len(all_spectra)) if all_spectra[s].startswith(f"v_e_{DATE}")]
       
 
     for t in range(len(spec)):
-        spec_fits = fits.open(f"{data1_path}data/Quicklook/{DATE}/spec/{spec[t]}")
+        spec_fits = fits.open(f"{data1_path}Quicklook/{DATE}/spec/{spec[t]}")
         name_spec,ra_spec,dec_spec,propid_spec,mjd_spec = spec_fits[0].header['OBJECT'], spec_fits[0].header['RA'], spec_fits[0].header['DEC'], spec_fits[0].header['PROPID'], spec_fits[0].header['MJD']
         if  propid_spec not in collect_proposals:
             continue
@@ -159,7 +164,7 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
         spec_objects.append(name_spec)
 
 
-    all_phot_fits = os.listdir(f"{data1_path}data/Quicklook/{DATE}")
+    all_phot_fits = os.listdir(f"{data1_path}Quicklook/{DATE}")
     all_data = pd.DataFrame(columns=['fits','ztfid','mjd','filter','prop_id','ra','dec','see'])
     count=0
 
@@ -167,7 +172,7 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
     for u in range(len(all_phot_fits)):
         if all_phot_fits[u].endswith(".fits")==True:
             fit=all_phot_fits[u]
-            img=fits.open(f"{data1_path}data/Quicklook/{DATE}/{fit}")
+            img=fits.open(f"{data1_path}Quicklook/{DATE}/{fit}")
             ztfid,mjd,filt,prop_id,catra,catdec,see = img[0].header['OBJECT'], img[0].header['MJD'], img[0].header['FILTER1'].replace('-','').lower(), img[0].header['PROPID'], img[0].header['CAT-RA'], img[0].header['CAT-DEC'], img[0].header['L1SEESEC']
             if prop_id not in collect_proposals:
                 continue
@@ -201,7 +206,13 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
         tabular_table1.field_names = tabular_fields1
 
         for i in range(len(all_data)):
-            tabular_table1.add_row([all_data['ztfid'].iloc[i], all_data['filter'].iloc[i],all_data['ra'].iloc[i], all_data['dec'].iloc[i], np.round(float(all_data['mjd'].iloc[i]),3), all_data['prop_id'].iloc[i], all_data['see'].iloc[i]])
+            tabular_table1.add_row([all_data['ztfid'].iloc[i], 
+                                    all_data['filter'].iloc[i],
+                                    all_data['ra'].iloc[i], 
+                                    all_data['dec'].iloc[i], 
+                                    np.round(float(all_data['mjd'].iloc[i]),3), 
+                                    all_data['prop_id'].iloc[i], 
+                                    all_data['see'].iloc[i]])
         tabular_table1_html = tabular_table1.get_html_string()
     else:
         print(info_g+f" No objects observed</p>")
@@ -219,10 +230,10 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
 
             
             if any(key == nam for nam in prop_names) or any(key in nam for nam in prop_names):
-               body2=body2+f"<p>{key}\n</p>"
-               body2=body2+f"<p>ZTF url: https://fritz.science/source/{key}\n</p>"
-               body2=body2+f"<p>LT photometry url: https://www.astro.ljmu.ac.uk/~arikhind/lt_subtract/{DATE}/{key}.html\n</p>"
-               body2=body2+'\n ----------------------------------------------------------------------------------------------- \n'
+                body2=body2+f"<p>{key}\n</p>"
+                body2=body2+f"<p>ZTF url: https://fritz.science/source/{key}\n</p>"
+                body2=body2+f"<p>LT photometry url: https://www.astro.ljmu.ac.uk/~arikhind/lt_subtract/{DATE}/{key}.html\n</p>"
+                body2=body2+'\n ----------------------------------------------------------------------------------------------- \n'
 
     if len(all_data_phot)>0 and measured_phot!=False:
         body2=body2+"<p>All photometry from today\n</P"
@@ -233,8 +244,15 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
         tabular_table2.field_names = tabular_fields2
         for ind,val in enumerate(all_data_phot['ztfid']):
             # [print(all_data_phot[i].iloc[ind],type(all_data_phot[i].iloc[ind]),i ) for i in all_data_phot.columns]
-            tabular_table2.add_row([val, all_data_phot['filter'].iloc[ind], np.round(float(all_data_phot['mjd'].iloc[ind]),3), np.round(float(all_data_phot['mag'].iloc[ind]),3), np.round(float(all_data_phot['mag_err'].iloc[ind]),3), np.round(float(all_data_phot['lim_mag'].iloc[ind]),3), all_data_phot['prop_id'].iloc[ind],all_data_phot['stack'].iloc[ind]])
-        print(tabular_table2)
+            tabular_table2.add_row([val, 
+                                    all_data_phot['filter'].iloc[ind], 
+                                    np.round(float(all_data_phot['mjd'].iloc[ind]),3), 
+                                    np.round(float(all_data_phot['mag'].iloc[ind]),3), 
+                                    np.round(float(all_data_phot['mag_err'].iloc[ind]),3), 
+                                    np.round(float(all_data_phot['lim_mag'].iloc[ind]),3), 
+                                    all_data_phot['prop_id'].iloc[ind],
+                                    all_data_phot['stack'].iloc[ind]])
+
     
         tabular_table2_html = tabular_table2.get_html_string()
 
@@ -246,10 +264,10 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
     subj=str(f"{DATE} Photometry and Spectroscopy")
     msg=MIMEMultipart('alternative')
 
-    if os.path.exists(f"{path}night_log/{DATE}_night_log.log"):
+    if os.path.exists(f"{data1_path}night_log/{DATE}_night_log.log"):
         
-        night_log = open(f"{path}night_log/{DATE}_night_log.log","rb")
-        log_attachm = MIMEApplication(night_log.read(),Name=f"{path}night_log/{DATE}_night_log.log")
+        night_log = open(f"{data1_path}night_log/{DATE}_night_log.log","rb")
+        log_attachm = MIMEApplication(night_log.read(),Name=f"{data1_path}night_log/{DATE}_night_log.log")
         log_attachm['Content-Disposition'] = 'attachment; filename="%s"' % f"{DATE}_night_log.log"
         msg.attach(log_attachm)
 
@@ -276,7 +294,7 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
     whole_mail+=tabular_table2_html
     whole_mail = MIMEText(whole_mail,'html')
     msg.attach(whole_mail)
-   
+
     msg['Subject'] = f'LT {DATE_}'
     msg['From'] = outlook_account["usr"]
     s.ehlo()
@@ -287,10 +305,9 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
         s.sendmail(outlook_account["usr"], email_to[n], msg.as_string()) 
         print(info_g+f' Morning email sent to {email_to[n]}')
 
-   
+
     s.quit()
-  
-  
+
 
 if args.date == 'TODAY':
     now=datetime.datetime.now()

@@ -9,7 +9,7 @@ import sys
 
 DAY = subphot_data().down_quicklook()
 
-os.system(f"python3 {path}subphot_make_webpage.py {DAY}")
+# os.system(f"python3 {path}subphot_make_webpage.py {DAY}")
 
 #down_command = f"python3 {path}lt_subtract.py -qdl current_obs"
 #os.system(f"python3 {path}make_webpage.py {DATE}")

@@ -5,7 +5,7 @@
 
 #-------------------------------- Catalog ------------------------------------
 
-CATALOG_NAME     /users/arikhind/subphot_pipe/config_files/prepsfex.cat   # Catalog filename
+CATALOG_NAME     /mnt/data1/users/arikhind/phot_data/config_files/prepsfex.cat   # Catalog filename
 CATALOG_TYPE     FITS_LDAC      # FITS_LDAC format
 PARAMETERS_NAME  /users/arikhind/subphot_pipe/config_files/default.param # name of the file containing catalog contents
 

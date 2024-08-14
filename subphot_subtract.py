@@ -255,7 +255,7 @@ if '00:00:00'<TIME<time_suns_tomorrow:
 
 
 if args.mroundup!=False:
-    args.folder=[f"data/Quicklook/"+DATE]
+    args.folder=[f"Quicklook/"+DATE]
     args.make_log='night_log'
     
 
@@ -307,21 +307,23 @@ if args.make_log!=False:
                 # print(args.folder[k])
                 if '/' in args.folder[k]:out_dir=args.folder[k].split('/')[-1]
                 else:out_dir=args.folder[k]
-                if not os.path.exists(path+out_dir):os.mkdir(path+out_dir)
+                if not os.path.exists(data1_path+out_dir):os.mkdir(data1_path+out_dir)
         else:
             out_dir='photometry'
     else:out_dir=args.output.split('/')[-1]
     
-    if args.output!='by_name' and not os.path.exists(path+out_dir):os.mkdir(path+out_dir)
-    if not os.path.exists(path+log_dest):os.mkdir(path+log_dest)
-    if log_dest=='night_log':log_name = f"{path}night_log/{DATE}_night_log.log"
-    else:log_name = f"{path}{log_dest}/{out_dir}_log.log"
+
+    if args.output!='by_name' and not os.path.exists(data1_path+out_dir):os.mkdir(data1_path+out_dir)
+
+    if not os.path.exists(data1_path+log_dest):os.mkdir(data1_path+log_dest)
+    if log_dest=='night_log':log_name = f"{data1_path}night_log/{DATE}_night_log.log"
+    else:log_name = f"{data1_path}{log_dest}/{out_dir}_log.log"
     if log_dest=='0':
         log_dest=out_dir
-        log_name = f"{path}{out_dir}/{out_dir}_log.log"
+        log_name = f"{data1_path}{out_dir}/{out_dir}_log.log"
 
     if args.mroundup!=False:
-        log_name = f"{path}{log_dest}/{DATE}_night_log.log"
+        log_name = f"{data1_path}{log_dest}/{DATE}_night_log.log"
 
     sp_logger = logging
     sp_logger.basicConfig(level=logging.INFO,encoding='utf-8',handlers=[
@@ -331,6 +333,7 @@ if args.make_log!=False:
     args.sp_logger=sp_logger
 else:args.sp_logger=None
 
+# sys.exit()
 class multi_subtract():
     def __init__(self,folder,folder_path=None):
         #folder_path is the path from data_1path to where the folders are (so that when cron is called, the same folder path can be used from data1_path instead of having to
@@ -370,6 +373,7 @@ class multi_subtract():
 
     def analyse_folder(self):
         self.fits_files,self.all_fits,self.all_in_dir = [],[],[]
+
         [self.all_in_dir.append(f) for f in os.listdir(f"{self.data1_path}{self.FOLDER}") if f.endswith('.fits')]
         # print(self.all_in_dir)
         if args.telescope_facility=='LT' or args.telescope_facility=='lt':
@@ -570,13 +574,16 @@ def run_subtraction(data_dict):
                         sp_logger.info(info_g+' Making folder to store entire light curve for '+name)
                     
                     sp_logger.info(info_g+' Storing image/s for '+name+' in '+data1_path+'entire_lc_imgs/'+name+' if it does not already exist')
-                    for fit in sub_file:
-                        fit_file_name = fit.split('/')[-1]
-                        lc_path = f'{data1_path}entire_lc_imgs/{name}/'
-                        fit_ = f'{lc_path}{fit_file_name}'
-                        if not fit.endswith('.fits'):fit,fit_ = fit+'.fits',fit_+'.fits'
-                        if not os.path.exists(fit_):
-                            shutil.copy(fit,data1_path+'entire_lc_imgs/'+name) 
+                    try:
+                        for fit in sub_file:
+                            fit_file_name = fit.split('/')[-1]
+                            lc_path = f'{data1_path}entire_lc_imgs/{name}/'
+                            fit_ = f'{lc_path}{fit_file_name}'
+                            if not fit.endswith('.fits'):fit,fit_ = fit+'.fits',fit_+'.fits'
+                            if not os.path.exists(fit_):
+                                shutil.copy(fit,data1_path+'entire_lc_imgs/'+name) 
+                    except Exception as e:
+                        pass
                 # print(sub_file)
                 # print(fits_file)
                 # sys.exit()
@@ -604,6 +611,8 @@ def run_subtraction(data_dict):
                                 if len(sub_file)==0: sp_logger.warning(warn_r+' No images with seeing < 5, passing on image'); continue
                                 if len(sub_file)==1: sp_logger.warning(warn_y+' Only one image with seeing < 5, continuing with single image'); args.stack=False
 
+                            sp_logger.info('---------------------------------------------------------------------------------------------')
+                            sp_logger.info(info_g+f' Starting sequence on {sub_file[0]}')
                             sub_obj = subtracted_phot(ims=sub_file,args=args)
                             sys_exit=sub_obj.sys_exit
                             # sp_logger.info(sys_exit)
@@ -692,10 +701,13 @@ def run_subtraction(data_dict):
 
 
                     elif new_only==True:
-                        if (final_name in os.listdir(f'{path}photometry'))==False and (final_name_stk in os.listdir(f'{path}photometry'))==False:
+                        if (final_name in os.listdir(f'{data1_path}photometry'))==False and (final_name_stk in os.listdir(f'{data1_path}photometry'))==False:
                             if len(sub_file)>1:
                                 args.stack =True
-
+                            # print(final_name)
+                            # print(final_name in os.listdir(f'{data1_path}photometry'))
+                            # print(final_name_stk in os.listdir(f'{data1_path}photometry'))
+                            # sys.exit()
                             try:
                                 if len(sub_file)>1:
                                     sub_file = check_seeing(sub_file)
@@ -1233,7 +1245,7 @@ def load_photometry(folder,name,filters=['All']):
     else:
         filter_list = ['g','r','i','z','u','R']
 
-    all_phot_files = [path+folder+'/'+f for f in os.listdir(path+folder) if re.search(name,f)]
+    all_phot_files = [data1_path+folder+'/'+f for f in os.listdir(data1_path+folder) if re.search(name,f)]
     # all_phot_files = [path+folder+'/'+f for f in os.listdir(path+folder) if name+'_' in f]
 
 
@@ -1272,7 +1284,7 @@ if args.plc[0]!=None:
 
         for obj_name in phot_name:
             #find all text files in the photometry folder that contain obj_name
-            phot_files = [path+f for f in os.listdir(path+phot_folder) if re.search(obj_name,f)]
+            phot_files = [data1_path+f for f in os.listdir(data1_path+phot_folder) if re.search(obj_name,f)]
             sp_logger.info(info_g+f'Found {len(phot_files)} files for {obj_name}')
 
             filters = {'g':[],'r':[],'i':[],'z':[],'u':[],'R':[],'B':[]} #dictionary to store the photometry for each filter
@@ -1334,9 +1346,9 @@ if args.plc[0]!=None:
 
                 if 'save' in args.plc:
                     sp_logger.info(info_g+f' Saving light curve for {obj_name} in {key}')
-                    fig.savefig(path+phot_folder+'/'+obj_name+'_'+key+'_light_curve.png',dpi=300)
+                    fig.savefig(data1_path+phot_folder+'/'+obj_name+'_'+key+'_light_curve.png',dpi=300)
                     plt.close(fig)
 
                     sp_logger.info(info_g+f' Saving photometry for {obj_name} in {key}')
-                    df.to_csv(path+phot_folder+'/'+obj_name+'_'+key+'_photometry.csv',index=False)
+                    df.to_csv(data1_path+phot_folder+'/'+obj_name+'_'+key+'_photometry.csv',index=False)
 

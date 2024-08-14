@@ -852,7 +852,7 @@ class subtracted_phot(subphot_data):
                     self.img_size1,self.img_size2 = self.sci_img_hdu.header['NAXIS1']*0.9999,self.sci_img_hdu.header['NAXIS2']*0.9999
                     self.comb_centre = str(self.sci_img_hdu.header['CRVAL1'])+" "+str(self.sci_img_hdu.header['CRVAL2'])
 
-                    swarp_command=swarp_path+" "+self.name_joined+" -c "+self.opath+"config_files/config_comb.swarp -COPY_KEYWORDS DATE-OBS -CENTER '"+self.comb_centre+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -IMAGEOUT_NAME "+self.data1_path+"combined_imgs"+'/'+self.sci_img_name+" -RESAMPLE Y -RESAMPLE_DIR '"+self.data1path+"' -COMBINE Y -IMAGE_SIZE '"+str(self.img_size1)+","+str(self.img_size2)+"'"
+                    swarp_command=swarp_path+" "+self.name_joined+" -c "+self.opath+"config_files/config_comb.swarp -COPY_KEYWORDS DATE-OBS -CENTER '"+self.comb_centre+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -IMAGEOUT_NAME "+self.data1_path+"combined_imgs"+'/'+self.sci_img_name+" -RESAMPLE Y -RESAMPLE_DIR '"+self.data1_path+"' -COMBINE Y -IMAGE_SIZE '"+str(self.img_size1)+","+str(self.img_size2)+"'"
                     # self.sp_logger.info(swarp_command)
                     # sys.exit()
                     # self.sp_logger.info(self.name)
@@ -1279,8 +1279,9 @@ class subtracted_phot(subphot_data):
     def swarp_ref_align(self,image_size=image_size):
         
 
+        prepsexfile(gain=self.sci_gain)
         if self.telescope in SEDM:
-            self.image_size=1250
+            self.image_size=2000
         else:
             self.image_size=1500
 
@@ -1405,6 +1406,9 @@ class subtracted_phot(subphot_data):
             self.sp_logger.info(info_g+" Aligning images with SWarp making a resampled image of size "+str(self.image_size)+"x"+str(self.image_size)+" pixels")
 
             self.ali_center_ra,self.ali_center_dec = self.ra_string,self.dec_string
+            #convert the center of the image to degrees
+            # self.sci_shape= np.shape(self.sci_img_hdu.data)
+            # self.ra_center,self.dec_center = self.sci_shape[0]/2,self.sci_shape[1]/2
             if float(self.dec_string)>0:self.ali_center_dec='+'+self.dec_string
             elif self.dec_string[0]=='-': self.ali_center_dec=self.dec_string 
             else:self.ali_center_dec='-'+self.dec_string
@@ -1434,7 +1438,9 @@ class subtracted_phot(subphot_data):
             self.image_size1,self.image_size2=np.shape(self.sci_img_hdu.data)[0],np.shape(self.sci_img_hdu.data)[1]
             # self.image_size1,self.image_size2=np.shape(self.ref_img_hdu.data)[0],np.shape(self.ref_img_hdu.data)[1]
 
-
+            if self.telescope in SEDM:
+                self.ali_center_ra=self.sci_img_center_ra
+                self.ali_center_dec=self.sci_img_center_dec
             swarp_command=swarp_path+" "+self.data1_path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+" -c "+self.opath+"config_files/config.swarp -CENTER '"+str(self.ali_center_ra)+" "+str(self.ali_center_dec)+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '"+self.data1_path+"aligned_images/' -COMBINE N -IMAGE_SIZE '"+str(self.image_size)+","+str(self.image_size)+"'" #ref centre
             status=os.system(swarp_command)
             self.sp_logger.info(swarp_command)
@@ -1655,15 +1661,15 @@ class subtracted_phot(subphot_data):
                     self.sp_logger.info(info_g+' Catalog stars in PS1/SDSS found='+str(len(self.stars))+','+str(round(3600*(self.ref_width/60),6))+ 'arcsec search radius')
                 # self.sp_logger.info(self.ref_coords_pix)
                 # self.sp_logger.info(self.sci_conv)
-                self.mean,self.median, self.std = sigma_clipped_stats(self.sci_ali_img_hdu.data, sigma=3.0,)
+                self.mean,self.median, self.std = sigma_clipped_stats(self.sci_ali_img_hdu.data, sigma=2.0,)
                 self.sp_logger.info(info_g+' Mean, Median, Std of sci_ali: '+str(round(self.mean,6))+' '+str(round(self.median,6))+' '+str(round(self.std,6)))
                 self.sp_logger.info(info_g+' Detecting stars with SExtractor')
 
                 self.sp_logger.info(info_g+' Detecting stars with IRAFStarFinder')
                 self.iraffind= IRAFStarFinder(threshold=abs(starscale*self.std),fwhm=3.0,roundhi=0.3,min_separation=20.0)
-                if self.termoutp!='quiet':
-                    self.sp_logger.info(info_g+' Threshold for detecting stars: '+str(int(starscale*self.std)))
-                self.sources = self.iraffind(self.sci_ali_img_hdu.data[60:len(self.sci_ali_img_hdu.data)-60,60:len(self.sci_ali_img_hdu.data)-60] - self.median)
+                OUTEDGE = int(20)
+                self.sp_logger.info(info_g+' Threshold for detecting stars: '+str(int(starscale*self.std)))
+                self.sources = self.iraffind(self.sci_ali_img_hdu.data[OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE,OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE] - self.median)
                 #returns id, xcentroid, ycentroid, fwhm, sharpness, roundness, pa, npix, sky, peak, flux, mag
 
                 # self.ref_coords_wcs,self.ref_coords_pix
@@ -1676,13 +1682,13 @@ class subtracted_phot(subphot_data):
 
                 
                 
-                self.star_coords_pix=np.column_stack((self.sources['xcentroid']+60.,self.sources['ycentroid']+60.))
+                self.star_coords_pix=np.column_stack((self.sources['xcentroid']+OUTEDGE,self.sources['ycentroid']+OUTEDGE))
                 self.star_coords_wcs=load_wcs_from_file(filename=self.sci_ali_name,coord=self.star_coords_pix)
 
                 self.star_coords_wcs_sky = SkyCoord(ra=self.star_coords_wcs[:,0]*u.deg, dec=self.star_coords_wcs[:,1]*u.deg,frame='fk5')
                 self.scp = self.sources
-                self.scp['xcentroid']=self.scp['xcentroid']+60.
-                self.scp['ycentroid']=self.scp['ycentroid']+60.
+                self.scp['xcentroid']=self.scp['xcentroid']+OUTEDGE
+                self.scp['ycentroid']=self.scp['ycentroid']+OUTEDGE
                 self.matched_catalog_mag=[]
 
                 self.sci_ali_photTab = quick_app_phot(self.sci_ali_img_hdu.data,self.star_coords_pix)
@@ -1691,11 +1697,14 @@ class subtracted_phot(subphot_data):
                 # self.ref_ali_photTab['ra']=self.ref_coords_wcs_sky.ra
                 # self.ref_ali_photTab['dec']=self.ref_coords_wcs_sky.dec
 
-                cond = (np.isnan(self.sci_ali_photTab['SNR'])==False)&(self.sci_ali_photTab['SNR']>15)
+                cond = (np.isnan(self.sci_ali_photTab['SNR'])==False)&(self.sci_ali_photTab['SNR']>10)
+                self.len_before_SNR=len(self.sci_ali_photTab)
                 self.sci_ali_photTab=self.sci_ali_photTab[cond]
                 self.sources=self.sources[cond]
                 self.star_coords_pix=self.star_coords_pix[cond]
                 self.star_coords_wcs=self.star_coords_wcs[cond]
+                self.len_after_SNR=len(self.sci_ali_photTab)
+                self.sp_logger.info(info_g+f' Keeping {self.len_after_SNR}/{self.len_before_SNR} stars with SNR>10 ({round(100*self.len_after_SNR/self.len_before_SNR,2)}%)')
                 # print(self.sci_ali_photTab)
                 # self.ref_ali_photTab=self.ref_ali_photTab[cond]
                 # self.ids_done=[]
@@ -1736,6 +1745,11 @@ class subtracted_phot(subphot_data):
                             self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->'+str(m))
                             self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
                             d2d_ = self.d2d[self.upd_indx]
+                            # if len(self.upd_indx)<=9 and self.telescope in SEDM:
+                            #     m=15
+                            #     self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->'+str(m))
+                            #     self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
+                            #     d2d_ = self.d2d[self.upd_indx]
                 # self.sp_logger.info(self.indx[self.upd_indx])
                 #convert d2d to arcsec
                 d2d_ = d2d_.to(u.arcsec)
@@ -1796,6 +1810,9 @@ class subtracted_phot(subphot_data):
                 # new_ind = list(self.sci_ali_photTab['id'].value)
                 self.matched_star_coords_pix = self.matched_star_coords_pix[cond]
                 self.matched_ref_coords_pix = self.matched_ref_coords_pix[cond]
+                self.star_coords_wcs_sky = self.star_coords_wcs_sky[cond]
+                self.ref_coords_wcs_sky = self.ref_coords_wcs_sky[cond]
+                # print(self.star_coords_wcs_sky)
                 bord_dists = self.find_dist_to_border(sci_data=self.sci_ali_img_hdu.data,
                                                         ref_data=self.ref_ali_img_hdu.data,
                                                         sci_match_coords=self.matched_star_coords_pix,
@@ -1804,9 +1821,15 @@ class subtracted_phot(subphot_data):
                                                         ref_phot_tab=self.ref_ali_photTab,
                                                         X=15,D=60) 
                 #        return {'sci_keep_pix':sci_keep_pix,'ref_keep_pix':ref_keep_pix,'sci_keep_sky':sci_keep_sky,'ref_keep_sky':ref_keep_sky}
+                self.orig_len_match = len(self.matched_star_coords_pix)
                 self.matched_star_coords_pix = bord_dists['sci_keep_pix']
                 self.matched_ref_coords_pix = bord_dists['ref_keep_pix']
 
+                self.star_coords_wcs_sky = bord_dists['sci_keep_sky']
+                self.ref_coords_wcs_sky = bord_dists['ref_keep_sky']
+                # print(self.star_coords_wcs_sky)
+                self.new_len_match = len(self.matched_star_coords_pix)
+                self.sp_logger.info(info_g+f' Kept {self.new_len_match} stars out of {self.orig_len_match} ({self.new_len_match/self.orig_len_match*100:.2f}%)')
         
                 matched_ref_pixs,matched_sci_pix = [],[]
 
@@ -1926,7 +1949,7 @@ class subtracted_phot(subphot_data):
                         ax.add_artist(circle)
 
                 fig_poly_coll,axes = plt.subplots(2,2,figsize=(12,12))
-                self.vmin,self.vmax = visualization.ZScaleInterval().get_limits(self.sci_ali_img_hdu.data)
+                self.vmin,self.vmax = visualization.ZScaleInterval().get_limits(self.sci_img_hdu.data)
                 self.rvmin,self.rvmax = visualization.ZScaleInterval().get_limits(self.ref_ali_img_hdu.data)
                 a1,a2,a3,a4 = axes[0,0],axes[0,1],axes[1,0],axes[1,1]
                 
@@ -1965,6 +1988,7 @@ class subtracted_phot(subphot_data):
 
 
                 fig_poly_coll.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_poly_collage.pdf')
+                print(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_poly_collage.pdf')
                 fig_sci_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_sci.pdf')
                 fig_ref_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_ref.pdf')
 
@@ -2356,6 +2380,7 @@ class subtracted_phot(subphot_data):
         # print(self.sci_ali_name)
         # sys.exit(1)
         sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.opath+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
+        print(sextractor_command)
         self.sp_logger.info(info_g+' Creating PSFex catalog with SExtractor')
 
         sex_status = os.system(sextractor_command)
@@ -2371,7 +2396,38 @@ class subtracted_phot(subphot_data):
         self.files_to_clean.append(self.data1_path+f'out/sci_subsym_{self.rand_nums_string}.fits')
         self.files_to_clean.append(self.data1_path+f'out/sci_moffat_{self.rand_nums_string}.fits')
 
-        self.sp_logger.info(info_g+' Running PSFex with SExtractor catalog'+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+        self.sp_logger.info(info_g+' Running PSFex with SExtractor catalog: '+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+        #check the catalog output by sextractor and change the stars matched to have a flag of 0
+
+        # # self.star_coords_wcs_sky
+        # self.orig_sci_sex_cat = fits.open(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+        # self.orig_sci_sex_cat_tab = Table(self.orig_sci_sex_cat[2].data)
+        # print(self.orig_sci_sex_cat_tab)
+        # self.sci_ali_wcs = WCS(self.sci_ali_name)
+        # self.orig_sci_sex_cat_wcs = self.sci_ali_wcs.all_pix2world(np.column_stack((self.orig_sci_sex_cat_tab['X_IMAGE'],self.orig_sci_sex_cat_tab['Y_IMAGE'])),1)
+        # self.orig_sci_sex_cat_wcs = SkyCoord(ra=self.orig_sci_sex_cat_wcs[:,0]*u.deg,dec=self.orig_sci_sex_cat_wcs[:,1]*u.deg,frame='fk5')
+        # self.orig_sci_sex_cat_tab['RA_DEG'],self.orig_sci_sex_cat_tab['DEC_DEG'] = self.orig_sci_sex_cat_wcs.ra.deg,self.orig_sci_sex_cat_wcs.dec.deg
+
+        # # self.star_coords_wcs = load_wcs_from_file(self.sci_ali_name,self.matched_star_coords_pix)
+        # # print(self.star_coords_wcs)
+        # self.matched_star_coords_pix = np.array(self.matched_star_coords_pix)
+        # self.matched_star_coords_sky_ = self.sci_ali_wcs.all_pix2world(np.column_stack((self.matched_star_coords_pix[:,0],self.matched_star_coords_pix[:,1])),1)
+        # # print(self.matched_star_coords_sky_)
+        # self.matched_star_coords_sky_ = SkyCoord(ra=self.matched_star_coords_sky_[:,0]*u.deg,dec=self.matched_star_coords_sky_[:,1]*u.deg,frame='fk5')
+        # self.sci_sex_indx,self.sci_sex_d2d,self.sci_sex_d3d = self.orig_sci_sex_cat_wcs.match_to_catalog_sky(self.matched_star_coords_sky_)
+        # self.sci_sex_upd = np.where(self.sci_sex_d2d<(7.5)/3600.*u.deg)[0]
+
+        # self.orig_sci_sex_cat[2].data = self.orig_sci_sex_cat[2].data[self.sci_sex_upd]
+        # # print(self.orig_sci_sex_cat[2].data)
+        # # sys.exit(1)
+        # self.orig_sci_sex_cat[2].data['FLAGS'] = 0
+        # self.orig_sci_sex_cat[2].data['ELONGATION'] = 0
+        # print(Table(self.orig_sci_sex_cat[2].data))
+
+        # self.orig_sci_sex_cat.writeto(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat",overwrite=True)
+
+
+
         psfex_status = os.system(psfex_path+" "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
         self.sp_logger.info(info_g+' PSFex status: '+str(psfex_status))
 
@@ -3056,7 +3112,7 @@ class subtracted_phot(subphot_data):
 
 
     
-        print(self.sci_ali_name)
+        # print(self.sci_ali_name)
         self.star_coords_wcs=load_wcs_from_file(filename=self.sci_conv_name,coord=self.star_coords_pix)
         # self.sp_logger.info(self.star_coords_wcs)
         self.star_coords_wcs_sky = SkyCoord(ra=self.star_coords_wcs[:,0]*u.deg, dec=self.star_coords_wcs[:,1]*u.deg,frame='fk5')
@@ -3181,7 +3237,7 @@ class subtracted_phot(subphot_data):
 
     
 
-        if (len(self.matched_catalog_mag)<=1 and self.special_case==None) or (self.special_case!=None and len(self.matched_catalog_mag)<1):
+        if (len(self.matched_catalog_mag)<1 and self.special_case==None) or (self.special_case!=None and len(self.matched_catalog_mag)<1):
             # self.sp_logger.info(self.special_case, len(self.matched_catalog_mag))
             self.sp_logger.warning(warn_r+f" {self.sci_obj} {self.sci_mjd} {self.sci_filt}: Less than 2 matched calibration stars ")
 
@@ -3575,9 +3631,11 @@ class subtracted_phot(subphot_data):
         #     self.zp_sci,self.zp_ref=sigma_clip(self.zp_sci,sigma=5,maxiters=4),sigma_clip(self.zp_ref,sigma=5,maxiters=4)
 
         if np.count_nonzero(~np.isnan(self.zp_ref))<2 and self.special_case==None:
-            if np.count_nonzero(~np.isnan(self.zp_sci))<3:
-                if self.termoutp!='quiet':
-                    self.sp_logger.info(warn_y+' Few stars in the field')
+            if np.count_nonzero(~np.isnan(self.zp_sci))<3 and self.telescope not in SEDM:
+                self.sp_logger.info(warn_y+' Few stars in the field')
+            if np.count_nonzero(~np.isnan(self.zp_sci))<3 and self.telescope in SEDM:
+                self.sp_logger.info(warn_y+' Few stars in the field, continuing if 1 or 2 stars in science')
+                
 
 
              #errors.write('Few (< 3) field stars to calibrate in science and reference image. \n')
@@ -3830,14 +3888,22 @@ class subtracted_phot(subphot_data):
             # self.main_sn_psf_fit = main_sn_psf_fit
             # if np.abs(main_sn_psf_fit[5])>1.5 or np.abs(main_sn_psf_fit[6])>1.5 or any(offset>2 for offset in [main_sn_psf_fit[5], main_sn_psf_fit[6]]):
             # if (sn_mag>17.5 and self.forced_phot==False and self.telescope not in SEDM) or (self.telescope in SEDM and self.forced_phot!=False):
-            if (sn_mag>17.5 and self.forced_phot==False and self.telescope not in SEDM) or (self.forced_phot!=False):
-                if any(offset>self.max_psf_offset for offset in [self.main_sn_psf_fit[5], self.main_sn_psf_fit[6]]):
+            if (sn_mag>17.5 and self.forced_phot==False) or (self.forced_phot!=False):
+                if  self.telescope not in SEDM and any(offset>self.max_psf_offset for offset in [self.main_sn_psf_fit[5], self.main_sn_psf_fit[6]]):
                     self.sp_logger.warning(warn_y+f" PSF fit is shifted too much, defaulting to original position")
                     self.sp_logger.warning(warn_y+" xoff =%.3f arsec, yoff_arc=%.3f arcsec"%(self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]))
                     self.main_sn_psf_fit = self.psf_fit_noshift(self.sn_cutout,psf_array=psf)
                     sn_flux= self.main_sn_psf_fit[0]
                     sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
                     self.sp_logger.info(warn_y+" New magnitude = %.3f"%sn_mag)
+                if self.telescope in SEDM and any(offset>1 for offset in [self.main_sn_psf_fit[5], self.main_sn_psf_fit[6]]):
+                    self.sp_logger.warning(warn_y+f" PSF fit is shifted too much, defaulting to original position")
+                    self.sp_logger.warning(warn_y+" xoff =%.3f arsec, yoff_arc=%.3f arcsec"%(self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]))
+                    self.main_sn_psf_fit = self.psf_fit_noshift(self.sn_cutout,psf_array=psf)
+                    sn_flux= self.main_sn_psf_fit[0]
+                    sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
+                    self.sp_logger.info(warn_y+" New magnitude = %.3f"%sn_mag)
+
             
 
         # set up a grid for the values
@@ -4300,8 +4366,15 @@ class subtracted_phot(subphot_data):
         self.data['altdata'] = {}
         if self.if_stacked==True:self.data['altdata']['stacked'],self.data['altdata']['no_in_stack']= True,self.no_stacked
 
-        self.data['altdata'] = {'Reducer':'K-Ryan Hinds','Proposal PI':'Dan Perley','exptime':self.sci_exp_time,'seeing':self.sci_seeing}
-        if self.sci_prop!=None:self.data['altdata']['Proposal ID']=self.sci_prop
+        self.data['altdata']['Reducer'] = 'K-Ryan Hinds'
+        self.data['altdata']['Proposal PI'] = 'Dan Perley'
+        self.data['altdata']['exptime'] = self.sci_exp_time
+        self.data['altdata']['seeing'] = self.sci_seeing
+        if self.sci_prop!=None:
+            self.data['altdata']['Proposal ID']=self.sci_prop
+            if self.sci_prop in ['JL24A04','JL24B14']:self.data['altdata']['Proposal PI'] = 'K-Ryan Hinds'
+            elif self.sci_prop in ['JL24B15']:self.data['altdata']['Proposal PI'] = 'Jacob Wise'
+
 
         self.name=self.sci_obj
 
@@ -4343,6 +4416,18 @@ class subtracted_phot(subphot_data):
                 if self.upload_new==True:
                     self.data = {'filter':f"sdss{self.sci_filt}",'mag':None,'magerr':None,'mjd':self.sci_mjd,'limiting_mag_nsigma':5,'obj_id':self.sci_obj,'origin':'LT_IOO_PIPE',
                                         'magsys':'ab','group_ids':'all','limiting_mag':self.mag[3],'instrument_id':33,}
+                    self.data['altdata'] = {}
+
+
+                    self.data['altdata']['Reducer'] = 'K-Ryan Hinds'
+                    self.data['altdata']['Proposal PI'] = 'Dan Perley'
+                    self.data['altdata']['exptime'] = self.sci_exp_time
+                    self.data['altdata']['seeing'] = self.sci_seeing
+                    if self.sci_prop!=None:
+                        self.data['altdata']['Proposal ID']=self.sci_prop
+                        if self.sci_prop in ['JL24A04','JL24B14']:self.data['altdata']['Proposal PI'] = 'K-Ryan Hinds'
+                        elif self.sci_prop in ['JL24B15']:self.data['altdata']['Proposal PI'] = 'Jacob Wise'
+
                     if self.if_stacked==True:self.data['altdata']['stacked'],self.data['altdata']['no_in_stack']= True,self.no_stacked
                     
 

@@ -381,7 +381,7 @@ SNR_WIN
     pf.write(params)
     pf.close()
 
-def prepsexfile(verbose='QUEIT'):
+def prepsexfile(verbose='QUEIT',gain=1.6):
     verbose=verbose.upper()
     params = '''# Simple configuration file for SExtractor prior to PSFEx use
 # only non-default parameters are present.
@@ -390,7 +390,7 @@ def prepsexfile(verbose='QUEIT'):
 
 #-------------------------------- Catalog ------------------------------------
 
-CATALOG_NAME     '''+path+'''config_files/prepsfex.cat   # Catalog filename
+CATALOG_NAME     '''+data1_path+'''config_files/prepsfex.cat   # Catalog filename
 CATALOG_TYPE     FITS_LDAC      # FITS_LDAC format
 PARAMETERS_NAME  '''+path+'''config_files/default.param # name of the file containing catalog contents
 
@@ -409,7 +409,7 @@ FILTER_NAME      '''+path+'''config_files/sex.conv   # name of the file containi
 
 PHOT_APERTURES   30             # <- put the referrence aperture diameter here
 SATUR_LEVEL      30000.0        # <- put the right saturation threshold here
-GAIN             1.6            # <- put the detector gain in e-/ADU here
+GAIN             '''+str(gain)+'''            # <- put the detector gain in e-/ADU here
 
 #------------------------- Star/Galaxy Separation ----------------------------
 #------------------------------ Background -----------------------------------
@@ -472,7 +472,7 @@ HOMOKERNEL_SUFFIX  .homo.fits   # Filename extension for homogenisation kernels
 #----------------------------- Output catalogs -------------------------------
 
 OUTCAT_TYPE        ASCII_HEAD        # NONE, ASCII_HEAD, ASCII, FITS_LDAC
-OUTCAT_NAME        '''+path+'''out/psfex_out.cat  # Output catalog filename
+OUTCAT_NAME        '''+data1_path+'''out/psfex_out.cat  # Output catalog filename
 
 
 
@@ -488,7 +488,7 @@ CHECKPLOT_NAME      fwhm, ellipticity, counts, countfrac, chi2, resi
 
 CHECKIMAGE_TYPE CHI,PROTOTYPES,SAMPLES,RESIDUALS,SNAPSHOTS,MOFFAT,-MOFFAT,-SYMMETRICAL
                                 # Check-image types
-CHECKIMAGE_NAME '''+path+'''out/chi.fits,'''+path+'''out/proto.fits,'''+path+'''out/samp.fits,'''+path+'''out/resi.fits,'''+path+'''out/snap.fits,'''+path+'''out/moffat.fits,'''+path+'''out/submoffat.fits,'''+path+'''out/subsym.fits
+CHECKIMAGE_NAME '''+data1_path+'''out/chi.fits,'''+data1_path+'''out/proto.fits,'''+data1_path+'''out/samp.fits,'''+data1_path+'''out/resi.fits,'''+data1_path+'''out/snap.fits,'''+data1_path+'''out/moffat.fits,'''+data1_path+'''out/submoffat.fits,'''+data1_path+'''out/subsym.fits
                                 # Check-image filenames
 CHECKIMAGE_CUBE Y
 
@@ -496,11 +496,11 @@ CHECKIMAGE_CUBE Y
 
 #----------------------------- Miscellaneous ---------------------------------
 
-PSF_DIR         '''+path+'''out/ # Where to write PSFs (empty=same as input)
+PSF_DIR         '''+data1_path+'''out/ # Where to write PSFs (empty=same as input)
 PSF_SUFFIX      .psf            # Filename extension for output PSF filename
 VERBOSE_TYPE    '''+verbose+'''          # can be QUIET,NORMAL,LOG or FULL
 WRITE_XML       Y               # Write XML file (Y/N)?
-XML_NAME        '''+path+'''out/psfex.xml       # Filename for XML output
+XML_NAME        '''+data1_path+'''out/psfex.xml       # Filename for XML output
 NTHREADS        0               # Number of simultaneous threads for
                                 # the SMP version of PSFEx
                                 # 0 = automatic'''
@@ -530,14 +530,14 @@ def panstarrs_query(ra_deg, dec_deg, rad_deg, mindet=1,
       os.makedirs('./ps_catalogs')
     
 
-    if not os.path.exists('./ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml'):  
+    if not os.path.exists(path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml'):  
         r = requests.get(server, 
                 params= {'RA': ra_deg, 'DEC': dec_deg, 
                 'SR': rad_deg, 'max_records': maxsources, 
                 'outputformat': 'VOTable', 
                 'ndetections': ('>%d' % mindet)})
                 
-        outf = open('ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml', 'w') 
+        outf = open(path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml', 'w') 
         outf.write(r.text) 
         outf.close() 
         print(info_g+f" PS1 Catalog downloaded to:",'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
@@ -545,7 +545,7 @@ def panstarrs_query(ra_deg, dec_deg, rad_deg, mindet=1,
         print(info_g+f" PS1 Catalog already downloaded to:",'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
     # write query data into local file
     # parse local file into astropy.table object 
-    data = parse_single_table('./ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+    data = parse_single_table(path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
     return data.to_table(use_names_over_ids=True) 
 
 ##################################
@@ -842,7 +842,7 @@ class subphot_data():
         images_ = []
         for k in range(len(images)):
             if not images[k].startswith(data1_path) and not images[k].startswith('/'):
-                images_.append(path+images[k])
+                images_.append(data1_path+images[k])
             else:
                 images_.append(images[k])
 
@@ -1069,8 +1069,8 @@ class subphot_data():
 
 
     def down_recentdata(self,day=''):
-        if not os.path.exists(f'{data1_path}data/RecentData'):
-            os.mkdir(f'{data1_path}data/RecentData')
+        if not os.path.exists(f'{data1_path}RecentData'):
+            os.mkdir(f'{data1_path}RecentData')
         
         #setting data to todays data in format YYYYMMDD
         t = date.today()
@@ -1097,8 +1097,8 @@ class subphot_data():
 
         for proposal in proposals_arc.keys():
             try:
-                if os.path.exists(f'{path}data/RecentData/{DAY}') == False:
-                    os.mkdir(f'{path}data/RecentData/{DAY}')
+                if os.path.exists(f'{data1_path}RecentData/{DAY}') == False:
+                    os.mkdir(f'{data1_path}RecentData/{DAY}')
                 url1 = f'https://telescope.livjm.ac.uk/DataProd/RecentData/{proposal}'
                 response1 = requests.get(url1,auth=(proposal,proposals_arc[proposal][0]))
                 avail = {} #dictionary containing all observations available on quicklook
@@ -1116,7 +1116,7 @@ class subphot_data():
                 print(info_g+f' Data has been taken for {proposal} and uploaded to LT Recent Data')
                 print(url2)
                 response2 = requests.get(url2,auth=(proposal,proposals_arc[proposal][0]))
-                open(f'{path}data/RecentData/{proposal}_{DAY}_1.tgz','wb').write(response2.content)
+                open(f'{data1_path}RecentData/{proposal}_{DAY}_1.tgz','wb').write(response2.content)
                 print(info_g+f' Downloaded data as tarball at {datetime.datetime.now().strftime("%H:%M:%S")}')
                 print()
             except:
@@ -1130,8 +1130,8 @@ class subphot_data():
 
 
     def down_quicklook(self,day=''):
-        if not os.path.exists(f'{data1_path}data/Quicklook'):
-            os.mkdir(f'{data1_path}data/Quicklook')
+        if not os.path.exists(f'{data1_path}Quicklook'):
+            os.mkdir(f'{data1_path}Quicklook')
 
         #setting data to todays data in format YYYYMMDD
         t = date.today()
@@ -1165,17 +1165,17 @@ class subphot_data():
         print(info_g+f' Last nights observation date is {DAY}, looking for data from the following proposals: {", ".join(proposals_arc.keys())}')
         print()
   
-        if os.path.exists(f"{path}photometry_date/{DAY}")==False:
-            os.mkdir(f"{path}photometry_date/{DAY}")
+        if os.path.exists(f"{data1_path}photometry_date/{DAY}")==False:
+            os.mkdir(f"{data1_path}photometry_date/{DAY}")
 
         
                 
         for proposal in proposals_arc.keys():
             new_fits_only=[]
             try:
-                if os.path.exists(f'{data1_path}data/Quicklook/{DAY}') == False:
-                    os.mkdir(f'{data1_path}data/Quicklook/{DAY}')
-                    os.mkdir(f'{data1_path}data/Quicklook/{DAY}/spec')
+                if os.path.exists(f'{data1_path}Quicklook/{DAY}') == False:
+                    os.mkdir(f'{data1_path}Quicklook/{DAY}')
+                    os.mkdir(f'{data1_path}Quicklook/{DAY}/spec')
                 #opening quicklook homepage
                 url1 = f'https://telescope.livjm.ac.uk/DataProd/quicklook/{proposal}'
                 response1 = requests.get(url1,auth=(proposal,proposals_arc[proposal][0]))
@@ -1213,24 +1213,24 @@ class subphot_data():
                         #print(fits_name)
 
                 #creating a txt file with all fits.gz files and appending to it everytime it checks
-                if os.path.exists(f'{data1_path}data/Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt')==False:
+                if os.path.exists(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt')==False:
                     print(info_g+f' Fits log for {DAY} does not yet exist, creating file and writing')
-                    fits_name_txt = open(f'{data1_path}data/Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt', 'w+')
+                    fits_name_txt = open(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt', 'w+')
                     for name in gzip_fits:
                         name=re.sub(' ','',name)
                         name=re.sub('=','',name)
 
-                        if name not in os.listdir(f'{data1_path}data/Quicklook/{DAY}/'):
+                        if name not in os.listdir(f'{data1_path}Quicklook/{DAY}/'):
                             #gzip_fits = re.sub('=','',gzip_fits)
                             fits_name_txt.write(f'{name}\n')
                             new_fits_only.append(name)
                     fits_name_txt.close()
                     print(info_g+f' Written {len(new_fits_only)} new fits into {proposal}_{DAY}_fits_log.txt')
 
-                elif os.path.exists(f'{data1_path}data/Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt')==True:
+                elif os.path.exists(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt')==True:
                     print(info_g+f' Fits log for {DAY} exists, opening and writing new fits')
-                    fits_name_txt = open(f'{data1_path}data/Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt', 'a+')
-                    fits_in = open(f'{data1_path}data/Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt').readlines()
+                    fits_name_txt = open(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt', 'a+')
+                    fits_in = open(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt').readlines()
                     for name in gzip_fits:
                         if all(name not in f for f in fits_in):
                             name=re.sub('=','',name)
@@ -1240,24 +1240,24 @@ class subphot_data():
                     print(info_g+f' Written {len(new_fits_only)} new fits into {proposal}_{DAY}_fits_log.txt')
 
                 #reading in and downloading fits files to data/{TODAY} directory
-                down_fits = open(f'{data1_path}data/Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt').readlines()
+                down_fits = open(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt').readlines()
 
                 if len(new_fits_only)>0:
                     for fits in new_fits_only:
                         #fits = fits[:-1]
     
-                        if os.path.exists(f'{data1_path}data/Quicklook/{DAY}/{fits}')==False and os.path.exists(f'{data1_path}data/Quicklook/{DAY}/{fits}.gz')==False and os.path.exists(f"{data1_path}data/Quicklook/{DAY}/{re.sub('.gz','',fits)}")==False:# and os.path.exists(f'data/Quicklook/{DAY}/{fits}')==False:
+                        if os.path.exists(f'{data1_path}Quicklook/{DAY}/{fits}')==False and os.path.exists(f'{data1_path}Quicklook/{DAY}/{fits}.gz')==False and os.path.exists(f"{data1_path}Quicklook/{DAY}/{re.sub('.gz','',fits)}")==False:# and os.path.exists(f'data/Quicklook/{DAY}/{fits}')==False:
                             url3 = f'https://telescope.livjm.ac.uk/DataProd/quicklook/{proposal}/{DAY}/{fits}'
                             url3 = re.sub('	','',url3)
                             print(url3)
 
                             response3 = requests.get(url3,auth=(proposal,proposals_arc[proposal][0]))
                             if fits[0]=="h":
-                                open(f'{data1_path}data/Quicklook/{DAY}/{fits}', 'wb').write(response3.content)
-                                os.system(f"gunzip {data1_path}data/Quicklook/{DAY}/{fits}")
+                                open(f'{data1_path}Quicklook/{DAY}/{fits}', 'wb').write(response3.content)
+                                os.system(f"gunzip {data1_path}Quicklook/{DAY}/{fits}")
                             elif (fits[0:3]=="v_e")==True:
-                                open(f'{data1_path}data/Quicklook/{DAY}/spec/{fits}', 'wb').write(response3.content)
-                                os.system(f"gunzip {data1_path}data/Quicklook/{DAY}/spec/{fits}")
+                                open(f'{data1_path}Quicklook/{DAY}/spec/{fits}', 'wb').write(response3.content)
+                                os.system(f"gunzip {data1_path}Quicklook/{DAY}/spec/{fits}")
          
                 print()
             except Exception as e:

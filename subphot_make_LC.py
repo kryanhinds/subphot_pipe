@@ -43,18 +43,18 @@ def plot_mag_LC(name,axs):
     #not_ztf_cols = ['uvot::v','uvot::uvw2','uvot::uvw1','uvot::uvm2','uvot::u','uvot::b']
     
     graph_cols = {'ztfg':'darkgreen','ztfr':'darkred', 'ztfi':'darkblue', 'ztfz':'orange',
-                 'sdssg':'green','sdssr':'red','sdssi':'blue','sdssz':'orange','sdssu':'black',
-                 'uvot::v':'blue','uvot::uvw2':'red','uvot::uvw1':'black','uvot::uvm2':'yellow','uvot::u':'green','uvot::b':'purple',
-                 'SDSSg':'green','SDSSr':'red','SDSSi':'blue','SDSSz':'orange','SDSSu':'black','atlaso':'orange','atlasc':'lime'}
+                'sdssg':'green','sdssr':'red','sdssi':'blue','sdssz':'orange','sdssu':'black',
+                'uvot::v':'blue','uvot::uvw2':'red','uvot::uvw1':'black','uvot::uvm2':'yellow','uvot::u':'green','uvot::b':'purple',
+                'SDSSg':'green','SDSSr':'red','SDSSi':'blue','SDSSz':'orange','SDSSu':'black','atlaso':'orange','atlasc':'lime'}
     
     graph_marks = {'ztfg':'o','ztfr':'o', 'ztfi':'o', 'ztfz':'o',
-                 'sdssg':'v','sdssr':'v','sdssi':'v','sdssz':'v','sdssu':'v','other':'x'}
+                'sdssg':'v','sdssr':'v','sdssi':'v','sdssz':'v','sdssu':'v','other':'x'}
                  
     
     filt_cols = {'ztfg':'g','ztfr':'r', 'ztfi':'i', 'ztfz':'z',
-                 'sdssg':'g','sdssr':'r','sdssi':'i','sdssz':'z','sdssu':'u',
-                 'uvot::v':'v','uvot::uvw2':'uvw2','uvot::uvw1':'uvw1','uvot::uvm2':'uvm2','uvot::u':'u','uvot::b':'b',
-                 'SDSSg':'g','SDSSr':'r','SDSSi':'i','SDSSz':'z','SDSSu':'u'}
+                'sdssg':'g','sdssr':'r','sdssi':'i','sdssz':'z','sdssu':'u',
+                'uvot::v':'v','uvot::uvw2':'uvw2','uvot::uvw1':'uvw1','uvot::uvm2':'uvm2','uvot::u':'u','uvot::b':'b',
+                'SDSSg':'g','SDSSr':'r','SDSSi':'i','SDSSz':'z','SDSSu':'u'}
 
 
     data_dict = {}
@@ -137,11 +137,11 @@ all_data_dict = {}
 
 
 event_names = args.name
-phot_files=os.listdir(f'{path}photometry')
+phot_files=os.listdir(f'{data1_path}photometry')
 for n in range(len(phot_files)):
     for event_name in event_names:
         if event_name in phot_files[n]:
-            with open(f'{path}photometry/{phot_files[n]}', 'r') as photometry:
+            with open(f'{data1_path}photometry/{phot_files[n]}', 'r') as photometry:
                 phot_data = [i for i in photometry.readlines(0)[0].split(' ') if i not in [' ','',str("\n")]]
                 if len(phot_data)!=11:
                     for h in range(len(phot_data),11):
@@ -163,11 +163,12 @@ keys = [key for key in all_data_dict.keys()]
 
 filters = {}
 for event_name in event_names:
-    if os.path.exists(f'{path}light_curves/{event_name}')==False:os.mkdir(f'{path}light_curves/{event_name}')
-    if os.path.exists(f'/home/arikhind/public_html/light_curves/{event_name}')==False:os.mkdir(f'/home/arikhind/public_html/light_curves/{event_name}')
+    if os.path.exists(f'{data1_path}light_curves/{event_name}')==False:os.mkdir(f'{data1_path}light_curves/{event_name}')
+    if os.path.exists(f'{data1_path}phot_tables/{event_name}')==False:os.mkdir(f'{data1_path}phot_tables/{event_name}')
+    # if os.path.exists(f'{data1_path}light_curves/{event_name}')==False:os.mkdir(f'/home/arikhind/public_html/light_curves/{event_name}')
 
-    all_data_dict[event_name].to_csv(f'{path}phot_tables/{event_name}.txt',index=False)
-    all_data_dict[event_name].to_csv(f'{path}light_curves/{event_name}/all_phot_{event_name}.txt',index=False)
+    all_data_dict[event_name].to_csv(f'{data1_path}phot_tables/{event_name}.txt',index=False)
+    all_data_dict[event_name].to_csv(f'{data1_path}light_curves/{event_name}/all_phot_{event_name}.txt',index=False)
 
     
     #fig = plt.figure(figsize=(10,6))
@@ -218,9 +219,9 @@ for event_name in event_names:
             axs[i].invert_yaxis(),axs[i].set_xlabel('Days Ago'),axs[i].invert_xaxis(),axs[i].set_ylabel('Apparent Mag')
             axs[i].legend(loc='upper right', bbox_to_anchor=(1.15, 1))
             axs[i].set_title(f'{event_name} {f}-band Light Curve')
-            fig_.savefig(f'{path}light_curves/{event_name}/{event_name}_{f}_LC.png')
-            fig_.savefig(f'/home/arikhind/public_html/light_curves/{event_name}/{event_name}_{f}_LC.png')
-            print(info_g+f' Light curve for {event_name} {f}-band created and saved to {path}light_curves/{event_name}/{event_name}_{f}_LC.png')
+            fig_.savefig(f'{data1_path}light_curves/{event_name}/{event_name}_{f}_LC.png')
+            # fig_.savefig(f'/home/arikhind/public_html/light_curves/{event_name}/{event_name}_{f}_LC.png')
+            print(info_g+f' Light curve for {event_name} {f}-band created and saved to {data1_path}light_curves/{event_name}/{event_name}_{f}_LC.png')
         except:
             pass
 

@@ -344,8 +344,8 @@ def sextract(sexfilename, nxpix, nypix, border=3, corner=12, minfwhm=1.5, maxfwh
        if not os.path.exists(path+'config_files/align_sex.config'):
            writeconfigfile(saturation)
        
-       os.system("sex " + sexfilename + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL "+str(sexsaturation)+' -BACK_TYPE MANUAL -BACK_VALUE '+str(bkg) +f" -CATALOG_NAME "+path+f"config_files/prepsfex_{rand_nums_string}.cat ")
-       files_to_remove.append(path+f"config_files/prepsfex_{rand_nums_string}.cat")
+       os.system("sex " + sexfilename + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL "+str(sexsaturation)+' -BACK_TYPE MANUAL -BACK_VALUE '+str(bkg) +f" -CATALOG_NAME "+data1_path+f"config_files/prepsfex_{rand_nums_string}.cat ")
+       files_to_remove.append(data1_path+f"config_files/prepsfex_{rand_nums_string}.cat")
        #print("sex " + sexfilename + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL "+str(sexsaturation)+' -BACK_TYPE MANUAL -BACK_VALUE '+str(bkg) +f" -CATALOG_NAME "+path+f"config_files/prepsfex_{rand_nums_string}.cat ")
     except Exception as e:
        print(warn_r+' Error: Problem running sextractor',e)
@@ -354,7 +354,7 @@ def sextract(sexfilename, nxpix, nypix, border=3, corner=12, minfwhm=1.5, maxfwh
 
     # Read in the sextractor catalog
     try:
-       cat = open(path+f"config_files/prepsfex_{rand_nums_string}.cat",'r')
+       cat = open(data1_path+f"config_files/prepsfex_{rand_nums_string}.cat",'r')
        #cat = open(path+"config_files/temp.cat",'r')
        catlines = cat.readlines()
     #    print(len(catlines), 'objects detected in image', sexfilename)
@@ -508,7 +508,7 @@ def sextract(sexfilename, nxpix, nypix, border=3, corner=12, minfwhm=1.5, maxfwh
     #      i += 1
     # print(len(sexlist), 'objects detected in image ('+ str(len(sexlist)-len(goodsexlist)) +' discarded)',sexfilename)
 
-    if delete==True: os.remove(path+f"config_files/prepsfex_{rand_nums_string}.cat")
+    if delete==True: os.remove(data1_path+f"config_files/prepsfex_{rand_nums_string}.cat")
     return goodsexlist 
 
 def getcatalog(catalog, ra, dec, boxsize, minmag=8.0, maxmag=-1, maxpm=60., tryc=False):

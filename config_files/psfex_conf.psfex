@@ -47,7 +47,7 @@ HOMOKERNEL_SUFFIX  .homo.fits   # Filename extension for homogenisation kernels
 #----------------------------- Output catalogs -------------------------------
 
 OUTCAT_TYPE        ASCII_HEAD        # NONE, ASCII_HEAD, ASCII, FITS_LDAC
-OUTCAT_NAME        /users/arikhind/subphot_pipe/out/psfex_out.cat  # Output catalog filename
+OUTCAT_NAME        /mnt/data1/users/arikhind/phot_data/out/psfex_out.cat  # Output catalog filename
 
 
 
@@ -63,7 +63,7 @@ CHECKPLOT_NAME      fwhm, ellipticity, counts, countfrac, chi2, resi
 
 CHECKIMAGE_TYPE CHI,PROTOTYPES,SAMPLES,RESIDUALS,SNAPSHOTS,MOFFAT,-MOFFAT,-SYMMETRICAL
                                 # Check-image types
-CHECKIMAGE_NAME /users/arikhind/subphot_pipe/out/chi.fits,/users/arikhind/subphot_pipe/out/proto.fits,/users/arikhind/subphot_pipe/out/samp.fits,/users/arikhind/subphot_pipe/out/resi.fits,/users/arikhind/subphot_pipe/out/snap.fits,/users/arikhind/subphot_pipe/out/moffat.fits,/users/arikhind/subphot_pipe/out/submoffat.fits,/users/arikhind/subphot_pipe/out/subsym.fits
+CHECKIMAGE_NAME /mnt/data1/users/arikhind/phot_data/out/chi.fits,/mnt/data1/users/arikhind/phot_data/out/proto.fits,/mnt/data1/users/arikhind/phot_data/out/samp.fits,/mnt/data1/users/arikhind/phot_data/out/resi.fits,/mnt/data1/users/arikhind/phot_data/out/snap.fits,/mnt/data1/users/arikhind/phot_data/out/moffat.fits,/mnt/data1/users/arikhind/phot_data/out/submoffat.fits,/mnt/data1/users/arikhind/phot_data/out/subsym.fits
                                 # Check-image filenames
 CHECKIMAGE_CUBE Y
 
@@ -71,11 +71,11 @@ CHECKIMAGE_CUBE Y
 
 #----------------------------- Miscellaneous ---------------------------------
 
-PSF_DIR         /users/arikhind/subphot_pipe/out/ # Where to write PSFs (empty=same as input)
+PSF_DIR         /mnt/data1/users/arikhind/phot_data/out/ # Where to write PSFs (empty=same as input)
 PSF_SUFFIX      .psf            # Filename extension for output PSF filename
 VERBOSE_TYPE    NORMAL          # can be QUIET,NORMAL,LOG or FULL
 WRITE_XML       Y               # Write XML file (Y/N)?
-XML_NAME        /users/arikhind/subphot_pipe/out/psfex.xml       # Filename for XML output
+XML_NAME        /mnt/data1/users/arikhind/phot_data/out/psfex.xml       # Filename for XML output
 NTHREADS        0               # Number of simultaneous threads for
                                 # the SMP version of PSFEx
                                 # 0 = automatic

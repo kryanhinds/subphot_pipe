@@ -40,12 +40,12 @@ if '00:00:00'<TIME<time_suns_tomorrow:
     date_ = str(t - datetime.timedelta(days=1))
     DATE=re.sub("-","",date_)
 
-folder="data/Quicklook/"+DATE
+folder="Quicklook/"+DATE
 
 
 new_only=True
 
-folder_path = 'data/Quicklook/'
+folder_path = 'Quicklook/'
 
 #down_command = f"python3 {path}lt_subtract.py -qdl current_obs" d578adb5-7d1b-49b0-88ad-bdcce71d1050
 
@@ -72,16 +72,16 @@ except Exception as e:
 
 
 
-today_phot_files = [f for f in os.listdir(path+'photometry_date/'+DATE) if f!='cut_outs' and f!='morning_rup']
+today_phot_files = [f for f in os.listdir(data1_path+'photometry_date/'+DATE) if f!='cut_outs' and f!='morning_rup']
 
-if os.path.exists(path+'photometry_date/'+DATE+'/morning_rup'):
-    today_mrup_phot_files = [f for f in os.listdir(path+'photometry_date/'+DATE+'/morning_rup') if f!='cut_outs' and f!='morning_rup']
+if os.path.exists(data1_path+'photometry_date/'+DATE+'/morning_rup'):
+    today_mrup_phot_files = [f for f in os.listdir(data1_path+'photometry_date/'+DATE+'/morning_rup') if f!='cut_outs' and f!='morning_rup']
 
     if len(today_mrup_phot_files)!=len(today_phot_files): #finding the files in today_phot_files that aren't in today_mrup_phot_files
         for i in today_phot_files:
             if i not in today_mrup_phot_files:
                 try:
-                    os.system('cp '+path+'photometry_date/'+DATE+'/'+i+' '+path+'photometry_date/'+DATE+'/morning_rup/'+i)
+                    os.system('cp '+data1_path+'photometry_date/'+DATE+'/'+i+' '+data1_path+'photometry_date/'+DATE+'/morning_rup/'+i)
                 except Exception as e:
                     print(f'Failed to copy across {i} to photometry_data/{DATE}/morning_rup',e)
 
@@ -92,9 +92,9 @@ try:
 except Exception as e:
     print('Error with morning email script', e)
 try:
-    os.system(f'python3 {path}subphot_morning_email.py -p PL24A05 -e K.C.Hinds@2021.ljmu.ac.uk')
-except Exception as e:
-    print('Error with morning email script', e)
+#     os.system(f'python3 {path}subphot_morning_email.py -p PL24A05 -e K.C.Hinds@2021.ljmu.ac.uk')
+# except Exception as e:
+#     print('Error with morning email script', e)
 
 
 # try:
