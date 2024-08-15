@@ -168,6 +168,9 @@ parser.add_argument('--use_sdss','-sdss',default=False,action='store_true',
 
 parser.add_argument('--redo_batch_astrometry','-rebatch',default=None,nargs='+',
                     help="Redo astrometry for batch, default is False")
+
+parser.add_argument('--pros_job_id','-pid',default=None,
+                    help="Prospero job ID, default is None")
 args = parser.parse_args()
 
 # print(args.ims)
@@ -297,7 +300,7 @@ else:
 # print(args.make_log==0,args.make_log=='0')
 # sys.exit(1)
 
-if args.make_log!=False:
+if args.make_log!=False and args.pros_job_id==None:
     log_dest=args.make_log
     # print(args.output)
     if args.output in ['by_name']:
@@ -332,6 +335,7 @@ if args.make_log!=False:
     sp_logger.info(info_g+f' Logging to {log_name}')
     args.sp_logger=sp_logger
 else:args.sp_logger=None
+
 
 # sys.exit()
 class multi_subtract():
@@ -1237,6 +1241,11 @@ elif len(args.folder)>0 and args.plc[0]!=[None]:
             sp_logger.info(colored('---------------------------------------------------------------------------------------------','blue'))
 
 
+
+    if args.pros_job_id!=None:
+        if not os.path.exists(data1_path+'nightly_routine_logs/'+DATE):os.mkdir(data1_path+'nightly_routine_logs/'+DATE)
+        os.system(f'cp /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/SPNR_{args.pros_job_id}.log {data1_path}nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}.log')
+        sp_logger.info(info_g+f' Copied log file for job {args.pros_job_id} to {data1_path}nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}.log')
 
 def load_photometry(folder,name,filters=['All']):
 

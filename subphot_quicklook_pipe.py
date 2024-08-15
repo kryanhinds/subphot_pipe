@@ -178,6 +178,7 @@ def quick_app_phot(data,stars,gain=1.62):
 class subtracted_phot(subphot_data):
     def __init__(self,ims,args):
         self.bright_cat_mag_lim = 16
+        self.zp_sci_lim = 30
         self.path=path
         self.opath=path
         self.data1_path=data1_path
@@ -1157,6 +1158,9 @@ class subtracted_phot(subphot_data):
        
         self.bkg_error = self.bkg.background_rms
         self.bkg_err = calc_total_error(self.sci_bkgsb,self.bkg_error,self.sci_gain)
+
+        # print(self.median_bkg)
+        # sys.exit()
         return self.sig_clip,self.bkg,self.sci_bkgsb,self.median_bkg
 
 
@@ -1171,29 +1175,45 @@ class subtracted_phot(subphot_data):
         #based on how long the exposure times are
         if self.telescope not in SEDM:
             if 60<self.sci_exp_time<120.0:
-                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=3.0, sigfrac=0.3, objlim=5.0, gain=self.sci_gain, readnoise=16.0, satlevel=45000.0, niter=4, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
+                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=3.0, sigfrac=0.3, objlim=5.0, 
+                gain=self.sci_gain, readnoise=16.0, satlevel=45000.0, niter=4, sepmed=True, cleantype='meanmask', 
+                fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
     
             elif 30<self.sci_exp_time<=60.0:
-                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=3.0, sigfrac=0.3, objlim=5.0, gain=self.sci_gain, readnoise=16.0, satlevel=45000.0, niter=3, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
+                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=3.0, sigfrac=0.3, objlim=5.0, 
+                gain=self.sci_gain, readnoise=16.0, satlevel=45000.0, niter=3, sepmed=True, cleantype='meanmask', 
+                fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
 
             elif self.sci_exp_time>=120:
-                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=3.0, sigfrac=0.3, objlim=5.0, gain=self.sci_gain, readnoise=16.0, satlevel=45000.0, niter=6, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
+                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=3.0, sigfrac=0.3, objlim=5.0, 
+                gain=self.sci_gain, readnoise=16.0, satlevel=45000.0, niter=6, sepmed=True, cleantype='meanmask', 
+                fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
 
             elif self.sci_exp_time<=30:
-                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=3.0, sigfrac=0.3, objlim=5.0, gain=self.sci_gain, readnoise=16.0, satlevel=45000.0, niter=2, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
+                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=3.0, sigfrac=0.3, objlim=5.0, 
+                gain=self.sci_gain, readnoise=16.0, satlevel=45000.0, niter=2, sepmed=True, cleantype='meanmask', 
+                fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
 
         if self.telescope in SEDM:
             if 60<self.sci_exp_time<120.0:
-                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=5.0, sigfrac=0.3, objlim=5.0, gain=self.sci_gain, readnoise=20.0, satlevel=45000.0, niter=4, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
+                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=5.0, sigfrac=0.3, objlim=5.0, 
+                gain=self.sci_gain, readnoise=20.0, satlevel=45000.0, niter=4, sepmed=True, cleantype='meanmask', 
+                fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
               
             elif 30<self.sci_exp_time<=60.0:
-                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=5.0, sigfrac=0.3, objlim=5.0, gain=self.sci_gain, readnoise=20.0, satlevel=45000.0, niter=3, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
+                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=5.0, sigfrac=0.3, objlim=5.0, 
+                gain=self.sci_gain, readnoise=20.0, satlevel=45000.0, niter=3, sepmed=True, cleantype='meanmask', 
+                fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
 
             elif self.sci_exp_time>=120:
-                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=5.0, sigfrac=0.3, objlim=5.0, gain=self.sci_gain, readnoise=20.0, satlevel=45000.0, niter=6, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
+                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=5.0, sigfrac=0.3, objlim=5.0, 
+                gain=self.sci_gain, readnoise=20.0, satlevel=45000.0, niter=6, sepmed=True, cleantype='meanmask', 
+                fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
                 
             elif self.sci_exp_time<=30:
-                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=5.0, sigfrac=0.3, objlim=5.0, gain=self.sci_gain, readnoise=20.0, satlevel=45000.0, niter=2, sepmed=True, cleantype='meanmask', fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
+                self.sci_cr_mask,self.sci_bkgsb=astroscrappy.detect_cosmics(self.sci_bkgsb,sigclip=5.0, sigfrac=0.3, objlim=5.0, 
+                gain=self.sci_gain, readnoise=20.0, satlevel=45000.0, niter=2, sepmed=True, cleantype='meanmask', 
+                fsmode='median', psfmodel='gauss', psffwhm=2.5, psfsize=7, psfk=None, psfbeta=4.765, verbose=self.verbose)
                 
 
         self.sci_img_name=self.sci_img_name[:-5]+"bkgsub.fits"
@@ -1355,7 +1375,7 @@ class subtracted_phot(subphot_data):
         
         else:
             #If a reference image is passed in with it's full path as self.auto_ref
-            if self.auto_ref.startswith(self.data1_path):
+            if not self.auto_ref.startswith(self.data1_path):
                 self.auto_ref = self.data1_path+self.auto_ref
 
             if not os.path.exists(self.auto_ref):
@@ -1669,13 +1689,29 @@ class subtracted_phot(subphot_data):
                 self.ref_coords_wcs,self.ref_coords_wcs_sky = self.ref_coords_wcs[cond],self.ref_coords_wcs_sky[cond]
                 self.ref_coords_pix = self.ref_coords_pix[cond]
                 # print(self.ref_coords_pix)
-                self.iraffind1= IRAFStarFinder(threshold=0,fwhm=3.0,roundhi=0.5,min_separation=5.0,xycoords=self.ref_coords_pix)
-                self.iraffind2= IRAFStarFinder(threshold=0,fwhm=3.0,roundhi=0.5,min_separation=5.0)
+                self.iraffind1= IRAFStarFinder(threshold=0,fwhm=3.0,roundhi=0.3,min_separation=20.0,xycoords=self.ref_coords_pix)
+                self.iraffind2= IRAFStarFinder(threshold=0,fwhm=3.0,roundhi=0.3,min_separation=20.0)
                 # self.sp_logger.info(info_g+' Threshold for detecting stars: '+str(int(starscale*self.std)))
                 self.sources1 = self.iraffind1(self.sci_ali_img_hdu.data[OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE,OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE] - self.median)
                 self.sources2 = self.iraffind2(self.sci_ali_img_hdu.data[OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE,OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE] - self.median)
 
-                self.sources = vstack([self.sources1,self.sources2])
+                self.sp_logger.info(info_g+f" Running SExtractor to detect stars in science image")
+                os.system(sex_path + " " + self.sci_ali_name + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL 50000 -BACK_TYPE MANUAL -BACK_VALUE "+str(self.median_bkg) +f" -CATALOG_NAME "+data1_path+f"config_files/sci_dist_{self.rand_nums_string}.cat")
+                self.sources3 = ascii.read(data1_path+f"config_files/sci_dist_{self.rand_nums_string}.cat")#,
+                
+                # print(self.sources1.columns)
+                # print(self.sources2.columns)
+                # print(self.sources3['X_IMAGE'].data)
+                self.sources=Table()
+                self.sources['xcentroid'] = np.concatenate([self.sources3['X_IMAGE'].data,self.sources1['xcentroid'].data,self.sources2['xcentroid'].data],dtype=np.float64)
+                self.sources['ycentroid'] = np.concatenate([self.sources3['Y_IMAGE'].data,self.sources1['ycentroid'].data,self.sources2['ycentroid'].data],dtype=np.float64)
+                #set the dtype of the sources to ints
+                # self.sources['xcentroid'] = self.sources['xcentroid'].astype(np.float64)
+                # self.sources['ycentroid'] = self.sources['ycentroid'].astype(np.float64)
+                # sys.exit()
+
+
+                # self.sources = vstack([self.sources1,self.sources2])
                 # sys.exit()
 
                 # np.int(vstack([self.sources1,self.sources2]))
@@ -1743,21 +1779,21 @@ class subtracted_phot(subphot_data):
                 #where stars match by search rad in arcseconds!
                 self.upd_indx=np.where(self.d2d<=1/3600.*u.deg)[0]
                 d2d_ = self.d2d[self.upd_indx]
-                if len(self.upd_indx)<=5:
-                    m=2
-                    self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius: 1->'+str(m))
-                    self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
-                    d2d_ = self.d2d[self.upd_indx]
-                    if len(self.upd_indx)<=5:
-                        m=5
-                        self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 2->'+str(m))
-                        self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
-                        d2d_ = self.d2d[self.upd_indx]
-                        if len(self.upd_indx)<=9:
-                            m=10
-                            self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->'+str(m))
-                            self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
-                            d2d_ = self.d2d[self.upd_indx]
+                # if len(self.upd_indx)<=5:
+                #     m=2
+                #     self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius: 1->'+str(m))
+                #     self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
+                #     d2d_ = self.d2d[self.upd_indx]
+                #     if len(self.upd_indx)<=5:
+                #         m=5
+                #         self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 2->'+str(m))
+                #         self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
+                #         d2d_ = self.d2d[self.upd_indx]
+                #         if len(self.upd_indx)<=9:
+                m=20
+                # self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->'+str(m))
+                self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
+                d2d_ = self.d2d[self.upd_indx]
                             # if len(self.upd_indx)<=9 and self.telescope in SEDM:
                             #     m=50
                             #     self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->'+str(m))
@@ -1831,13 +1867,20 @@ class subtracted_phot(subphot_data):
                 # self.ref_coords_wcs_sky = self.ref_coords_wcs_sky[cond]
                 # self.sp_logger.info(info_g+f" Kept {len(self.matched_star_coords_pix)}/{before_snr} stars after SNR cut {len(self.matched_star_coords_pix)/before_snr*100:.2f}%")
                 # print(self.star_coords_wcs_sky)
+
+                self.uniq_inds = np.unique(self.matched_ref_coords_pix, axis=0, return_index=True)[1]
+                self.matched_star_coords_pix = self.matched_star_coords_pix[self.uniq_inds]
+                self.matched_ref_coords_pix = self.matched_ref_coords_pix[self.uniq_inds]
+                self.star_coords_wcs_sky = self.star_coords_wcs_sky[self.uniq_inds]
+                self.ref_coords_wcs_sky = self.ref_coords_wcs_sky[self.uniq_inds]
+
                 bord_dists = self.find_dist_to_border(sci_data=self.sci_ali_img_hdu.data,
                                                         ref_data=self.ref_ali_img_hdu.data,
                                                         sci_match_coords=self.matched_star_coords_pix,
                                                         ref_match_coords=self.matched_ref_coords_pix,
                                                         sci_phot_tab=self.sci_ali_photTab,
                                                         ref_phot_tab=self.ref_ali_photTab,
-                                                        X=20,D=60) 
+                                                        X=20,D=30) 
                 #        return {'sci_keep_pix':sci_keep_pix,'ref_keep_pix':ref_keep_pix,'sci_keep_sky':sci_keep_sky,'ref_keep_sky':ref_keep_sky}
                 self.orig_len_match = len(self.matched_star_coords_pix)
 
@@ -1916,13 +1959,20 @@ class subtracted_phot(subphot_data):
                     # print(self.matched_star_coords_pix[i],self.matched_ref_coords_pix[i])
                 # from skimage.metrics import mean_squared_error
                 # print(len(self.matched_star_coords_pix))
-                # for i in range(len(self.matched_star_coords_pix)):
-                    # print(self.matched_star_coords_pix[i],self.matched_ref_coords_pix[i])
+                for i in range(len(self.matched_star_coords_pix)):
+                    print(self.matched_star_coords_pix[i],self.matched_ref_coords_pix[i])
+
+                # print()
+                # for i in range(len(self.uniq_inds)):
+                #     print(self.matched_star_coords_pix[self.uniq_inds[i]],self.matched_ref_coords_pix[self.uniq_inds[i]])
                 
                 if len(self.matched_star_coords_pix)>=3:
                     self.sp_logger.info(info_g+f" Finding the transformation between science and reference to correct for distortion")
                     self.tform_ref_sci,self.tform_sci_ref = transform.PolynomialTransform(),transform.PolynomialTransform()
 
+                    print(len(self.matched_star_coords_pix),len(self.matched_ref_coords_pix))
+                    
+                    # sys.exit()
                     self.tform_ref_sci.estimate(self.matched_ref_coords_pix,
                                                 self.matched_star_coords_pix, 
                                                 order=1)#,weights=self.tform_w)
@@ -2400,7 +2450,7 @@ class subtracted_phot(subphot_data):
         # SExtractor command for the science image
         # print(self.sci_ali_name)
         # sys.exit(1)
-        sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.opath+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
+        sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.opath+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 22.0"
         print(sextractor_command)
         self.sp_logger.info(info_g+' Creating PSFex catalog with SExtractor')
 
@@ -2419,33 +2469,6 @@ class subtracted_phot(subphot_data):
 
         self.sp_logger.info(info_g+' Running PSFex with SExtractor catalog: '+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
         #check the catalog output by sextractor and change the stars matched to have a flag of 0
-
-        # # self.star_coords_wcs_sky
-        # self.orig_sci_sex_cat = fits.open(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
-        # self.orig_sci_sex_cat_tab = Table(self.orig_sci_sex_cat[2].data)
-        # print(self.orig_sci_sex_cat_tab)
-        # self.sci_ali_wcs = WCS(self.sci_ali_name)
-        # self.orig_sci_sex_cat_wcs = self.sci_ali_wcs.all_pix2world(np.column_stack((self.orig_sci_sex_cat_tab['X_IMAGE'],self.orig_sci_sex_cat_tab['Y_IMAGE'])),1)
-        # self.orig_sci_sex_cat_wcs = SkyCoord(ra=self.orig_sci_sex_cat_wcs[:,0]*u.deg,dec=self.orig_sci_sex_cat_wcs[:,1]*u.deg,frame='fk5')
-        # self.orig_sci_sex_cat_tab['RA_DEG'],self.orig_sci_sex_cat_tab['DEC_DEG'] = self.orig_sci_sex_cat_wcs.ra.deg,self.orig_sci_sex_cat_wcs.dec.deg
-
-        # # self.star_coords_wcs = load_wcs_from_file(self.sci_ali_name,self.matched_star_coords_pix)
-        # # print(self.star_coords_wcs)
-        # self.matched_star_coords_pix = np.array(self.matched_star_coords_pix)
-        # self.matched_star_coords_sky_ = self.sci_ali_wcs.all_pix2world(np.column_stack((self.matched_star_coords_pix[:,0],self.matched_star_coords_pix[:,1])),1)
-        # # print(self.matched_star_coords_sky_)
-        # self.matched_star_coords_sky_ = SkyCoord(ra=self.matched_star_coords_sky_[:,0]*u.deg,dec=self.matched_star_coords_sky_[:,1]*u.deg,frame='fk5')
-        # self.sci_sex_indx,self.sci_sex_d2d,self.sci_sex_d3d = self.orig_sci_sex_cat_wcs.match_to_catalog_sky(self.matched_star_coords_sky_)
-        # self.sci_sex_upd = np.where(self.sci_sex_d2d<(7.5)/3600.*u.deg)[0]
-
-        # self.orig_sci_sex_cat[2].data = self.orig_sci_sex_cat[2].data[self.sci_sex_upd]
-        # # print(self.orig_sci_sex_cat[2].data)
-        # # sys.exit(1)
-        # self.orig_sci_sex_cat[2].data['FLAGS'] = 0
-        # self.orig_sci_sex_cat[2].data['ELONGATION'] = 0
-        # print(Table(self.orig_sci_sex_cat[2].data))
-
-        # self.orig_sci_sex_cat.writeto(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat",overwrite=True)
 
 
 
@@ -2477,7 +2500,31 @@ class subtracted_phot(subphot_data):
             if self.chi_sq_psf>3:
                 # print(colored('Warning: PSF model may not be accurate','green'))
                 self.sp_logger.warning(warn_y+' Warning: PSF model may not be accurate')
-
+            if self.chi_sq_psf<1e-10:
+                self.sp_logger.warning(warn_r+' Warning: PSF model is a perfect fit, may be overfitting')
+                self.sp_logger.warning(warn_y+' Trying again with only the highest signal-to-noise stars')
+                # try:
+                self.sci_prepsfex_cat = fits.open(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+                self.sci_prepsfex_cat_tab = Table(self.sci_prepsfex_cat[2].data)
+                self.sci_prepsfex_cat_snr_min = 37#np.percentile(self.sci_prepsfex_cat_tab['SNR_WIN'],10)
+                print(self.sci_prepsfex_cat_snr_min)
+                # print(np.min(self.sci_prepsfex_cat_tab['SNR_WIN']))
+                self.sci_prepsfex_cat[2].data = self.sci_prepsfex_cat[2].data[(self.sci_prepsfex_cat_tab['SNR_WIN']>self.sci_prepsfex_cat_snr_min)]#&(self.sci_prepsfex_cat_tab['ELONGATION']<1.2)]
+                print(Table(self.sci_prepsfex_cat[2].data))
+                self.sci_prepsfex_cat.writeto(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat",overwrite=True)
+                self.sp_logger.info(info_g+' Writing high SNR stars to '+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat")
+                self.sp_logger.info(info_g+' Running PSFex with only the highest signal-to-noise stars')
+                psfex_status = os.system(psfex_path+" "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+                self.sp_logger.info(info_g+' High SNR PSFex status: '+str(psfex_status))
+                
+                self.hdu_psf_model_sci= fits.open(self.data1_path+f'out/sci_prepsfex_{self.rand_nums_string}_highSNR.psf')
+                self.files_to_clean.append(self.data1_path+f'out/sci_prepsfex_{self.rand_nums_string}_highSNR.psf')
+                self.chi_sq_psf=self.hdu_psf_model_sci[1].header['CHI2']
+                self.sp_logger.info(info_g+' Reduced Chi^2 of science image PSF fit with high SNR stars: '+"%.1f" % self.chi_sq_psf)
+                # sys.exit(1)
+                self.sys_exit=True
+                return
+        # sys.exit(1)
         #Convolve the reference image with a Gaussian kernel
         self.kernel_sci = self.psf_sci_image[0].data[0]
 
@@ -3091,7 +3138,7 @@ class subtracted_phot(subphot_data):
                 # self.sp_logger.info(self.ref_coords_pix)
         else:
             #If a reference catalogue is passed in with it's full path as self.auto_cat
-            if self.auto_cat.startswith(self.data1_path):
+            if not self.auto_cat.startswith(self.data1_path):
                 self.auto_cat = self.data1_path+self.auto_cat
 
             if not os.path.exists(self.auto_cat):
@@ -3101,15 +3148,40 @@ class subtracted_phot(subphot_data):
                 return
 
             # self.sp_logger.info(pd.read_csv(self.auto_cat,skiprows=1,header=None))
-            self.cat_arr=  np.array(ascii.read(self.auto_cat,data_start=1,names=["filt","mag","magerr","xpos","ypos","ra","dec"]))
-            self.ref_cat = pd.DataFrame(self.cat_arr,columns=["filt","mag","magerr","xpos","ypos","ra","dec"]) #mag,magerr,(pixel)xpos,(pixel)ypos,RA,DEC
+            self.sp_logger.info(info_g+f' Guessing format of reference catalog')
+            #only need ra dec and mag
+            # print(pd.read_csv(self.auto_cat))
+            self.cat_tab = ascii.read(self.auto_cat)
+            #convert the table to a pandas dataframe
+            # try:
+            try:
+                self.ref_cat = self.cat_tab['ra','dec',self.sci_filt].to_pandas()
+                self.ref_cat['mag'] = self.ref_cat[self.sci_filt]
+            except:
+                try:self.ref_cat = self.cat_tab['ra','dec','mag'].to_pandas()
+                except:
+                    self.sp_logger.info(warn_r+f' Reference catalogue {self.auto_cat} does not have the required columns')
+                    self.sys_exit=True
+                    return
+
+            # print(type(self.ref_cat['ra'].iloc[0]))
+            self.ref_cat = self.ref_cat.loc[self.ref_cat['mag']!='-'].reset_index(drop=True)
+            self.ref_cat['ra'] = self.ref_cat['ra'].astype(float)*u.deg
+            self.ref_cat['dec'] = self.ref_cat['dec'].astype(float)*u.deg
+
+
             self.stars=self.ref_cat
             # self.ref_coords_wcs_sky = np.column_stack((self.ref_cat["RA"],self.ref_cat["DEC"]))
             
-            self.ref_coords_wcs_sky = SkyCoord(ra=self.ref_cat["ra"]*u.deg,dec=self.ref_cat["dec"]*u.deg,frame='fk5')
+            self.ref_coords_wcs_sky = SkyCoord(ra=self.ref_cat["ra"],dec=self.ref_cat["dec"],frame='fk5',unit='deg')
             self.ref_coords_wcs = self.ref_coords_wcs_sky
-            self.ref_coords_pix = np.column_stack((self.ref_cat["xpos"],self.ref_cat["ypos"]))
-            
+            self.ref_coords_wcs=np.column_stack((self.ref_cat['ra'],self.ref_cat['dec']))
+
+
+            self.ref_coords_pix=wcs_to_pixels(self.ref_ali_name,self.ref_coords_wcs)
+
+            # self.ref_coords_pix = np.column_stack((self.ref_cat["xpos"],self.ref_cat["ypos"]))
+            # 
  
 
         if self.termoutp!='quiet':
@@ -3601,11 +3673,11 @@ class subtracted_phot(subphot_data):
 
 
         if self.sci_filt=='u':
-            self.thresh=0.5
+            self.thresh=0.55
         if self.sci_filt!='u':
-            self.thresh=0.925
+            self.thresh=0.75
         if self.telescope in SEDM:
-            self.thresh=0.7
+            self.thresh=0.5
             if self.sci_filt=='u':
                 self.thresh=0.3
 
@@ -3670,8 +3742,10 @@ class subtracted_phot(subphot_data):
 
         self.rsq_cont=False
         #check how many stars have rsq values above the threshold and lower by 0.05 until there are at least 2 stars
+        if self.sci_filt=='u' and self.telescope not in SEDM:
+            self.zp_sci_lim=27.5
         while self.rsq_cont==False:
-            self.arr=(self.rsq_ref >=self.thresh) & (self.rsq_sci >=self.thresh) & (self.zp_sci >=0) & (self.zp_ref >=0) #filter out stars poorly fitted with PSF fit & weird zp measurement
+            self.arr=(self.rsq_ref >=self.thresh) & (self.rsq_sci >=self.thresh) & (self.zp_sci >=0) & (self.zp_ref >=0) & (self.zp_sci<=self.zp_sci_lim)#filter out stars poorly fitted with PSF fit & weird zp measurement
             # self.sp_logger.info(self.rsq_ref[self.arr],sum(self.arr))
             if (len([i for i in self.rsq_ref if i>=self.thresh])<1 or len([i for i in self.rsq_sci if i>=self.thresh])<1) and len(self.zp_sci)>=5:
                 self.sp_logger.info(warn_y+f' Lowering threshold for rsq values to {self.thresh-0.05:.2f}')
@@ -3918,6 +3992,8 @@ class subtracted_phot(subphot_data):
                     sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
                     self.sp_logger.info(warn_y+" New magnitude = %.3f"%sn_mag)
                 if self.telescope in SEDM and any(offset>1 for offset in [self.main_sn_psf_fit[5], self.main_sn_psf_fit[6]]):
+                    # self.main_sn_psf_fit_before = self.psf_fit(self.sn_cutout,psf_array=psf)
+                    self.sp_logger.warning(warn_y+f" Mag before shifting to original position = %.3f"%sn_mag)
                     self.sp_logger.warning(warn_y+f" PSF fit is shifted too much, defaulting to original position")
                     self.sp_logger.warning(warn_y+" xoff =%.3f arsec, yoff_arc=%.3f arcsec"%(self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]))
                     self.main_sn_psf_fit = self.psf_fit_noshift(self.sn_cutout,psf_array=psf)
