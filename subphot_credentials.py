@@ -13,10 +13,10 @@ token="549e219d-b0eb-4a19-98ee-3a658af2303b"
 # for sending reduced data to at the end of the day
 
 
-
+smtp2go_api_key = 'api-399081350B924C738533D3BCEB5096A1'
 
 # outlook acount for reductions
-outlook_account = {"usr":"arikhind@ljmu.ac.uk","pswd":"Avatar99-izzy"}
+outlook_account = {"usr":"ltquickimgsub@outlook.com","pswd":"FnOpJ3jLyCkKQbP5"} #ljmuquicklook_mrup
 email_to = ["K.C.Hinds@2021.ljmu.ac.uk","d.a.perley@ljmu.ac.uk","j.l.wise@2022.ljmu.ac.uk"]
 
 
@@ -65,7 +65,6 @@ store_lc_ims = True
 # Password:       3411559
 
 proposals_arc={'JL23A05':['8797590'],
-               'JL22B10':['2165898'],
                'JL23B05':['5390986'],
                'JL23A06':['2435478'],
                'JZ21B01':['4987478'],
@@ -75,10 +74,12 @@ proposals_arc={'JL23A05':['8797590'],
                'PL24A05':['9499033'],# Georgios Dimitriadis
                'JL24A09':['9645313'],
                'JL24B15':['1047928'],
+               'JL24B09':['1810616'],
                }
                #'JL21A12':['1092370'],
                #'JL21A14':['4009837'],
                #'JL21B15':['8415098'],
+            #    'JL22B10':['2165898'],
 
                #'JT20B04a':['1370535'],
                #'JT20B04b':['2849417'],

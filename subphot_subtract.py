@@ -300,7 +300,8 @@ else:
 # print(args.make_log==0,args.make_log=='0')
 # sys.exit(1)
 
-if args.make_log!=False and args.pros_job_id==None:
+if args.make_log!=False:
+
     log_dest=args.make_log
     # print(args.output)
     if args.output in ['by_name']:
@@ -314,7 +315,7 @@ if args.make_log!=False and args.pros_job_id==None:
         else:
             out_dir='photometry'
     else:out_dir=args.output.split('/')[-1]
-    
+
 
     if args.output!='by_name' and not os.path.exists(data1_path+out_dir):os.mkdir(data1_path+out_dir)
 
@@ -324,6 +325,11 @@ if args.make_log!=False and args.pros_job_id==None:
     if log_dest=='0':
         log_dest=out_dir
         log_name = f"{data1_path}{out_dir}/{out_dir}_log.log"
+    
+    if args.pros_job_id!=None:
+        if not os.path.exists(f'/mnt/data1/users/arikhind/phot_data/nightly_routine_logs/{DATE}'):os.mkdir(f'/mnt/data1/users/arikhind/phot_data/nightly_routine_logs/{DATE}')
+        log_name = f'/mnt/data1/users/arikhind/phot_data/nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}_py.log'
+
 
     if args.mroundup!=False:
         log_name = f"{data1_path}{log_dest}/{DATE}_night_log.log"
@@ -1244,8 +1250,10 @@ elif len(args.folder)>0 and args.plc[0]!=[None]:
 
     if args.pros_job_id!=None:
         if not os.path.exists(data1_path+'nightly_routine_logs/'+DATE):os.mkdir(data1_path+'nightly_routine_logs/'+DATE)
-        os.system(f'cp /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/SPNR_{args.pros_job_id}.log {data1_path}nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}.log')
-        sp_logger.info(info_g+f' Copied log file for job {args.pros_job_id} to {data1_path}nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}.log')
+        os.system(f'cp /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/SPNR.log {data1_path}nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}_scron.log')
+        sp_logger.info(info_g+f' Copied log file for job {args.pros_job_id} to {data1_path}nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}_scron.log')
+
+        # os.system
 
 def load_photometry(folder,name,filters=['All']):
 
@@ -1361,3 +1369,33 @@ if args.plc[0]!=None:
                     sp_logger.info(info_g+f' Saving photometry for {obj_name} in {key}')
                     df.to_csv(data1_path+phot_folder+'/'+obj_name+'_'+key+'_photometry.csv',index=False)
 
+
+if args.mroundup==True:
+    today_phot_files = [f for f in os.listdir(data1_path+'photometry_date/'+DATE) if f!='cut_outs' and f!='morning_rup']
+
+    if os.path.exists(data1_path+'photometry_date/'+DATE+'/morning_rup'):
+        today_mrup_phot_files = [f for f in os.listdir(data1_path+'photometry_date/'+DATE+'/morning_rup') if f!='cut_outs' and f!='morning_rup']
+
+        if len(today_mrup_phot_files)!=len(today_phot_files): #finding the files in today_phot_files that aren't in today_mrup_phot_files
+            for i in today_phot_files:
+                if i not in today_mrup_phot_files:
+                    try:
+                        os.system('cp '+data1_path+'photometry_date/'+DATE+'/'+i+' '+data1_path+'photometry_date/'+DATE+'/morning_rup/'+i)
+                    except Exception as e:
+                        print(f'Failed to copy across {i} to photometry_data/{DATE}/morning_rup',e)
+
+    # LT_proposals = 'JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24A04 JL24A09'
+
+    # morning_logs = glob.glob(data1_path+'morning_rup_logs/'+DATE+'/*')
+    # #find the log with DATE in the name
+    # for log in morning_logs:
+    #     if DATE in log:
+    #         mlog = log
+    #         break
+    # # print(mlog)
+
+    # try:
+    #     os.system(f'python3 {path}subphot_morning_email.py -p '+LT_proposals+' -e K.C.Hinds@2021.ljmu.ac.uk -mlog '+mlog)
+    #     # d.a.perley@ljmu.ac.uk J.L.Wise@2022.ljmu.ac.uk A.M.Bochenek@2023.ljmu.ac.uk')
+    # except Exception as e:
+    #     print('Error with morning email script', e)

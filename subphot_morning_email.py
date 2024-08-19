@@ -21,9 +21,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--date','-d',default='TODAY',help="Date to process")
 parser.add_argument('--proposals','-p',default=['all'],help="Proposals to process",nargs='+')
 parser.add_argument('--emails','-e',default=['all'],help="Email to send to, default is to look in credentials.py",nargs='+')
+parser.add_argument('--mrup_log','-mlog',default=None,help="Log file for morning rup")
 args = parser.parse_args()
 
 def query_recent_data(DATE,proposals=['all'],email_to=email_to):
+    DATE = '20240815'
 
     today_phot_files = [f for f in os.listdir(data1_path+'photometry_date/'+DATE) if f!='cut_outs' and f!='morning_rup']
     if os.path.exists(data1_path+'photometry_date/'+DATE+'/morning_rup'):
@@ -60,7 +62,6 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
         counter=0
         if os.path.exists(data1_path+f'Quicklook/{DATE}'):
             fits_names = [file_ for file_ in os.listdir(data1_path+f'Quicklook/{DATE}') if file_.endswith('.fits')]
-            print(fits_names)
             if len(fits_names)>0:
                 for k in fits_names:
                     sci_img_hdu = fits.open(data1_path+f'Quicklook/{DATE}/{k}')
@@ -75,27 +76,6 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
                     prop_names.append(sci_obj)
                     counter+=1
                     sci_img_name=sci_obj+'_'+sci_filt+sci_head['DATE-OBS'][:-13]+'_'+str(datetime.timedelta(hours=int(sci_head['DATE-OBS'][11:13]), minutes=int(sci_head['DATE-OBS'][14:16]), seconds=float(sci_head['DATE-OBS'][17:21])).seconds)+'.fits'
-                    # sci_img_name=sci_obj+'_'+sci_filt+sci_head['DATE-OBS'][:-13]+'_'+str(datetime.timedelta(hours=int(sci_head['DATE-OBS'][11:13]), minutes=int(sci_head['DATE-OBS'][14:16]),seconds=float(sci_head['DATE-OBS'][17:21])).seconds)+'.fits'
-                    
-                    
-                    
-                    # sci_img_name_stacked = sci_img_name.replace("_photometry.fits","_stacked_photometry.fits")
-
-                    # for i in [sci_img_name,sci_img_name_stacked]:i = path+i
-                    # all_data_phot.loc[counter]=sci_obj,sci_filt,sci_mjd,sci_prop,sci_ra,sci_dec,sci_see,mag,mag_err,lim_mag,1
-
-                    # if os.path.exists(sci_img_name_stacked):sci_img_name=sci_img_name_stacked
-
-                    # sci_img_phot_data = open(sci_img_name,'r')
-                    # sci_img_phot_data = np.asarray(sci_img_phot_data.readlines()[0].split(' ')[:-1])
-                    # mag,mag_err,lim_mag = sci_img_phot_data[3],sci_img_phot_data[4],sci_img_phot_data[5]
-                    # print(sci_img_name,sci_mag,sci_mag_err,sci_lim_mag)
-                    # print(poo)
-
-
-                    # # if any(os.path.exists(info) for info in [path+'phot_fits_info/'+sci_img_name[:-11]+"_phot_info.txt",path+'phot_fits_info/'+sci_img_name[:-11]+"_stacked_phot_info.txt"]):
-                    # sys.exit()
-
 
 
     if len(names)!=0:
@@ -114,10 +94,8 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
  
              
                 today_fits_info = re.sub("photometry.txt","phot_info.txt",today_phot_files[f])
-                if os.path.exists(f'{data1_path}phot_fits_info/{today_fits_info}'):
-                    pass
-                else:
-                    today_fits_info = re.sub("photometry.txt","stacked_phot_info.txt",today_phot_files[f])
+                if os.path.exists(f'{data1_path}phot_fits_info/{today_fits_info}'):pass
+                else:today_fits_info = re.sub("photometry.txt","stacked_phot_info.txt",today_phot_files[f])
              
                 d2 = open(f'{data1_path}phot_fits_info/{today_fits_info}', 'r')
                 data2 = np.asarray(d2.readlines()[0].split(','))
@@ -127,8 +105,7 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
                 exp_t,propid,inst,airmass,see,est_see,no_stacked = data2[6],data2[4],data2[5],data2[7],data2[8],data2[9],data2[10]
 
 
-                if propid not in collect_proposals:
-                    continue
+                if propid not in collect_proposals:continue
                 prop_names.append(ztfid)
                 today_phot_data.loc[f]=ztfid,filt.replace('-','').lower(),mjd,mag,mag_err,propid,no_stacked,ra,dec,see
                 all_data_phot.loc[counter]=ztfid,filt,mjd,mag,mag_err,propid,lim_mag,no_stacked,ra,dec,see
@@ -183,7 +160,7 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
         spec_ztf_urls = [f"https://fritz.science/source/{NAME}" for NAME in data.keys()]
    
 
-    s = smtplib.SMTP('smtp.office365.com',587)
+    s = smtplib.SMTP('mail.smtp2go.com',587)
     s.set_debuglevel(1)
       
     body1=''
@@ -232,7 +209,7 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
             if any(key == nam for nam in prop_names) or any(key in nam for nam in prop_names):
                 body2=body2+f"<p>{key}\n</p>"
                 body2=body2+f"<p>ZTF url: https://fritz.science/source/{key}\n</p>"
-                body2=body2+f"<p>LT photometry url: https://www.astro.ljmu.ac.uk/~arikhind/lt_subtract/{DATE}/{key}.html\n</p>"
+                # body2=body2+f"<p>LT photometry url: https://www.astro.ljmu.ac.uk/~arikhind/lt_subtract/{DATE}/{key}.html\n</p>"
                 body2=body2+'\n ----------------------------------------------------------------------------------------------- \n'
 
     if len(all_data_phot)>0 and measured_phot!=False:
@@ -264,13 +241,26 @@ def query_recent_data(DATE,proposals=['all'],email_to=email_to):
     subj=str(f"{DATE} Photometry and Spectroscopy")
     msg=MIMEMultipart('alternative')
 
-    if os.path.exists(f"{data1_path}night_log/{DATE}_night_log.log"):
-        
-        night_log = open(f"{data1_path}night_log/{DATE}_night_log.log","rb")
-        log_attachm = MIMEApplication(night_log.read(),Name=f"{data1_path}night_log/{DATE}_night_log.log")
-        log_attachm['Content-Disposition'] = 'attachment; filename="%s"' % f"{DATE}_night_log.log"
+    # if os.path.exists(f"{data1_path}night_log/{DATE}_night_log.log"):
+    if os.path.exists(f"{args.mrup_log}"):
+        # print
+        night_log = open(f"{args.mrup_log}",'rb')
+        # night_log = night_log.readlines()
+        # print(type(night_log_read[0]))
+        # sys.exit()
+        # for l in range(len(night_log_read)):
+            # if any(ch in night_log_read[l] for ch in ['[32m','[0m','[31m]','[33m','[36m','[1m']):
+                # print(night_log_read[l])
+                # night_log_read[l] = night_log_read[l].replace('[32m','').replace('[0m','').replace('[31m]','').replace('[33m','').replace('[36m','').replace('[1m','')
+                # print(night_log_read[l])
+        # night_log_ = [line.replace(ch,'') for line in night_log.readlines()]
+        # night_log = night_log_
+        log_attachm = MIMEApplication(night_log.read(),Name=f"{args.mrup_log}")
+        log_attachm['Content-Disposition'] = 'attachment; filename="%s"' % f"{DATE}_night_log.txt"
         msg.attach(log_attachm)
+        print(info_g+f" Attached mrup log to email")
 
+    # sys.exit()
     whole_mail = ""
     whole_mail+='''
         <head>
@@ -339,7 +329,3 @@ print(info_g+f" Proposals: \033[1m{', '.join(proposals)}\033[0m")
 
 query_recent_data(DATE=night_now,proposals=proposals,email_to=email_to)
 
-
-
-#how do i make text bold when printing to terminal/console?
-#answer: https://stackoverflow.com/questions/8924173/how-do-i-print-bold-text-in-python

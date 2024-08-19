@@ -40,17 +40,17 @@ if '00:00:00'<TIME<time_suns_tomorrow:
     date_ = str(t - datetime.timedelta(days=1))
     DATE=re.sub("-","",date_)
 
-folder="data/Quicklook/"+DATE
+folder="Quicklook/"+DATE
 
 
 new_only=True
 
-folder_path = 'data/Quicklook/'
+folder_path = 'Quicklook/'
 
 DAY = subphot_data().down_quicklook()
 print(info_g+' Downloaded data for '+DAY+warn_y)
 
-os.system(f"python3 {path}subphot_make_webpage.py {DAY}")
+# os.system(f"python3 {path}subphot_make_webpage.py {DAY}")
 
 #down_command = f"python3 {path}lt_subtract.py -qdl current_obs"
 #os.system(f"python3 {path}make_webpage.py {DATE}")

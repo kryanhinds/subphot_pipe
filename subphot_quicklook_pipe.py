@@ -2450,7 +2450,9 @@ class subtracted_phot(subphot_data):
         # SExtractor command for the science image
         # print(self.sci_ali_name)
         # sys.exit(1)
-        sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.opath+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 22.0"
+        if self.sci_filt=='u':MAGZP = 22.0
+        else:MAGZP = 25.0
+        sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.opath+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT"+" "+str(MAGZP)
         print(sextractor_command)
         self.sp_logger.info(info_g+' Creating PSFex catalog with SExtractor')
 
