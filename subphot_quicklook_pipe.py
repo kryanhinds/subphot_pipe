@@ -383,6 +383,20 @@ class subtracted_phot(subphot_data):
                         # self.sp_logger.info(self.folder)
 
                     elif self.telescope in SEDM:
+                        self.sp_logger.info(info_g+f" Converting SIP to TPV for {self.sci_path}")
+                        from sip_tpv import sip_to_pv
+                        for cd,pc in zip(['CD1_1','CD1_2','CD2_1','CD2_2'],['PC1_1','PC1_2','PC2_1','PC2_2']):
+                            self.sci_img_hdu.header[cd]=self.sci_img_hdu.header[pc]
+                            del self.sci_img_hdu.header[pc]
+
+                        sip_to_pv(self.sci_img_hdu.header)
+                        self.sci_img_hdu.writeto(self.sci_path.replace('.fits','_tpv.fits'),overwrite=True)
+                        self.files_to_clean.append(self.sci_path.replace('.fits','_tpv.fits'))
+                        self.sci_path = self.sci_path.replace('.fits','_tpv.fits')
+                        self.sci_img_hdu=fits.open(self.sci_path)[0]
+
+
+
                         self.redo_astrometry = True
                         self.sci_filt=self.sci_img_hdu.header['FILTER']
                         self.sci_inst='SEDM-P60'
@@ -430,7 +444,7 @@ class subtracted_phot(subphot_data):
                             self.redo_astrometry=False
             
                         if self.sci_img_hdu.header['ONTARGET']!=True:
-                            self.sp_logger.info(self.sci_img_hdu.header['ONTARGET'])
+                            # self.sp_logger.info(self.sci_img_hdu.header['ONTARGET'])
                             self.sp_logger.warning(warn_r+' This image is not on target, please check images, passing on this image')
                             self.sys_exit=True
                             return
@@ -475,16 +489,6 @@ class subtracted_phot(subphot_data):
                     self.sp_logger.warning(warn_r+' This script is not designed for '+self.telescope)
                     self.sp_logger.warning(warn_r+' Please add the header keywords for '+self.telescope+' to the header_kw dictionary in the script')
                     self.sys_exit=True
-
-
-                if self.redo_astrometry==True:
-                    self.sp_logger.info(info_g+' Updating astrometry for',self.sci_path,' using local version of astrometry.net')
-                    self.sci_path,_ = self.update_astrometry(self.sci_path,ra=self.sci_img_hdu.header[self.RA_kw],dec=self.sci_img_hdu.header[self.DEC_kw])
-                    # self.sci_path = self.sci_path
-                    # self.sci_path = self.name
-                    self.sci_img_hdu=fits.open(self.sci_path)[0]
-                    self.sp_logger.info(info_g+' Updated astrometry for',self.sci_path)
-
 
 
 
@@ -975,6 +979,7 @@ class subtracted_phot(subphot_data):
                     self.sp_logger.info(info_g+' Creating photometry directory: '+self.data1_path+f'{self.out_dir}cut_outs')
                     os.mkdir(self.data1_path+f'{self.out_dir}cut_outs')
 
+
         
         self.sci_c=SkyCoord(self.sci_ra,self.sci_dec,unit=(u.hourangle, u.deg),frame='fk5')
         self.ra_string="%.6f" % round(self.sci_c.ra.deg, 6)
@@ -1303,7 +1308,7 @@ class subtracted_phot(subphot_data):
 
         prepsexfile(gain=self.sci_gain)
         if self.telescope in SEDM:
-            self.image_size=2000
+            self.image_size=1500
         else:
             self.image_size=1500
 
@@ -1449,24 +1454,20 @@ class subtracted_phot(subphot_data):
             self.ref_cnt = self.ref_wcs.all_pix2world(self.ref_img_center[0],self.ref_img_center[1],1)
             self.ref_img_center_ra,self.ref_img_center_dec = self.ref_cnt[0],self.ref_cnt[1]
 
-            self.sci_img_hdu=fits.open(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name)[0]
-            self.sci_img_size = np.shape(self.sci_img_hdu.data)
-            self.sci_img=self.sci_img_hdu.data
+            self.sci_img_hdu=fits.open(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name)
+            self.sci_img_size = np.shape(self.sci_img_hdu[0].data)
+            self.sci_img=self.sci_img_hdu[0].data
             self.sci_img_center = np.shape(self.sci_img)[0]/2,np.shape(self.sci_img)[1]/2
-            self.sci_wcs = WCS(self.sci_img_hdu.header)
+            self.sci_wcs = WCS(self.sci_img_hdu[0].header)
             self.sci_cnt = self.sci_wcs.all_pix2world(self.sci_img_center[0],self.sci_img_center[1],1)
             self.sci_img_center_ra,self.sci_img_center_dec = self.sci_cnt[0],self.sci_cnt[1]
 
-            self.image_size1,self.image_size2=np.shape(self.sci_img_hdu.data)[0],np.shape(self.sci_img_hdu.data)[1]
+            self.image_size1,self.image_size2=np.shape(self.sci_img_hdu[0].data)[0],np.shape(self.sci_img_hdu[0].data)[1]
             # self.image_size1,self.image_size2=np.shape(self.ref_img_hdu.data)[0],np.shape(self.ref_img_hdu.data)[1]
 
-            if self.telescope in SEDM:
-                self.ali_center_ra=self.sci_img_center_ra
-                self.ali_center_dec=self.sci_img_center_dec
             swarp_command=swarp_path+" "+self.data1_path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+" -c "+self.opath+"config_files/config.swarp -CENTER '"+str(self.ali_center_ra)+" "+str(self.ali_center_dec)+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '"+self.data1_path+"aligned_images/' -COMBINE N -IMAGE_SIZE '"+str(self.image_size)+","+str(self.image_size)+"'" #ref centre
             status=os.system(swarp_command)
             self.sp_logger.info(swarp_command)
-            # sys.exit()
             # self.sp_logger.info(info_g+" SWarp took %2f seconds" % (time.time() - swarp_time)    )
             self.sp_logger.info(info_g+" SWarp status: "+str(status))
 
@@ -1512,6 +1513,7 @@ class subtracted_phot(subphot_data):
             self.sp_logger.info(info_g+' Aligned Science image size : '+str(np.shape(fits.open(self.sci_ali_name)[0].data)))
             self.sp_logger.info(info_g+' Aligned Reference image size : '+str(np.shape(fits.open(self.ref_ali_name)[0].data)))
 
+            # sys.exit()
             
 
             if self.align_fail_count>15:
@@ -1531,18 +1533,18 @@ class subtracted_phot(subphot_data):
                     self.ref_img_hdu=fits.open(self.ref_img_name)[0]
                     self.ref_img_size = np.shape(self.ref_img_hdu.data)
                     self.ref_img=self.ref_img_hdu.data
-                    self.ref_img_center = np.shape(self.ref_img)[0]/2,np.shape(self.ref_img)[1]/2
+                    # self.ref_img_center = np.shape(self.ref_img)[0]/2,np.shape(self.ref_img)[1]/2
                     self.ref_wcs = WCS(self.ref_img_hdu.header)
-                    self.ref_cnt = self.ref_wcs.all_pix2world(self.ref_img_center[0],self.ref_img_center[1],1)
-                    self.ref_img_center_ra,self.ref_img_center_dec = self.ref_cnt[0],self.ref_cnt[1]
+                    # self.ref_cnt = self.ref_wcs.all_pix2world(self.ref_img_center[0],self.ref_img_center[1],1)
+                    # self.ref_img_center_ra,self.ref_img_center_dec = self.ref_cnt[0],self.ref_cnt[1]
 
                     self.sci_img_hdu=fits.open(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name)[0]
                     self.sci_img_size = np.shape(self.sci_img_hdu.data)
                     self.sci_img=self.sci_img_hdu.data
-                    self.sci_img_center = np.shape(self.sci_img)[0]/2,np.shape(self.sci_img)[1]/2
-                    self.sci_wcs = WCS(self.sci_img_hdu.header)
-                    self.sci_cnt = self.sci_wcs.all_pix2world(self.sci_img_center[0],self.sci_img_center[1],1)
-                    self.sci_img_center_ra,self.sci_img_center_dec = self.sci_cnt[0],self.sci_cnt[1]
+                    # self.sci_img_center = np.shape(self.sci_img)[0]/2,np.shape(self.sci_img)[1]/2
+                    # self.sci_wcs = WCS(self.sci_img_hdu.header)
+                    # self.sci_cnt = self.sci_wcs.all_pix2world(self.sci_img_center[0],self.sci_img_center[1],1)
+                    # self.sci_img_center_ra,self.sci_img_center_dec = self.sci_cnt[0],self.sci_cnt[1]
 
                     self.sci_ali_img_hdu = fits.open(self.sci_ali_name)[0]
                     self.sci_ali_img_size = np.shape(self.sci_ali_img_hdu.data)
@@ -1619,107 +1621,108 @@ class subtracted_phot(subphot_data):
 
 
             # else:
+            # sys.exit()
             self.align_success=True
             self.sp_logger.info(info_g+' Alignment successful')
 
 
-            if self.telescope in SEDM:
-                self.sp_logger.info(info_g+' Attempting to solve distortion in science image')
-                self.ref_width=self.sci_img_hdu.header['NAXIS2']*self.sci_ps/60
+            # if self.telescope in SEDM:
+            #     self.sp_logger.info(info_g+' Attempting to solve distortion in science image')
+            #     self.ref_width=self.sci_img_hdu.header['NAXIS2']*self.sci_ps/60
                     
 
-                if self.auto_cat=="auto":
-                    if self.use_sdss==False and (self.sci_filt=='g' or self.sci_filt=='r' or self.sci_filt=='i' or self.sci_filt=='z'):
-                        self.ref_cat=panstarrs_query(ra_deg=round(self.sci_c.ra.deg,6),dec_deg=round(self.sci_c.dec.deg,6), rad_deg=round(self.ref_width/60.,6))
+            #     if self.auto_cat=="auto":
+            #         if self.use_sdss==False and (self.sci_filt=='g' or self.sci_filt=='r' or self.sci_filt=='i' or self.sci_filt=='z'):
+            #             self.ref_cat=panstarrs_query(ra_deg=round(self.sci_c.ra.deg,6),dec_deg=round(self.sci_c.dec.deg,6), rad_deg=round(self.ref_width/60.,6))
 
-                        self.stars=np.where((self.ref_cat['iMeanPSFMag']-self.ref_cat['iMeanKronMag']<0.05) & (self.ref_cat[str(self.sci_filt)+'MeanPSFMagErr']<0.06) & (self.ref_cat[str(self.sci_filt)+'MeanPSFMag']<23.5)  & (self.ref_cat[str(self.sci_filt)+'MeanPSFMag']!=-999.))[0]
-                        self.ref_cat=np.array(self.ref_cat[self.stars])
-                        if len(self.stars)==0:
-                            self.sp_logger.warning(warn_r+f' {self.sci_obj} {self.sci_mjd} {self.sci_filt}: Length of PS1 reference catalog is 0')
-                            self.sys_exit=True
-                            return
-                        self.ref_coords_wcs_sky = SkyCoord(ra=self.ref_cat['raMean']*u.deg, dec=self.ref_cat['decMean']*u.deg,frame='fk5')
-                        self.ref_coords_wcs=np.column_stack((self.ref_cat['raMean'],self.ref_cat['decMean']))
-                        self.ref_coords_pix=wcs_to_pixels(self.ref_ali_name,self.ref_coords_wcs)
-                        # self.sp_logger.info(self.ref_coords_wcs)
+            #             self.stars=np.where((self.ref_cat['iMeanPSFMag']-self.ref_cat['iMeanKronMag']<0.05) & (self.ref_cat[str(self.sci_filt)+'MeanPSFMagErr']<0.06) & (self.ref_cat[str(self.sci_filt)+'MeanPSFMag']<23.5)  & (self.ref_cat[str(self.sci_filt)+'MeanPSFMag']!=-999.))[0]
+            #             self.ref_cat=np.array(self.ref_cat[self.stars])
+            #             if len(self.stars)==0:
+            #                 self.sp_logger.warning(warn_r+f' {self.sci_obj} {self.sci_mjd} {self.sci_filt}: Length of PS1 reference catalog is 0')
+            #                 self.sys_exit=True
+            #                 return
+            #             self.ref_coords_wcs_sky = SkyCoord(ra=self.ref_cat['raMean']*u.deg, dec=self.ref_cat['decMean']*u.deg,frame='fk5')
+            #             self.ref_coords_wcs=np.column_stack((self.ref_cat['raMean'],self.ref_cat['decMean']))
+            #             self.ref_coords_pix=wcs_to_pixels(self.ref_ali_name,self.ref_coords_wcs)
+            #             # self.sp_logger.info(self.ref_coords_wcs)
 
-                    if self.sci_filt=='u' or self.use_sdss==True:
-                        self.ref_cat=sdss_query(ra_deg=round(self.sci_c.ra.deg,6),dec_deg=round(self.sci_c.dec.deg,6), rad_deg=round((self.ref_width)*3,6))
-                        self.stars=self.ref_cat
+            #         if self.sci_filt=='u' or self.use_sdss==True:
+            #             self.ref_cat=sdss_query(ra_deg=round(self.sci_c.ra.deg,6),dec_deg=round(self.sci_c.dec.deg,6), rad_deg=round((self.ref_width)*3,6))
+            #             self.stars=self.ref_cat
 
-                        if len(self.stars)==0:
-                            self.sp_logger.warning(warn_r+f' {self.sci_obj} {self.sci_mjd} {self.sci_filt}: Length of SDSS reference catalog is 0')
-                            self.sys_exit=True
-                            return
+            #             if len(self.stars)==0:
+            #                 self.sp_logger.warning(warn_r+f' {self.sci_obj} {self.sci_mjd} {self.sci_filt}: Length of SDSS reference catalog is 0')
+            #                 self.sys_exit=True
+            #                 return
 
-                        self.ref_coords_wcs_sky = SkyCoord(ra=np.array(self.ref_cat['ra'])*u.deg, dec=np.array(self.ref_cat['dec'])*u.deg,frame='fk5')
-                        self.ref_coords_wcs=np.column_stack((self.ref_cat['ra'],self.ref_cat['dec']))
-                        self.ref_coords_pix=wcs_to_pixels(self.ref_ali_name,self.ref_coords_wcs)
-                else:
-                    #If a reference catalogue is passed in with it's full path as self.auto_cat
-                    if self.auto_cat.startswith(self.data1_path):
-                        self.auto_cat = self.data1_path+self.auto_cat
+            #             self.ref_coords_wcs_sky = SkyCoord(ra=np.array(self.ref_cat['ra'])*u.deg, dec=np.array(self.ref_cat['dec'])*u.deg,frame='fk5')
+            #             self.ref_coords_wcs=np.column_stack((self.ref_cat['ra'],self.ref_cat['dec']))
+            #             self.ref_coords_pix=wcs_to_pixels(self.ref_ali_name,self.ref_coords_wcs)
+            #     else:
+            #         #If a reference catalogue is passed in with it's full path as self.auto_cat
+            #         if self.auto_cat.startswith(self.data1_path):
+            #             self.auto_cat = self.data1_path+self.auto_cat
 
-                    if not os.path.exists(self.auto_cat):
-                        self.sp_logger.info(warn_r+f' Reference catalogue {self.auto_ref} not found')
-                        self.sys_exit=True
-                        return
+            #         if not os.path.exists(self.auto_cat):
+            #             self.sp_logger.info(warn_r+f' Reference catalogue {self.auto_ref} not found')
+            #             self.sys_exit=True
+            #             return
 
-                    # self.sp_logger.info(pd.read_csv(self.auto_cat,skiprows=1,header=None))
-                    self.cat_arr=  np.array(ascii.read(self.auto_cat,data_start=1,names=["filt","mag","magerr","xpos","ypos","ra","dec"]))
-                    self.ref_cat = pd.DataFrame(self.cat_arr,columns=["filt","mag","magerr","xpos","ypos","ra","dec"]) #mag,magerr,(pixel)xpos,(pixel)ypos,RA,DEC
-                    self.stars=self.ref_cat
-                    # self.ref_coords_wcs_sky = np.column_stack((self.ref_cat["RA"],self.ref_cat["DEC"]))
+            #         # self.sp_logger.info(pd.read_csv(self.auto_cat,skiprows=1,header=None))
+            #         self.cat_arr=  np.array(ascii.read(self.auto_cat,data_start=1,names=["filt","mag","magerr","xpos","ypos","ra","dec"]))
+            #         self.ref_cat = pd.DataFrame(self.cat_arr,columns=["filt","mag","magerr","xpos","ypos","ra","dec"]) #mag,magerr,(pixel)xpos,(pixel)ypos,RA,DEC
+            #         self.stars=self.ref_cat
+            #         # self.ref_coords_wcs_sky = np.column_stack((self.ref_cat["RA"],self.ref_cat["DEC"]))
                     
-                    self.ref_coords_wcs_sky = SkyCoord(ra=self.ref_cat["ra"]*u.deg,dec=self.ref_cat["dec"]*u.deg,frame='fk5')
-                    self.ref_coords_wcs = self.ref_coords_wcs_sky
-                    self.ref_coords_pix = np.column_stack((self.ref_cat["xpos"],self.ref_cat["ypos"]))
+            #         self.ref_coords_wcs_sky = SkyCoord(ra=self.ref_cat["ra"]*u.deg,dec=self.ref_cat["dec"]*u.deg,frame='fk5')
+            #         self.ref_coords_wcs = self.ref_coords_wcs_sky
+            #         self.ref_coords_pix = np.column_stack((self.ref_cat["xpos"],self.ref_cat["ypos"]))
                     
-                self.ref_ali_wcs = WCS(self.ref_ali_name)  
-                if self.termoutp!='quiet':
-                    self.sp_logger.info(info_g+' Catalog stars in PS1/SDSS found='+str(len(self.stars))+','+str(round(3600*(self.ref_width/60),6))+ 'arcsec search radius')
-                self.mean,self.median, self.std = sigma_clipped_stats(self.sci_ali_img_hdu.data, sigma=0.5,)
-                # self.sp_logger.info(info_g+' Mean, Median, Std of sci_ali: '+str(round(self.mean,6))+' '+str(round(self.median,6))+' '+str(round(self.std,6)))
-                # self.sp_logger.info(info_g+' Detecting stars with SExtractor')
+            #     self.ref_ali_wcs = WCS(self.ref_ali_name)  
+            #     if self.termoutp!='quiet':
+            #         self.sp_logger.info(info_g+' Catalog stars in PS1/SDSS found='+str(len(self.stars))+','+str(round(3600*(self.ref_width/60),6))+ 'arcsec search radius')
+            #     self.mean,self.median, self.std = sigma_clipped_stats(self.sci_ali_img_hdu.data, sigma=0.5,)
+            #     # self.sp_logger.info(info_g+' Mean, Median, Std of sci_ali: '+str(round(self.mean,6))+' '+str(round(self.median,6))+' '+str(round(self.std,6)))
+            #     # self.sp_logger.info(info_g+' Detecting stars with SExtractor')
 
-                self.sp_logger.info(info_g+' Detecting stars with IRAFStarFinder')
-                OUTEDGE = 0
-                self.ref_coords_pix = np.column_stack((self.ref_coords_pix[:,0]-OUTEDGE,self.ref_coords_pix[:,1]-OUTEDGE))
-                cond = (0<self.ref_coords_pix[:,0]) & (self.ref_coords_pix[:,0]<self.sci_ali_img_hdu.data.shape[0]-OUTEDGE) & (0<self.ref_coords_pix[:,1]) & (self.ref_coords_pix[:,1]<self.sci_ali_img_hdu.data.shape[1]-OUTEDGE)
-                self.ref_coords_wcs,self.ref_coords_wcs_sky = self.ref_coords_wcs[cond],self.ref_coords_wcs_sky[cond]
-                self.ref_coords_pix = self.ref_coords_pix[cond]
-                # print(self.ref_coords_pix)
-                self.iraffind1= IRAFStarFinder(threshold=0,fwhm=3.0,roundhi=0.3,min_separation=20.0,xycoords=self.ref_coords_pix)
-                self.iraffind2= IRAFStarFinder(threshold=0,fwhm=3.0,roundhi=0.3,min_separation=20.0)
-                # self.sp_logger.info(info_g+' Threshold for detecting stars: '+str(int(starscale*self.std)))
-                self.sources1 = self.iraffind1(self.sci_ali_img_hdu.data[OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE,OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE] - self.median)
-                self.sources2 = self.iraffind2(self.sci_ali_img_hdu.data[OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE,OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE] - self.median)
+            #     self.sp_logger.info(info_g+' Detecting stars with IRAFStarFinder')
+            #     OUTEDGE = 0
+            #     self.ref_coords_pix = np.column_stack((self.ref_coords_pix[:,0]-OUTEDGE,self.ref_coords_pix[:,1]-OUTEDGE))
+            #     cond = (0<self.ref_coords_pix[:,0]) & (self.ref_coords_pix[:,0]<self.sci_ali_img_hdu.data.shape[0]-OUTEDGE) & (0<self.ref_coords_pix[:,1]) & (self.ref_coords_pix[:,1]<self.sci_ali_img_hdu.data.shape[1]-OUTEDGE)
+            #     self.ref_coords_wcs,self.ref_coords_wcs_sky = self.ref_coords_wcs[cond],self.ref_coords_wcs_sky[cond]
+            #     self.ref_coords_pix = self.ref_coords_pix[cond]
+            #     # print(self.ref_coords_pix)
+            #     self.iraffind1= IRAFStarFinder(threshold=0,fwhm=3.0,roundhi=0.3,min_separation=20.0,xycoords=self.ref_coords_pix)
+            #     self.iraffind2= IRAFStarFinder(threshold=0,fwhm=3.0,roundhi=0.3,min_separation=20.0)
+            #     # self.sp_logger.info(info_g+' Threshold for detecting stars: '+str(int(starscale*self.std)))
+            #     self.sources1 = self.iraffind1(self.sci_ali_img_hdu.data[OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE,OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE] - self.median)
+            #     self.sources2 = self.iraffind2(self.sci_ali_img_hdu.data[OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE,OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE] - self.median)
 
-                self.sp_logger.info(info_g+f" Running SExtractor to detect stars in science image")
-                os.system(sex_path + " " + self.sci_ali_name + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL 50000 -BACK_TYPE MANUAL -BACK_VALUE "+str(self.median_bkg) +f" -CATALOG_NAME "+data1_path+f"config_files/sci_dist_{self.rand_nums_string}.cat")
-                self.sources3 = ascii.read(data1_path+f"config_files/sci_dist_{self.rand_nums_string}.cat")#,
+            #     self.sp_logger.info(info_g+f" Running SExtractor to detect stars in science image")
+            #     os.system(sex_path + " " + self.sci_ali_name + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL 50000 -BACK_TYPE MANUAL -BACK_VALUE "+str(self.median_bkg) +f" -CATALOG_NAME "+data1_path+f"config_files/sci_dist_{self.rand_nums_string}.cat")
+            #     self.sources3 = ascii.read(data1_path+f"config_files/sci_dist_{self.rand_nums_string}.cat")#,
                 
-                # print(self.sources1.columns)
-                # print(self.sources2.columns)
-                # print(self.sources3['X_IMAGE'].data)
-                self.sources=Table()
-                self.sources['xcentroid'] = np.concatenate([self.sources3['X_IMAGE'].data,self.sources1['xcentroid'].data,self.sources2['xcentroid'].data],dtype=np.float64)
-                self.sources['ycentroid'] = np.concatenate([self.sources3['Y_IMAGE'].data,self.sources1['ycentroid'].data,self.sources2['ycentroid'].data],dtype=np.float64)
-                #set the dtype of the sources to ints
-                # self.sources['xcentroid'] = self.sources['xcentroid'].astype(np.float64)
-                # self.sources['ycentroid'] = self.sources['ycentroid'].astype(np.float64)
-                # sys.exit()
+            #     # print(self.sources1.columns)
+            #     # print(self.sources2.columns)
+            #     # print(self.sources3['X_IMAGE'].data)
+            #     self.sources=Table()
+            #     self.sources['xcentroid'] = np.concatenate([self.sources3['X_IMAGE'].data,self.sources1['xcentroid'].data,self.sources2['xcentroid'].data],dtype=np.float64)
+            #     self.sources['ycentroid'] = np.concatenate([self.sources3['Y_IMAGE'].data,self.sources1['ycentroid'].data,self.sources2['ycentroid'].data],dtype=np.float64)
+            #     #set the dtype of the sources to ints
+            #     # self.sources['xcentroid'] = self.sources['xcentroid'].astype(np.float64)
+            #     # self.sources['ycentroid'] = self.sources['ycentroid'].astype(np.float64)
+            #     # sys.exit()
 
 
-                # self.sources = vstack([self.sources1,self.sources2])
-                # sys.exit()
+            #     # self.sources = vstack([self.sources1,self.sources2])
+            #     # sys.exit()
 
-                # np.int(vstack([self.sources1,self.sources2]))
+            #     # np.int(vstack([self.sources1,self.sources2]))
 
-                #returns id, xcentroid, ycentroid, fwhm, sharpness, roundness, pa, npix, sky, peak, flux, mag
+            #     #returns id, xcentroid, ycentroid, fwhm, sharpness, roundness, pa, npix, sky, peak, flux, mag
 
-                # self.ref_coords_wcs,self.ref_coords_pix
-                self.sp_logger.info(info_g+' Found '+str(len(self.sources))+' stars in science image')
+            #     # self.ref_coords_wcs,self.ref_coords_pix
+            #     self.sp_logger.info(info_g+' Found '+str(len(self.sources))+' stars in science image')
 
 
 
@@ -1728,333 +1731,333 @@ class subtracted_phot(subphot_data):
 
                 
                 
-                self.star_coords_pix=np.column_stack((self.sources['xcentroid']+OUTEDGE,self.sources['ycentroid']+OUTEDGE))
-                self.ref_coords_pix = np.column_stack((self.ref_coords_pix[:,0]+OUTEDGE,self.ref_coords_pix[:,1]+OUTEDGE))
+            #     self.star_coords_pix=np.column_stack((self.sources['xcentroid']+OUTEDGE,self.sources['ycentroid']+OUTEDGE))
+            #     self.ref_coords_pix = np.column_stack((self.ref_coords_pix[:,0]+OUTEDGE,self.ref_coords_pix[:,1]+OUTEDGE))
 
-                self.star_coords_wcs=load_wcs_from_file(filename=self.sci_ali_name,coord=self.star_coords_pix)
+            #     self.star_coords_wcs=load_wcs_from_file(filename=self.sci_ali_name,coord=self.star_coords_pix)
 
-                self.star_coords_wcs_sky = SkyCoord(ra=self.star_coords_wcs[:,0]*u.deg, dec=self.star_coords_wcs[:,1]*u.deg,frame='fk5')
-                self.scp = self.sources
-                self.scp['xcentroid']=self.scp['xcentroid']+OUTEDGE
-                self.scp['ycentroid']=self.scp['ycentroid']+OUTEDGE
+            #     self.star_coords_wcs_sky = SkyCoord(ra=self.star_coords_wcs[:,0]*u.deg, dec=self.star_coords_wcs[:,1]*u.deg,frame='fk5')
+            #     self.scp = self.sources
+            #     self.scp['xcentroid']=self.scp['xcentroid']+OUTEDGE
+            #     self.scp['ycentroid']=self.scp['ycentroid']+OUTEDGE
 
-                self.matched_catalog_mag=[]
+            #     self.matched_catalog_mag=[]
 
-                self.sci_ali_photTab = quick_app_phot(self.sci_ali_img_hdu.data,self.star_coords_pix,gain=self.sci_gain)
-                self.sci_ali_photTab['ra']=self.star_coords_wcs_sky.ra
-                self.sci_ali_photTab['dec']=self.star_coords_wcs_sky.dec
-                # self.ref_ali_photTab['ra']=self.ref_coords_wcs_sky.ra
-                # self.ref_ali_photTab['dec']=self.ref_coords_wcs_sky.dec
+            #     self.sci_ali_photTab = quick_app_phot(self.sci_ali_img_hdu.data,self.star_coords_pix,gain=self.sci_gain)
+            #     self.sci_ali_photTab['ra']=self.star_coords_wcs_sky.ra
+            #     self.sci_ali_photTab['dec']=self.star_coords_wcs_sky.dec
+            #     # self.ref_ali_photTab['ra']=self.ref_coords_wcs_sky.ra
+            #     # self.ref_ali_photTab['dec']=self.ref_coords_wcs_sky.dec
 
-                cond = (np.isnan(self.sci_ali_photTab['SNR'])==False)&(self.sci_ali_photTab['SNR']>2.5)
-                self.len_before_SNR=len(self.sci_ali_photTab)
-                self.sci_ali_photTab=self.sci_ali_photTab[cond]
-                self.sources=self.sources[cond]
-                self.star_coords_pix=self.star_coords_pix[cond]
-                self.star_coords_wcs=self.star_coords_wcs[cond]
-                self.len_after_SNR=len(self.sci_ali_photTab)
-                self.sp_logger.info(info_g+f' Keeping {self.len_after_SNR}/{self.len_before_SNR} stars with SNR>5 ({round(100*self.len_after_SNR/self.len_before_SNR,2)}%)')
-                # print(self.sci_ali_photTab)
-                # self.ref_ali_photTab=self.ref_ali_photTab[cond]
-                # self.ids_done=[]
-                # for i in range(len(self.sci_ali_photTab)):
-                #     # print(i)
-                #     # print(self.sci_ali_photTab[i])
-                # #     print(self.sci_ali_photTab['xcenter'][i],self.sci_ali_photTab['ycenter'][i],self.star_coords_pix[i,0],self.star_coords_pix[i,1])
-                #     print(f"physical;circle({self.sci_ali_photTab['xcenter'][i].value}, {self.sci_ali_photTab['ycenter'][i].value}, 15) # color=red text="+'{'+f"STAR {i}"+'}')
-                # for i in range(len(self.sci_ali_photTab)):
-                #     print(f'circle({self.sci_ali_photTab["ra"][i].value}, {self.sci_ali_photTab["dec"][i].value}, 3") # color=green text='+'{'+f'STAR {i}'+'}')
-                # sys.exit()
+            #     cond = (np.isnan(self.sci_ali_photTab['SNR'])==False)&(self.sci_ali_photTab['SNR']>2.5)
+            #     self.len_before_SNR=len(self.sci_ali_photTab)
+            #     self.sci_ali_photTab=self.sci_ali_photTab[cond]
+            #     self.sources=self.sources[cond]
+            #     self.star_coords_pix=self.star_coords_pix[cond]
+            #     self.star_coords_wcs=self.star_coords_wcs[cond]
+            #     self.len_after_SNR=len(self.sci_ali_photTab)
+            #     self.sp_logger.info(info_g+f' Keeping {self.len_after_SNR}/{self.len_before_SNR} stars with SNR>5 ({round(100*self.len_after_SNR/self.len_before_SNR,2)}%)')
+            #     # print(self.sci_ali_photTab)
+            #     # self.ref_ali_photTab=self.ref_ali_photTab[cond]
+            #     # self.ids_done=[]
+            #     # for i in range(len(self.sci_ali_photTab)):
+            #     #     # print(i)
+            #     #     # print(self.sci_ali_photTab[i])
+            #     # #     print(self.sci_ali_photTab['xcenter'][i],self.sci_ali_photTab['ycenter'][i],self.star_coords_pix[i,0],self.star_coords_pix[i,1])
+            #     #     print(f"physical;circle({self.sci_ali_photTab['xcenter'][i].value}, {self.sci_ali_photTab['ycenter'][i].value}, 15) # color=red text="+'{'+f"STAR {i}"+'}')
+            #     # for i in range(len(self.sci_ali_photTab)):
+            #     #     print(f'circle({self.sci_ali_photTab["ra"][i].value}, {self.sci_ali_photTab["dec"][i].value}, 3") # color=green text='+'{'+f'STAR {i}'+'}')
+            #     # sys.exit()
 
             
                 
-                self.star_coords_wcs=load_wcs_from_file(filename=self.sci_ali_name,coord=self.star_coords_pix)
-                self.star_coords_wcs_sky = SkyCoord(ra=self.star_coords_wcs[:,0]*u.deg, dec=self.star_coords_wcs[:,1]*u.deg,frame='fk5')
+            #     self.star_coords_wcs=load_wcs_from_file(filename=self.sci_ali_name,coord=self.star_coords_pix)
+            #     self.star_coords_wcs_sky = SkyCoord(ra=self.star_coords_wcs[:,0]*u.deg, dec=self.star_coords_wcs[:,1]*u.deg,frame='fk5')
 
-                #find crossover between panstarrs ad reference images
-                self.sp_logger.info(info_g+' Searching for stars in reference catalog')
-                # self.sp_logger.info(info_g+' Using '+self.auto_ref+' catalog')
-                # self.sp_logger.info(self.star_coords_wcs_sky,self.ref_coords_wcs_sky)
-                self.indx, self.d2d, self.d3d =self.star_coords_wcs_sky.match_to_catalog_sky(self.ref_coords_wcs_sky)
-                #where stars match by search rad in arcseconds!
-                self.upd_indx=np.where(self.d2d<=1/3600.*u.deg)[0]
-                d2d_ = self.d2d[self.upd_indx]
-                # if len(self.upd_indx)<=5:
-                #     m=2
-                #     self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius: 1->'+str(m))
-                #     self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
-                #     d2d_ = self.d2d[self.upd_indx]
-                #     if len(self.upd_indx)<=5:
-                #         m=5
-                #         self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 2->'+str(m))
-                #         self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
-                #         d2d_ = self.d2d[self.upd_indx]
-                #         if len(self.upd_indx)<=9:
-                m=20
-                # self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->'+str(m))
-                self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
-                d2d_ = self.d2d[self.upd_indx]
-                            # if len(self.upd_indx)<=9 and self.telescope in SEDM:
-                            #     m=50
-                            #     self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->'+str(m))
-                            #     self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
-                            #     d2d_ = self.d2d[self.upd_indx]
-                # self.sp_logger.info(self.indx[self.upd_indx])
-                #convert d2d to arcsec
-                d2d_ = d2d_.to(u.arcsec)
-                self.sp_logger.info(info_g+' Catalog stars in PS1/SDSS found = '+str(len(self.upd_indx))+', in a '+str(round(3600*(m/60),6))+ ' arcsec search radius')
+            #     #find crossover between panstarrs ad reference images
+            #     self.sp_logger.info(info_g+' Searching for stars in reference catalog')
+            #     # self.sp_logger.info(info_g+' Using '+self.auto_ref+' catalog')
+            #     # self.sp_logger.info(self.star_coords_wcs_sky,self.ref_coords_wcs_sky)
+            #     self.indx, self.d2d, self.d3d =self.star_coords_wcs_sky.match_to_catalog_sky(self.ref_coords_wcs_sky)
+            #     #where stars match by search rad in arcseconds!
+            #     self.upd_indx=np.where(self.d2d<=1/3600.*u.deg)[0]
+            #     d2d_ = self.d2d[self.upd_indx]
+            #     # if len(self.upd_indx)<=5:
+            #     #     m=2
+            #     #     self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius: 1->'+str(m))
+            #     #     self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
+            #     #     d2d_ = self.d2d[self.upd_indx]
+            #     #     if len(self.upd_indx)<=5:
+            #     #         m=5
+            #     #         self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 2->'+str(m))
+            #     #         self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
+            #     #         d2d_ = self.d2d[self.upd_indx]
+            #     #         if len(self.upd_indx)<=9:
+            #     m=20
+            #     # self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->'+str(m))
+            #     self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
+            #     d2d_ = self.d2d[self.upd_indx]
+            #                 # if len(self.upd_indx)<=9 and self.telescope in SEDM:
+            #                 #     m=50
+            #                 #     self.sp_logger.info(warn_y+f' {len(self.upd_indx)}(<=7) stars found in reference catalog, increasing search radius again: 5->'+str(m))
+            #                 #     self.upd_indx=np.where(self.d2d<=m/3600.*u.deg)[0]
+            #                 #     d2d_ = self.d2d[self.upd_indx]
+            #     # self.sp_logger.info(self.indx[self.upd_indx])
+            #     #convert d2d to arcsec
+            #     d2d_ = d2d_.to(u.arcsec)
+            #     self.sp_logger.info(info_g+' Catalog stars in PS1/SDSS found = '+str(len(self.upd_indx))+', in a '+str(round(3600*(m/60),6))+ ' arcsec search radius')
 
 
             
-                self.matched_ref_coords_pix=self.ref_coords_pix[self.indx[self.upd_indx]]
-                self.matched_star_coords_pix=self.star_coords_pix[self.upd_indx]
+            #     self.matched_ref_coords_pix=self.ref_coords_pix[self.indx[self.upd_indx]]
+            #     self.matched_star_coords_pix=self.star_coords_pix[self.upd_indx]
 
-                self.ref_coords_wcs_sky=self.ref_coords_wcs_sky[self.indx[self.upd_indx]]
-                self.star_coords_wcs_sky=self.star_coords_wcs_sky[self.upd_indx]
+            #     self.ref_coords_wcs_sky=self.ref_coords_wcs_sky[self.indx[self.upd_indx]]
+            #     self.star_coords_wcs_sky=self.star_coords_wcs_sky[self.upd_indx]
 
-                # print(len(self.matched_star_coords_pix))
-                # print(len(self.matched_ref_coords_pix))
-                # sys.exit()
-                save_to_reg=False
-                if save_to_reg:
-                    if not os.path.exists(self.data1_path+'region_files'):os.makedirs(self.data1_path+'region_files')
-                    self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_sci_all_sky.reg')
-                    self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_ref_all_sky.reg')
-                    with open(self.data1_path+'region_files/'+self.sci_obj+'_sci_all_sky.reg','w') as f:
-                        f.write('global color=yellow dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
-                        f.write('fk5'+'\n')
-                        for i in range(len(self.matched_star_coords_pix)):
-                            f.write(f'circle({self.star_coords_wcs_sky[i].ra.deg},{self.star_coords_wcs_sky[i].dec.deg},3")'+' # text={'+f'xy={int(self.matched_star_coords_pix[i][0]),int(self.matched_star_coords_pix[i][1])}'+'}'+'\n')
-                            # f.write(f'physical;circle({self.matched_star_coords_pix[i][0]},{self.matched_star_coords_pix[i][1]},10)'+' # text={'+f'xy={int(self.matched_star_coords_pix[i][0]),int(self.matched_star_coords_pix[i][1])}'+'}'+'\n')
-                        f.close()
-                    with open(self.data1_path+'region_files/'+self.sci_obj+'_ref_all_sky.reg','w') as f:
-                        f.write('global color=red dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
-                        f.write('fk5'+'\n')
-                        for i in range(len(self.matched_ref_coords_pix)):
-                            f.write(f'circle({self.ref_coords_wcs_sky[i].ra.deg},{self.ref_coords_wcs_sky[i].dec.deg},3")'+' # text={'+f'xy={int(self.matched_ref_coords_pix[i][0]),int(self.matched_ref_coords_pix[i][1])}'+'}'+'\n')
-                            # f.write(f'physical;circle({self.matched_ref_coords_pix[i][0]},{self.matched_ref_coords_pix[i][1]},10)'+' # text={'+f'xy={int(self.matched_ref_coords_pix[i][0]),int(self.matched_ref_coords_pix[i][1])}'+'}'+'\n')
+            #     # print(len(self.matched_star_coords_pix))
+            #     # print(len(self.matched_ref_coords_pix))
+            #     # sys.exit()
+            #     save_to_reg=False
+            #     if save_to_reg:
+            #         if not os.path.exists(self.data1_path+'region_files'):os.makedirs(self.data1_path+'region_files')
+            #         self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_sci_all_sky.reg')
+            #         self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_ref_all_sky.reg')
+            #         with open(self.data1_path+'region_files/'+self.sci_obj+'_sci_all_sky.reg','w') as f:
+            #             f.write('global color=yellow dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
+            #             f.write('fk5'+'\n')
+            #             for i in range(len(self.matched_star_coords_pix)):
+            #                 f.write(f'circle({self.star_coords_wcs_sky[i].ra.deg},{self.star_coords_wcs_sky[i].dec.deg},3")'+' # text={'+f'xy={int(self.matched_star_coords_pix[i][0]),int(self.matched_star_coords_pix[i][1])}'+'}'+'\n')
+            #                 # f.write(f'physical;circle({self.matched_star_coords_pix[i][0]},{self.matched_star_coords_pix[i][1]},10)'+' # text={'+f'xy={int(self.matched_star_coords_pix[i][0]),int(self.matched_star_coords_pix[i][1])}'+'}'+'\n')
+            #             f.close()
+            #         with open(self.data1_path+'region_files/'+self.sci_obj+'_ref_all_sky.reg','w') as f:
+            #             f.write('global color=red dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
+            #             f.write('fk5'+'\n')
+            #             for i in range(len(self.matched_ref_coords_pix)):
+            #                 f.write(f'circle({self.ref_coords_wcs_sky[i].ra.deg},{self.ref_coords_wcs_sky[i].dec.deg},3")'+' # text={'+f'xy={int(self.matched_ref_coords_pix[i][0]),int(self.matched_ref_coords_pix[i][1])}'+'}'+'\n')
+            #                 # f.write(f'physical;circle({self.matched_ref_coords_pix[i][0]},{self.matched_ref_coords_pix[i][1]},10)'+' # text={'+f'xy={int(self.matched_ref_coords_pix[i][0]),int(self.matched_ref_coords_pix[i][1])}'+'}'+'\n')
 
-                        f.close()
+            #             f.close()
 
-                # sys.exit()
+            #     # sys.exit()
 
-                # [print(f'circle({self.ref_coords_wcs_sky[i].ra.deg},{self.ref_coords_wcs_sky[i].dec.deg},3")'+' # text={'+f'xy={self.matched_ref_coords_pix[i]}'+'}') for i in range(len(self.ref_coords_wcs_sky))]
-                # print()
-                # [print(f'circle({self.star_coords_wcs_sky[i].ra.deg},{self.star_coords_wcs_sky[i].dec.deg},3")'+' # text={'+f'xy={self.matched_star_coords_pix[i]}'+'}') for i in range(len(self.ref_coords_wcs_sky))]
-
-
-                self.sci_ali_photTab = quick_app_phot(self.sci_ali_img_hdu.data,self.matched_star_coords_pix,gain=self.sci_gain)
-                self.ref_ali_photTab = quick_app_phot(self.ref_ali_img_hdu.data,self.matched_ref_coords_pix,4)
-
-                self.sci_ali_photTab['ra']=self.star_coords_wcs_sky.ra
-                self.sci_ali_photTab['dec']=self.star_coords_wcs_sky.dec
-                self.ref_ali_photTab['ra']=self.ref_coords_wcs_sky.ra
-                self.ref_ali_photTab['dec']=self.ref_coords_wcs_sky.dec
-
-                # cond = (np.isnan(self.ref_ali_photTab['SNR'])==False)&(self.ref_ali_photTab['SNR']>5)
-                # before_snr = len(self.ref_ali_photTab)
-
-                # print(self.ref_ali_photTab)
-
-                # self.sci_ali_photTab=self.sci_ali_photTab[cond]
-                # self.ref_ali_photTab=self.ref_ali_photTab[cond]
+            #     # [print(f'circle({self.ref_coords_wcs_sky[i].ra.deg},{self.ref_coords_wcs_sky[i].dec.deg},3")'+' # text={'+f'xy={self.matched_ref_coords_pix[i]}'+'}') for i in range(len(self.ref_coords_wcs_sky))]
+            #     # print()
+            #     # [print(f'circle({self.star_coords_wcs_sky[i].ra.deg},{self.star_coords_wcs_sky[i].dec.deg},3")'+' # text={'+f'xy={self.matched_star_coords_pix[i]}'+'}') for i in range(len(self.ref_coords_wcs_sky))]
 
 
-                # new_ind = list(self.sci_ali_photTab['id'].value)
-                # self.matched_star_coords_pix = self.matched_star_coords_pix[cond]
-                # self.matched_ref_coords_pix = self.matched_ref_coords_pix[cond]
-                # self.star_coords_wcs_sky = self.star_coords_wcs_sky[cond]
-                # self.ref_coords_wcs_sky = self.ref_coords_wcs_sky[cond]
-                # self.sp_logger.info(info_g+f" Kept {len(self.matched_star_coords_pix)}/{before_snr} stars after SNR cut {len(self.matched_star_coords_pix)/before_snr*100:.2f}%")
-                # print(self.star_coords_wcs_sky)
+            #     self.sci_ali_photTab = quick_app_phot(self.sci_ali_img_hdu.data,self.matched_star_coords_pix,gain=self.sci_gain)
+            #     self.ref_ali_photTab = quick_app_phot(self.ref_ali_img_hdu.data,self.matched_ref_coords_pix,4)
 
-                self.uniq_inds = np.unique(self.matched_ref_coords_pix, axis=0, return_index=True)[1]
-                self.matched_star_coords_pix = self.matched_star_coords_pix[self.uniq_inds]
-                self.matched_ref_coords_pix = self.matched_ref_coords_pix[self.uniq_inds]
-                self.star_coords_wcs_sky = self.star_coords_wcs_sky[self.uniq_inds]
-                self.ref_coords_wcs_sky = self.ref_coords_wcs_sky[self.uniq_inds]
+            #     self.sci_ali_photTab['ra']=self.star_coords_wcs_sky.ra
+            #     self.sci_ali_photTab['dec']=self.star_coords_wcs_sky.dec
+            #     self.ref_ali_photTab['ra']=self.ref_coords_wcs_sky.ra
+            #     self.ref_ali_photTab['dec']=self.ref_coords_wcs_sky.dec
 
-                bord_dists = self.find_dist_to_border(sci_data=self.sci_ali_img_hdu.data,
-                                                        ref_data=self.ref_ali_img_hdu.data,
-                                                        sci_match_coords=self.matched_star_coords_pix,
-                                                        ref_match_coords=self.matched_ref_coords_pix,
-                                                        sci_phot_tab=self.sci_ali_photTab,
-                                                        ref_phot_tab=self.ref_ali_photTab,
-                                                        X=20,D=30) 
-                #        return {'sci_keep_pix':sci_keep_pix,'ref_keep_pix':ref_keep_pix,'sci_keep_sky':sci_keep_sky,'ref_keep_sky':ref_keep_sky}
-                self.orig_len_match = len(self.matched_star_coords_pix)
+            #     # cond = (np.isnan(self.ref_ali_photTab['SNR'])==False)&(self.ref_ali_photTab['SNR']>5)
+            #     # before_snr = len(self.ref_ali_photTab)
 
-                if len(self.matched_star_coords_pix)>5:
-                    self.matched_star_coords_pix = bord_dists['sci_keep_pix']
-                    self.matched_ref_coords_pix = bord_dists['ref_keep_pix']
+            #     # print(self.ref_ali_photTab)
 
-                    self.star_coords_wcs_sky = bord_dists['sci_keep_sky']
-                    self.ref_coords_wcs_sky = bord_dists['ref_keep_sky']
-                    # print(self.star_coords_wcs_sky)
-                    self.new_len_match = len(self.matched_star_coords_pix)
-                    self.sp_logger.info(info_g+f' Kept {self.new_len_match} stars out of {self.orig_len_match} ({self.new_len_match/self.orig_len_match*100:.2f}%)')
+            #     # self.sci_ali_photTab=self.sci_ali_photTab[cond]
+            #     # self.ref_ali_photTab=self.ref_ali_photTab[cond]
 
-                else:
-                    self.sp_logger.info(info_g+f" Not rejecting any stars to allow correction for distortion")
-                # matched_ref_pixs,matched_sci_pix = [],[]
+
+            #     # new_ind = list(self.sci_ali_photTab['id'].value)
+            #     # self.matched_star_coords_pix = self.matched_star_coords_pix[cond]
+            #     # self.matched_ref_coords_pix = self.matched_ref_coords_pix[cond]
+            #     # self.star_coords_wcs_sky = self.star_coords_wcs_sky[cond]
+            #     # self.ref_coords_wcs_sky = self.ref_coords_wcs_sky[cond]
+            #     # self.sp_logger.info(info_g+f" Kept {len(self.matched_star_coords_pix)}/{before_snr} stars after SNR cut {len(self.matched_star_coords_pix)/before_snr*100:.2f}%")
+            #     # print(self.star_coords_wcs_sky)
+
+            #     self.uniq_inds = np.unique(self.matched_ref_coords_pix, axis=0, return_index=True)[1]
+            #     self.matched_star_coords_pix = self.matched_star_coords_pix[self.uniq_inds]
+            #     self.matched_ref_coords_pix = self.matched_ref_coords_pix[self.uniq_inds]
+            #     self.star_coords_wcs_sky = self.star_coords_wcs_sky[self.uniq_inds]
+            #     self.ref_coords_wcs_sky = self.ref_coords_wcs_sky[self.uniq_inds]
+
+            #     bord_dists = self.find_dist_to_border(sci_data=self.sci_ali_img_hdu.data,
+            #                                             ref_data=self.ref_ali_img_hdu.data,
+            #                                             sci_match_coords=self.matched_star_coords_pix,
+            #                                             ref_match_coords=self.matched_ref_coords_pix,
+            #                                             sci_phot_tab=self.sci_ali_photTab,
+            #                                             ref_phot_tab=self.ref_ali_photTab,
+            #                                             X=20,D=30) 
+            #     #        return {'sci_keep_pix':sci_keep_pix,'ref_keep_pix':ref_keep_pix,'sci_keep_sky':sci_keep_sky,'ref_keep_sky':ref_keep_sky}
+            #     self.orig_len_match = len(self.matched_star_coords_pix)
+
+            #     if len(self.matched_star_coords_pix)>5:
+            #         self.matched_star_coords_pix = bord_dists['sci_keep_pix']
+            #         self.matched_ref_coords_pix = bord_dists['ref_keep_pix']
+
+            #         self.star_coords_wcs_sky = bord_dists['sci_keep_sky']
+            #         self.ref_coords_wcs_sky = bord_dists['ref_keep_sky']
+            #         # print(self.star_coords_wcs_sky)
+            #         self.new_len_match = len(self.matched_star_coords_pix)
+            #         self.sp_logger.info(info_g+f' Kept {self.new_len_match} stars out of {self.orig_len_match} ({self.new_len_match/self.orig_len_match*100:.2f}%)')
+
+            #     else:
+            #         self.sp_logger.info(info_g+f" Not rejecting any stars to allow correction for distortion")
+            #     # matched_ref_pixs,matched_sci_pix = [],[]
 
 
 
     
-                if self.auto_cat == 'auto' and self.use_sdss==False and (self.sci_filt=='g' or self.sci_filt=='r' or self.sci_filt=='i' or self.sci_filt=='z'):
-                    self.matched_catalog=self.ref_cat[self.indx[self.upd_indx]]
-                    # self.sp_logger.info(self.matched_catalog)
-                    # sys.exit()
-                    self.matched_catalog_mag=self.matched_catalog[str(self.sci_filt)+'MeanPSFMag']
+            #     if self.auto_cat == 'auto' and self.use_sdss==False and (self.sci_filt=='g' or self.sci_filt=='r' or self.sci_filt=='i' or self.sci_filt=='z'):
+            #         self.matched_catalog=self.ref_cat[self.indx[self.upd_indx]]
+            #         # self.sp_logger.info(self.matched_catalog)
+            #         # sys.exit()
+            #         self.matched_catalog_mag=self.matched_catalog[str(self.sci_filt)+'MeanPSFMag']
 
-                    # for i in range(len(self.matched_catalog_mag)):
-                    #     self.sp_logger.info(self.matched_catalog[i])
-                    #     self.sp_logger.info(self.bright_stars_sc[i])
-                    #     self.sp_logger.info()
+            #         # for i in range(len(self.matched_catalog_mag)):
+            #         #     self.sp_logger.info(self.matched_catalog[i])
+            #         #     self.sp_logger.info(self.bright_stars_sc[i])
+            #         #     self.sp_logger.info()
 
 
-                elif self.auto_cat == 'auto' and (self.sci_filt=='u' or self.use_sdss==True):
-                    self.string_band='psfMag_'+str(self.sci_filt)
-                    self.matched_catalog= self.ref_cat.loc[self.indx[self.upd_indx]] 
-                    self.matched_catalog_mag=np.asarray(self.matched_catalog['mag'])
-                    self.matched_star_coords_pix = wcs_to_pixels(self.sci_ali_name,self.matched_catalog[['ra','dec']])
+            #     elif self.auto_cat == 'auto' and (self.sci_filt=='u' or self.use_sdss==True):
+            #         self.string_band='psfMag_'+str(self.sci_filt)
+            #         self.matched_catalog= self.ref_cat.loc[self.indx[self.upd_indx]] 
+            #         self.matched_catalog_mag=np.asarray(self.matched_catalog['mag'])
+            #         self.matched_star_coords_pix = wcs_to_pixels(self.sci_ali_name,self.matched_catalog[['ra','dec']])
 
-                elif self.auto_cat !='auto':
-                    # self.sp_logger.info(self.ref_cat.loc[self.indx[self.upd_indx]])
-                    self.matched_catalog= self.ref_cat.loc[self.indx[self.upd_indx]] 
-                    self.matched_catalog_mag=np.asarray([float(m) for m in self.matched_catalog['mag']])
-                    self.matched_star_coords_pix = wcs_to_pixels(self.sci_ali_name,self.matched_catalog[['ra','dec']])
+            #     elif self.auto_cat !='auto':
+            #         # self.sp_logger.info(self.ref_cat.loc[self.indx[self.upd_indx]])
+            #         self.matched_catalog= self.ref_cat.loc[self.indx[self.upd_indx]] 
+            #         self.matched_catalog_mag=np.asarray([float(m) for m in self.matched_catalog['mag']])
+            #         self.matched_star_coords_pix = wcs_to_pixels(self.sci_ali_name,self.matched_catalog[['ra','dec']])
 
             
-                # import cv2
+            #     # import cv2
 
-                # self.matched_ref_coords_pix = self.ref_keep_pix
-                # self.matched_star_coords_pix = self.sci_keep_pix
+            #     # self.matched_ref_coords_pix = self.ref_keep_pix
+            #     # self.matched_star_coords_pix = self.sci_keep_pix
 
 
-                save_to_reg = True
-                if save_to_reg: 
-                    if not os.path.exists(self.data1_path+'region_files'):os.makedirs(self.data1_path+'region_files')
-                    self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_sci.reg')
-                    self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_ref.reg')
-                    with open(self.data1_path+'region_files/'+self.sci_obj+'_sci.reg','w') as f:
-                        f.write('global color=yellow dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
-                        f.write('fk5'+'\n')
-                        for i in range(len(self.matched_star_coords_pix)):
-                            # f.write(f'circle({self.sci_keep_sky[i].ra.deg},{self.sci_keep_sky[i].dec.deg},3")'+' # text={'+f'xy={self.sci_keep_pix[i]}'+'}'+'\n')
-                            f.write(f'physical;circle({self.matched_star_coords_pix[i][0]},{self.matched_star_coords_pix[i][1]},20)'+' # text={'+f'xy={self.matched_star_coords_pix[i]}'+'}'+'\n')
-                        f.close()
+            #     save_to_reg = True
+            #     if save_to_reg: 
+            #         if not os.path.exists(self.data1_path+'region_files'):os.makedirs(self.data1_path+'region_files')
+            #         self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_sci.reg')
+            #         self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_ref.reg')
+            #         with open(self.data1_path+'region_files/'+self.sci_obj+'_sci.reg','w') as f:
+            #             f.write('global color=yellow dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
+            #             f.write('fk5'+'\n')
+            #             for i in range(len(self.matched_star_coords_pix)):
+            #                 # f.write(f'circle({self.sci_keep_sky[i].ra.deg},{self.sci_keep_sky[i].dec.deg},3")'+' # text={'+f'xy={self.sci_keep_pix[i]}'+'}'+'\n')
+            #                 f.write(f'physical;circle({self.matched_star_coords_pix[i][0]},{self.matched_star_coords_pix[i][1]},20)'+' # text={'+f'xy={self.matched_star_coords_pix[i]}'+'}'+'\n')
+            #             f.close()
 
-                    with open(self.data1_path+'region_files/'+self.sci_obj+'_ref.reg','w') as f:
-                        f.write('global color=red dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
-                        f.write('fk5'+'\n')
-                        for i in range(len(self.matched_ref_coords_pix)):
-                            # f.write(f'circle({self.ref_keep_sky[i].ra.deg},{self.ref_keep_sky[i].dec.deg},3")'+' # text={'+f'xy={self.ref_keep_pix[i]}'+'}'+'\n')
-                            f.write(f'physical;circle({self.matched_ref_coords_pix[i][0]},{self.matched_ref_coords_pix[i][1]},20)'+' # text={'+f'xy={self.matched_ref_coords_pix[i]}'+'}'+'\n')
-                        f.close()
+            #         with open(self.data1_path+'region_files/'+self.sci_obj+'_ref.reg','w') as f:
+            #             f.write('global color=red dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
+            #             f.write('fk5'+'\n')
+            #             for i in range(len(self.matched_ref_coords_pix)):
+            #                 # f.write(f'circle({self.ref_keep_sky[i].ra.deg},{self.ref_keep_sky[i].dec.deg},3")'+' # text={'+f'xy={self.ref_keep_pix[i]}'+'}'+'\n')
+            #                 f.write(f'physical;circle({self.matched_ref_coords_pix[i][0]},{self.matched_ref_coords_pix[i][1]},20)'+' # text={'+f'xy={self.matched_ref_coords_pix[i]}'+'}'+'\n')
+            #             f.close()
 
                 
-                # sys.exit()
-                # for i in range(len(self.matched_star_coords_pix)):
-                    # print(self.matched_star_coords_pix[i],self.matched_ref_coords_pix[i])
-                # from skimage.metrics import mean_squared_error
-                # print(len(self.matched_star_coords_pix))
-                for i in range(len(self.matched_star_coords_pix)):
-                    print(self.matched_star_coords_pix[i],self.matched_ref_coords_pix[i])
+            #     # sys.exit()
+            #     # for i in range(len(self.matched_star_coords_pix)):
+            #         # print(self.matched_star_coords_pix[i],self.matched_ref_coords_pix[i])
+            #     # from skimage.metrics import mean_squared_error
+            #     # print(len(self.matched_star_coords_pix))
+            #     for i in range(len(self.matched_star_coords_pix)):
+            #         print(self.matched_star_coords_pix[i],self.matched_ref_coords_pix[i])
 
-                # print()
-                # for i in range(len(self.uniq_inds)):
-                #     print(self.matched_star_coords_pix[self.uniq_inds[i]],self.matched_ref_coords_pix[self.uniq_inds[i]])
+            #     # print()
+            #     # for i in range(len(self.uniq_inds)):
+            #     #     print(self.matched_star_coords_pix[self.uniq_inds[i]],self.matched_ref_coords_pix[self.uniq_inds[i]])
                 
-                if len(self.matched_star_coords_pix)>=3:
-                    self.sp_logger.info(info_g+f" Finding the transformation between science and reference to correct for distortion")
-                    self.tform_ref_sci,self.tform_sci_ref = transform.PolynomialTransform(),transform.PolynomialTransform()
+            #     if len(self.matched_star_coords_pix)>=3:
+            #         self.sp_logger.info(info_g+f" Finding the transformation between science and reference to correct for distortion")
+            #         self.tform_ref_sci,self.tform_sci_ref = transform.PolynomialTransform(),transform.PolynomialTransform()
 
-                    print(len(self.matched_star_coords_pix),len(self.matched_ref_coords_pix))
+            #         print(len(self.matched_star_coords_pix),len(self.matched_ref_coords_pix))
                     
-                    # sys.exit()
-                    self.tform_ref_sci.estimate(self.matched_ref_coords_pix,
-                                                self.matched_star_coords_pix, 
-                                                order=1)#,weights=self.tform_w)
-                    self.tform_ref_sci1 = transform.warp(self.sci_ali_img_hdu.data, 
-                                                self.tform_ref_sci,
-                                                output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
-                                                order=3,)
-                    self.align_success = True
-                    new_sci_ali = fits.open(self.sci_ali_name)
-                    new_sci_ali[0].data = self.tform_ref_sci1
-                    new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}.fits'), 
-                                        overwrite=True)
-                    # self.sp_logger(info_g+f" Warped science using polynomial order 1")
+            #         # sys.exit()
+            #         self.tform_ref_sci.estimate(self.matched_ref_coords_pix,
+            #                                     self.matched_star_coords_pix, 
+            #                                     order=1)#,weights=self.tform_w)
+            #         self.tform_ref_sci1 = transform.warp(self.sci_ali_img_hdu.data, 
+            #                                     self.tform_ref_sci,
+            #                                     output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
+            #                                     order=3,)
+            #         self.align_success = True
+            #         new_sci_ali = fits.open(self.sci_ali_name)
+            #         new_sci_ali[0].data = self.tform_ref_sci1
+            #         new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}.fits'), 
+            #                             overwrite=True)
+            #         # self.sp_logger(info_g+f" Warped science using polynomial order 1")
 
-                    # self.tform_ref_sci,self.tform_sci_ref = transform.PolynomialTransform(),transform.PolynomialTransform()
-                    # self.tform_ref_sci.estimate(self.matched_ref_coords_pix,
-                    #                             self.matched_star_coords_pix, 
-                    #                             order=3)#,weights=self.tform_w)
-                    # self.tform_ref_sci3 = transform.warp(self.sci_ali_img_hdu.data, 
-                    #                             self.tform_ref_sci,
-                    #                             output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
-                    #                             order=3,)
+            #         # self.tform_ref_sci,self.tform_sci_ref = transform.PolynomialTransform(),transform.PolynomialTransform()
+            #         # self.tform_ref_sci.estimate(self.matched_ref_coords_pix,
+            #         #                             self.matched_star_coords_pix, 
+            #         #                             order=3)#,weights=self.tform_w)
+            #         # self.tform_ref_sci3 = transform.warp(self.sci_ali_img_hdu.data, 
+            #         #                             self.tform_ref_sci,
+            #         #                             output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
+            #         #                             order=3,)
 
-                    # self.align_success = True
-                    # new_sci_ali = fits.open(self.sci_ali_name)
-                    # new_sci_ali[0].data = self.tform_ref_sci3
-                    # new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{3}.fits'), 
-                    #                     overwrite=True)
-                    # self.sp_logger(info_g+f" Warped science using polynomial order 3")
+            #         # self.align_success = True
+            #         # new_sci_ali = fits.open(self.sci_ali_name)
+            #         # new_sci_ali[0].data = self.tform_ref_sci3
+            #         # new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{3}.fits'), 
+            #         #                     overwrite=True)
+            #         # self.sp_logger(info_g+f" Warped science using polynomial order 3")
 
-                    self.tform_order = 2
-                    self.tform_ref_sci,self.tform_sci_ref = transform.PolynomialTransform(),transform.PolynomialTransform()
-                    self.tform_ref_sci.estimate(self.matched_ref_coords_pix,
-                                                self.matched_star_coords_pix, 
-                                                order=self.tform_order)#,weights=self.tform_w)
-                    self.tform_ref_sci2 = transform.warp(self.sci_ali_img_hdu.data, 
-                                                        self.tform_ref_sci,
-                                                        output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
-                                                        order=3,)
-                    # self.sp_logger(info_g+f" Warped science using polynomial order 2")
-                    self.align_success = True
-                    new_sci_ali = fits.open(self.sci_ali_name)
-                    new_sci_ali[0].data = self.tform_ref_sci1
-                    new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}_snum{len(self.matched_star_coords_pix)}.fits'), overwrite=True)
+            #         self.tform_order = 2
+            #         self.tform_ref_sci,self.tform_sci_ref = transform.PolynomialTransform(),transform.PolynomialTransform()
+            #         self.tform_ref_sci.estimate(self.matched_ref_coords_pix,
+            #                                     self.matched_star_coords_pix, 
+            #                                     order=self.tform_order)#,weights=self.tform_w)
+            #         self.tform_ref_sci2 = transform.warp(self.sci_ali_img_hdu.data, 
+            #                                             self.tform_ref_sci,
+            #                                             output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
+            #                                             order=3,)
+            #         # self.sp_logger(info_g+f" Warped science using polynomial order 2")
+            #         self.align_success = True
+            #         new_sci_ali = fits.open(self.sci_ali_name)
+            #         new_sci_ali[0].data = self.tform_ref_sci1
+            #         new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}_snum{len(self.matched_star_coords_pix)}.fits'), overwrite=True)
 
-                    self.sci_ali_name = self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}_snum{len(self.matched_star_coords_pix)}.fits')
-                    self.sp_logger.info(info_g+f" Warped science saved to {self.sci_ali_name}")
+            #         self.sci_ali_name = self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}_snum{len(self.matched_star_coords_pix)}.fits')
+            #         self.sp_logger.info(info_g+f" Warped science saved to {self.sci_ali_name}")
                     
-                    def add_circles(ax, coords, color='yellow'):
-                        for x, y in coords:
-                            circle = plt.Circle((x, y), 10, color=color, fill=False)
-                            ax.add_artist(circle)
+            #         def add_circles(ax, coords, color='yellow'):
+            #             for x, y in coords:
+            #                 circle = plt.Circle((x, y), 10, color=color, fill=False)
+            #                 ax.add_artist(circle)
 
-                    fig_poly_coll,axes = plt.subplots(2,2,figsize=(12,12))
-                    self.vmin,self.vmax = visualization.ZScaleInterval().get_limits(self.sci_img_hdu.data)
-                    self.rvmin,self.rvmax = visualization.ZScaleInterval().get_limits(self.ref_ali_img_hdu.data)
-                    a1,a2,a3,a4 = axes[0,0],axes[0,1],axes[1,0],axes[1,1]
+            #         fig_poly_coll,axes = plt.subplots(2,2,figsize=(12,12))
+            #         self.vmin,self.vmax = visualization.ZScaleInterval().get_limits(self.sci_img_hdu.data)
+            #         self.rvmin,self.rvmax = visualization.ZScaleInterval().get_limits(self.ref_ali_img_hdu.data)
+            #         a1,a2,a3,a4 = axes[0,0],axes[0,1],axes[1,0],axes[1,1]
                     
-                    a1.imshow(self.sci_ali_img_hdu.data,cmap='gray',vmin=self.vmin,vmax=self.vmax)
-                    a1.set_title('Science not warped')
-                    add_circles(a1,self.matched_ref_coords_pix)
+            #         a1.imshow(self.sci_ali_img_hdu.data,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+            #         a1.set_title('Science not warped')
+            #         add_circles(a1,self.matched_ref_coords_pix)
                     
-                    a2.imshow(self.ref_ali_img_hdu.data,cmap='gray',vmin=self.rvmin,vmax=self.rvmax)
-                    a2.set_title('Reference not warped')
-                    add_circles(a2,self.matched_ref_coords_pix)
+            #         a2.imshow(self.ref_ali_img_hdu.data,cmap='gray',vmin=self.rvmin,vmax=self.rvmax)
+            #         a2.set_title('Reference not warped')
+            #         add_circles(a2,self.matched_ref_coords_pix)
 
-                    a3.imshow(self.tform_ref_sci1,cmap='gray',vmin=self.vmin,vmax=self.vmax)
-                    a3.set_title('Warped by Polynomial order 1')
-                    add_circles(a3,self.matched_ref_coords_pix)
+            #         a3.imshow(self.tform_ref_sci1,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+            #         a3.set_title('Warped by Polynomial order 1')
+            #         add_circles(a3,self.matched_ref_coords_pix)
 
-                    a4.imshow(self.tform_ref_sci2,cmap='gray',vmin=self.vmin,vmax=self.vmax)
-                    a4.set_title('Warped by Polynomial order 2')
-                    add_circles(a4,self.matched_ref_coords_pix)
+            #         a4.imshow(self.tform_ref_sci2,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+            #         a4.set_title('Warped by Polynomial order 2')
+            #         add_circles(a4,self.matched_ref_coords_pix)
 
 
-                    fig_sci_ali,axes_sci = plt.subplots(figsize=(12,12))
-                    axes_sci.imshow(self.sci_ali_img_hdu.data,cmap='gray',vmin=self.vmin,vmax=self.vmax)
-                    add_circles(axes_sci,self.matched_ref_coords_pix)
+            #         fig_sci_ali,axes_sci = plt.subplots(figsize=(12,12))
+            #         axes_sci.imshow(self.sci_ali_img_hdu.data,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+            #         add_circles(axes_sci,self.matched_ref_coords_pix)
 
-                    fig_ref_ali,axes_ref = plt.subplots(figsize=(12,12))
-                    axes_ref.imshow(self.ref_ali_img_hdu.data,cmap='gray',vmin=self.rvmin,vmax=self.rvmax)
-                    add_circles(axes_ref,self.matched_ref_coords_pix)
+            #         fig_ref_ali,axes_ref = plt.subplots(figsize=(12,12))
+            #         axes_ref.imshow(self.ref_ali_img_hdu.data,cmap='gray',vmin=self.rvmin,vmax=self.rvmax)
+            #         add_circles(axes_ref,self.matched_ref_coords_pix)
 
 
 
@@ -2065,19 +2068,19 @@ class subtracted_phot(subphot_data):
                     
 
 
-                    if not os.path.exists(self.data1_path+'poly_comps/'):os.mkdir(self.data1_path+'poly_comps/')
-                    fig_poly_coll.savefig(self.data1_path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf')
-                    self.sp_logger.info(info_g+f" Saved image comparing polynomial orders 1 and 2 as "+self.data1_path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf') 
-                    # fig_sci_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_sci.pdf')
-                    # fig_ref_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_ref.pdf')
+            #         if not os.path.exists(self.data1_path+'poly_comps/'):os.mkdir(self.data1_path+'poly_comps/')
+            #         fig_poly_coll.savefig(self.data1_path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf')
+            #         self.sp_logger.info(info_g+f" Saved image comparing polynomial orders 1 and 2 as "+self.data1_path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf') 
+            #         # fig_sci_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_sci.pdf')
+            #         # fig_ref_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_ref.pdf')
 
 
-                else:
-                    self.sp_logger.info(warn_y+f" Not enough stars matched for distorion correction ")
+            #     else:
+            #         self.sp_logger.info(warn_y+f" Not enough stars matched for distorion correction ")
 
 
-            # sys.exit()
-            # self.align_fail_count=+1
+            # # sys.exit()
+            # # self.align_fail_count=+1
                 
             if self.align_success and self.args.show_plots==True:
                 self.vmin,self.vmax = visualization.ZScaleInterval().get_limits(self.sci_img_hdu.data)
@@ -3392,33 +3395,38 @@ class subtracted_phot(subphot_data):
 
 
     def cutout_psf(self,data,psf_array,xpos,ypos):
-        # self.sp_logger.info('x',xpos,'y',ypos)
-        xcutout,ycutout=np.shape(psf_array)[0],np.shape(psf_array)[1]
-        position=(xpos,ypos)
-        size = (xcutout, ycutout)
-        # self.sp_logger.info('size',size,'position',position,'data shape',np.shape(data))
+        all_cutouts=[]
+        for d in range(len(xpos)):
+            # self.sp_logger.info('x',xpos,'y',ypos)
+            xcutout,ycutout=np.shape(psf_array)[0],np.shape(psf_array)[1]
+            position=(xpos[d],ypos[d])
+            size = (xcutout, ycutout)
+            # self.sp_logger.info('size',size,'position',position,'data shape',np.shape(data))
 
-        cutout = Cutout2D(data, position, size)#, mode='partial')
-        # self.sp_logger.info('cutout shape',np.shape(cutout.data))]
-        return(cutout.data)
+            cutout = Cutout2D(data, position, size)#, mode='partial')
+            all_cutouts.append(cutout.data)
+        return np.array(all_cutouts)
 
     def psf_fit(self,data_cutout,psf_array):
-        #fit PSF with x or y-shift
-        # shift cutout psf to be aligned with psf model
-        # restrict it to move <5 pixels in each direction so the fit doesn't go wild and fit a nearby bright star etc.
-        xoff, yoff, exoff, eyoff = chi2_shift(psf_array,data_cutout, 10,return_error=True, upsample_factor='auto')
-        #convert to arcsec
-        xoff_arc=abs(xoff)*self.sci_ps
-        yoff_arc=abs(yoff)*self.sci_ps
-        if (xoff>5.0 or yoff>5.0) and self.telescope not in SEDM:
-            xoff,yoff=0.0,0.0
-        data_cutout_shift=scipy.ndimage.shift(data_cutout, [-yoff, -xoff], order=3, mode='reflect', cval=0.0, prefilter=True)
-        resize_sci=np.reshape(data_cutout_shift,np.shape(data_cutout_shift)[0]*np.shape(data_cutout_shift)[1])
-        #resize_psf=np.reshape(psf_array,np.shape(data_cutout_shift)[0]*np.shape(data_cutout_shift)[1],1)
-        resize_psf=np.reshape(psf_array,np.shape(data_cutout_shift)[0]*np.shape(data_cutout_shift)[1]) 
-        slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(resize_psf, resize_sci)
+        params = []
+        for d in range(len(data_cutout)):
+            #fit PSF with x or y-shift
+            # shift cutout psf to be aligned with psf model
+            # restrict it to move <5 pixels in each direction so the fit doesn't go wild and fit a nearby bright star etc.
+            xoff, yoff, exoff, eyoff = chi2_shift(psf_array,data_cutout[d], 10,return_error=True, upsample_factor='auto')
+            #convert to arcsec
+            xoff_arc=abs(xoff)*self.sci_ps
+            yoff_arc=abs(yoff)*self.sci_ps
+            if (xoff>5.0 or yoff>5.0) and self.telescope not in SEDM:
+                xoff,yoff=0.0,0.0
+            data_cutout_shift=scipy.ndimage.shift(data_cutout[d], [-yoff, -xoff], order=3, mode='reflect', cval=0.0, prefilter=True)
+            resize_sci=np.reshape(data_cutout_shift,np.shape(data_cutout_shift[d])[0]*np.shape(data_cutout_shift)[1])
+            #resize_psf=np.reshape(psf_array,np.shape(data_cutout_shift)[0]*np.shape(data_cutout_shift)[1],1)
+            resize_psf=np.reshape(psf_array,np.shape(data_cutout_shift)[0]*np.shape(data_cutout_shift)[1]) 
+            slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(resize_psf, resize_sci)
+            params.append([slope, intercept, r_value*r_value,xoff, yoff, abs(xoff_arc), abs(yoff_arc)])
 
-        return(slope, intercept, r_value*r_value,xoff, yoff, abs(xoff_arc), abs(yoff_arc))
+        return np.array(params)
 
     # import numpy as np
     # from astropy.stats import SigmaClip
@@ -3440,7 +3448,7 @@ class subtracted_phot(subphot_data):
         app = CircularAperture([sn_x,sn_y], r=1.5*box)
         masks = app.to_mask(method='center') 
         mask_arr = masks.to_image(shape=data.shape).astype(bool)
-        data_cutout = self.cutout_psf(data=data,psf_array=self.comb_psf,xpos=sn_x,ypos=sn_y)
+        data_cutout = self.cutout_psf(data=data,psf_array=self.comb_psf,xpos=[sn_x],ypos=[sn_y])[o]
         
         self.sp_logger.info(info_g+' Estimating spatially varying background')
         self.sp_logger.info(info_g+' Box size: '+str(box))
@@ -3473,7 +3481,7 @@ class subtracted_phot(subphot_data):
         import sep
 
         bkg = sep.Background(np.array(data).astype(np.float64)).back()
-        bkg = self.cutout_psf(data=bkg,psf_array=self.comb_psf,xpos=sn_x,ypos=sn_y)
+        bkg = self.cutout_psf(data=bkg,psf_array=self.comb_psf,xpos=[sn_x],ypos=[sn_y])[0]
         # self.comb_psf,zp_sci=self.zp_sci,num=10,sn_x=self.coords_sn[0][0],sn_y=self.coords_sn[0][1])
         # si_bkg_poly_cut = self.cutout_psf(data=si_bkg_poly,psf_array=self.comb_psf,xpos=self.coords_sn[0][0],ypos=self.coords_sn[0][1])
 
@@ -3540,15 +3548,15 @@ class subtracted_phot(subphot_data):
         return(slope, intercept, r_value*r_value,xoff, yoff, abs(xoff_arc), abs(yoff_arc))
 
     def psf_fit_noshift(self,data_cutout,psf_array):
-        # forced photometry - fit with no x or y-shift for limits calculations
-        resize_sci=np.reshape(data_cutout,np.shape(data_cutout)[0]*np.shape(data_cutout)[1])
-        # self.sp_logger.info('data_cutout',np.shape(data_cutout))
-        # self.sp_logger.info('resize_sci',np.shape(resize_sci))
-        # self.sp_logger.info('resize_psf',np.shape(psf_array))
-        resize_psf=np.reshape(psf_array,np.shape(data_cutout)[0]*np.shape(data_cutout)[1])
+        params = []
+        for d in range(len(data_cutout)):
+            # forced photometry - fit with no x or y-shift for limits calculations
+            resize_sci=np.reshape(data_cutout[d],np.shape(data_cutout[d])[0]*np.shape(data_cutout[d])[1])
+            resize_psf=np.reshape(psf_array,np.shape(data_cutout[d])[0]*np.shape(data_cutout[d])[1])
 
-        slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(resize_psf, resize_sci)
-        return(slope, intercept, r_value*r_value)
+            slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(resize_psf, resize_sci)
+            params.append([slope, intercept, r_value*r_value])
+        return np.array(params)
 
 
 
@@ -3582,12 +3590,12 @@ class subtracted_phot(subphot_data):
             self.counts = []
 
             for i in range(0,len(self.matched_star_coords_pix)):
-                self.cutout_sci=self.cutout_psf(data=self.sci_conv,psf_array=self.comb_psf,xpos=self.matched_star_coords_pix[i][0],ypos=self.matched_star_coords_pix[i][1])
+                self.cutout_sci=self.cutout_psf(data=self.sci_conv,psf_array=self.comb_psf,xpos=[self.matched_star_coords_pix[i][0]],ypos=[self.matched_star_coords_pix[i][1]])[0]
                 # self.sp_logger.info(info_g+' Cutout shape',np.shape(self.cutout_sci))
                 if np.shape(self.cutout_sci)!=np.shape(self.comb_psf):
                     #pad with 0s to make it the same size as the PSF
                     self.cutout_sci = np.pad(self.cutout_sci,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_sci)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_sci)[1])),'constant',constant_values=0)
-                self.sci_psf_fit = self.psf_fit_noshift(data_cutout=self.cutout_sci,psf_array=self.comb_psf)
+                self.sci_psf_fit = self.psf_fit_noshift(data_cutout=[self.cutout_sci],psf_array=self.comb_psf)
                 self.counts.append(self.sci_psf_fit[0])
             self.counts=np.array(self.counts)
             self.counts_o = self.counts
@@ -3656,20 +3664,20 @@ class subtracted_phot(subphot_data):
                 if self.special_case!=None:
                     if any(phrase in self.special_case for phrase in ['SN2023ixf','bright','brightstars.cat','sn2023ixf','2023ixf','brightstars']):
                         if self.matched_catalog_mag[i]>self.bright_cat_mag_lim+0.35:continue
-                self.cutout_sci=self.cutout_psf(data=self.sci_conv,psf_array=self.comb_psf,xpos=self.matched_star_coords_pix[i][0],ypos=self.matched_star_coords_pix[i][1])
+                self.cutout_sci=self.cutout_psf(data=self.sci_conv,psf_array=self.comb_psf,xpos=[self.matched_star_coords_pix[i][0]],ypos=[self.matched_star_coords_pix[i][1]])[0]
                 if np.shape(self.cutout_sci)!=np.shape(self.comb_psf):
                     self.cutout_sci = np.pad(self.cutout_sci,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_sci)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_sci)[1])),'constant',constant_values=0)
                     # self.sp_logger.info(info_g+' New shape',np.shape(self.cutout_sci))
-                self.sci_psf_fit = self.psf_fit(data_cutout=self.cutout_sci,psf_array=self.comb_psf)
+                self.sci_psf_fit = self.psf_fit(data_cutout=[self.cutout_sci],psf_array=self.comb_psf)[0]
                 self.zp_sci.append(2.5*np.log10(self.sci_psf_fit[0])+self.matched_catalog_mag[i])
                 self.rsq_sci.append(self.sci_psf_fit[2])
 
 
-                self.cutout_ref=self.cutout_psf(data=self.ref_conv,psf_array=self.comb_psf,xpos=self.matched_star_coords_pix[i][0],ypos=self.matched_star_coords_pix[i][1])
+                self.cutout_ref=self.cutout_psf(data=self.ref_conv,psf_array=self.comb_psf,xpos=[self.matched_star_coords_pix[i][0]],ypos=[self.matched_star_coords_pix[i][1]])[0]
                 if np.shape(self.cutout_ref)!=np.shape(self.comb_psf):
                     self.cutout_ref = np.pad(self.cutout_ref,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_ref)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_ref)[1])),'constant',constant_values=0)
                     # self.sp_logger.info(info_g+' New shape',np.shape(self.cutout_ref))
-                self.ref_psf_fit = self.psf_fit(data_cutout=self.cutout_ref,psf_array=self.comb_psf)
+                self.ref_psf_fit = self.psf_fit(data_cutout=[self.cutout_ref],psf_array=self.comb_psf)[0]
                 self.zp_ref.append(2.5*np.log10(self.ref_psf_fit[0])+self.matched_catalog_mag[i]) 
                 self.rsq_ref.append(self.ref_psf_fit[2])
 
@@ -3907,9 +3915,9 @@ class subtracted_phot(subphot_data):
 
         #calculate the photometry at the random positions
         rand_phot=[]
-        for i in range(len(rand_x)): #_fit_noshift(data_cutout=bkg_cutout,psf_array=psf)[0]
-            cutout=self.cutout_psf(data=data,psf_array=psf,xpos=rand_x[i],ypos=rand_y[i])
-            rand_phot.append(self.psf_fit_noshift(cutout,psf_array=psf)[0])
+        # for i in range(len(rand_x)): #_fit_noshift(data_cutout=bkg_cutout,psf_array=psf)[0]
+        cutouts=self.cutout_psf(data=data,psf_array=psf,xpos=rand_x[i],ypos=rand_y[i])
+        rand_phot=self.psf_fit_noshift(cutouts,psf_array=psf)[:,0]
 
         #check the distribution of the photometry at the random positions
         rand_phot=np.array(rand_phot)
@@ -3952,39 +3960,30 @@ class subtracted_phot(subphot_data):
         self.ra_off,self.dec_off = None,None
     
         # cutout a part of the image the same size as the measured PSF
-        self.sn_cutout=self.cutout_psf(data=data,psf_array=psf,xpos=sn_x,ypos=sn_y)
+        self.sn_cutout=self.cutout_psf(data=data,psf_array=psf,xpos=[sn_x],ypos=[sn_y])[0]
         # calculate the magnitude of the object
         if self.forced_phot==False: 
             # self.main_sn_psf_fit = self.psf_fit_bg(data,psf_array=psf,sn_x=sn_x,sn_y=sn_y)
-            self.main_sn_psf_fit = self.psf_fit(self.sn_cutout,psf_array=psf)
+            self.main_sn_psf_fit = self.psf_fit([self.sn_cutout],psf_array=psf)[0]
         else: 
             self.sp_logger.info(info_g+f" Performing forced photometry at {self.forced_phot[0]} {self.forced_phot[1]}")
             sn_x,sn_y = self.forced_phot[0],self.forced_phot[1]
             new_sci_c = SkyCoord(ra=sn_x,dec=sn_y,unit=(u.hourangle, u.deg),frame='fk5')
             sn_x,sn_y = wcs_to_pixels(self.sci_conv_name,np.column_stack((new_sci_c.ra.deg,new_sci_c.dec.deg)))[0]
 
-            # self.coords_sn_sub=wcs_to_pixels(self.sci_conv_name,np.column_stack((self.sci_c.ra.deg,self.sci_c.dec.deg)))
-            # self.coords_sn_sub_x,self.coords_sn_sub_y = self.coords_sn_sub[0]
-
-            self.sn_cutout = self.cutout_psf(data=data,psf_array=psf,xpos=sn_x,ypos=sn_y)
-            self.main_sn_psf_fit = self.psf_fit_noshift(self.sn_cutout,psf_array=psf)
+            self.sn_cutout = self.cutout_psf(data=data,psf_array=psf,xpos=[sn_x],ypos=[sn_y])[0]
+            self.main_sn_psf_fit = self.psf_fit_noshift(self.sn_cutout,psf_array=psf)[0]
 
         sn_flux= self.main_sn_psf_fit[0]
         sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
         # self.sp_logger.info the offset of the shifted fit
         if self.termoutp!='quiet' and self.forced_phot==False:
-            self.sp_logger.info(info_b+' Offset of shifted PSF fit (xpos,ypos)=%.3f %.3f'%(self.main_sn_psf_fit[3],self.main_sn_psf_fit[4]))
-            # self.sp_logger.info(self.main_sn_psf_fit[3],self.main_sn_psf_fit[4])
-            # self.sp_logger.info(main_sn_psf_fit[5],main_sn_psf_fit[6])
-
+            self.sp_logger.info(info_g+' Offset of shifted PSF fit (xpos,ypos)=%.3f %.3f'%(self.main_sn_psf_fit[3],self.main_sn_psf_fit[4]))
             # if the xoff_arc and yoff_arc are greater than 1.5 arcsec, then the fit is shifted too much, 
             # defaulting to the original position so will use psf_fit_noshift
-            # self.sp_logger.info(self.main_sn_psf_fit[5],self.main_sn_psf_fit[6])
             self.sp_logger.info(info_g+' xoff_arc=%.3f arcsec, yoff_arc=%.3f arcsec'%(self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]))
             self.ra_off,self.dec_off = self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]
-            # self.main_sn_psf_fit = main_sn_psf_fit
-            # if np.abs(main_sn_psf_fit[5])>1.5 or np.abs(main_sn_psf_fit[6])>1.5 or any(offset>2 for offset in [main_sn_psf_fit[5], main_sn_psf_fit[6]]):
-            # if (sn_mag>17.5 and self.forced_phot==False and self.telescope not in SEDM) or (self.telescope in SEDM and self.forced_phot!=False):
+
             if (sn_mag>17.5 and self.forced_phot==False) or (self.forced_phot!=False):
                 if  self.telescope not in SEDM and any(offset>self.max_psf_offset for offset in [self.main_sn_psf_fit[5], self.main_sn_psf_fit[6]]):
                     self.sp_logger.warning(warn_y+f" PSF fit is shifted too much, defaulting to original position")
@@ -3994,7 +3993,6 @@ class subtracted_phot(subphot_data):
                     sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
                     self.sp_logger.info(warn_y+" New magnitude = %.3f"%sn_mag)
                 if self.telescope in SEDM and any(offset>1 for offset in [self.main_sn_psf_fit[5], self.main_sn_psf_fit[6]]):
-                    # self.main_sn_psf_fit_before = self.psf_fit(self.sn_cutout,psf_array=psf)
                     self.sp_logger.warning(warn_y+f" Mag before shifting to original position = %.3f"%sn_mag)
                     self.sp_logger.warning(warn_y+f" PSF fit is shifted too much, defaulting to original position")
                     self.sp_logger.warning(warn_y+" xoff =%.3f arsec, yoff_arc=%.3f arcsec"%(self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]))
@@ -4003,44 +4001,30 @@ class subtracted_phot(subphot_data):
                     sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
                     self.sp_logger.info(warn_y+" New magnitude = %.3f"%sn_mag)
 
-            
-
-        # set up a grid for the values
         psf_size=np.shape(psf)[0]+1
-        # x=np.linspace(-num*psf_size,num*psf_size,(num*2)+1)
-        # y=x
-        # x0, y0, radius = 0.0, 0.0, psf_size/2
-        # x, y = np.meshgrid(x, y)
-        # r = np.sqrt((x - x0)**2 + (y - y0)**2)
-        # outside = (r > radius)
-        # x=x[outside]
-        # y=y[outside]
-
-        np.shape(psf)[0]+1
         #chose num number of coordinates to calculate the magnitude error within the image size but outside the psf
         x=np.linspace(-num*psf_size,num*psf_size,(num*2)+1)
+        len_x1 = len(x)
         # self.sp_logger.info('x min max',x.min(),x.max())
         # self.sp_logger.info('data shape',np.shape(data))
-        y=x
+
         x0, y0, radius = 0.0, 0.0, psf_size/2
-        x, y = np.meshgrid(x, y)
+        x, y = np.meshgrid(x, x)
         r = np.sqrt((x - x0)**2 + (y - y0)**2)
         outside = (r > radius)
-        x=x[outside]
-        y=y[outside]
+        x=x[outside].flatten()
+        y=y[outside].flatten()
+
+        # print(len(x),len_x1)
 
 
-   
-        #measure the background flux and the flux of the artificial supernova
-        # self.sp_logger.info(info_g+' Calculating magnitude error for %i of %i'%(i+1,len(x)))
+        all_cutouts = []
         for i in range(0,len(x)):
             x__,y__=x[i],y[i]
+            # cond = (sn_x+x__<0)|(sn_x+x__>np.shape(data)[1])|(sn_y+y__<0)|(sn_y+y__>np.shape(data)[0])|(sn_x+x__-np.shape(psf)[0]/2)<0|(sn_y+y__-np.shape(psf)[1]/2)<0|(sn_x+x__+np.shape(psf)[0]/2)>np.shape(data)[1]|(sn_y+y__+np.shape(psf)[1]/2)>np.shape(data)[0]
+            # print(-num*psf_size,num*psf_size,(2))
+            
             if sn_x+x__<0 or sn_x+x__>np.shape(data)[1] or sn_y+y__<0 or sn_y+y__>np.shape(data)[0] or (sn_x+x__-np.shape(psf)[0]/2)<0 or (sn_y+y__-np.shape(psf)[1]/2)<0 or (sn_x+x__+np.shape(psf)[0]/2)>np.shape(data)[1] or (sn_y+y__+np.shape(psf)[1]/2)>np.shape(data)[0]:
-                # self.sp_logger.info(warn_y+' Artificial supernova is outside the image')
-                # self.sp_logger.info(x__,y__)
-                # continue
-                # self.sp_logger.info(warn_y+' Randomly selecting a new position')
-                # continue
                 x__,y__=np.random.randint(-num*psf_size,num*psf_size,(2))
 
                 if sn_x+x__-radius<0 or sn_x+x__+radius>np.shape(data)[1] or sn_y+y__-radius<0 or sn_y+y__+radius>np.shape(data)[0]:
@@ -4048,27 +4032,25 @@ class subtracted_phot(subphot_data):
                     while sn_x+x__-radius<0 or sn_x+x__+radius>np.shape(data)[1] or sn_y+y__-radius<0 or sn_y+y__+radius>np.shape(data)[0]:
                         x__,y__=np.random.randint(-num*psf_size,num*psf_size,(2))
                         c+=1
-                        if c>20:
-                            break
-                        if sn_x+x__-radius<0 or sn_x+x__+radius>np.shape(data)[1] or sn_y+y__-radius<0 or sn_y+y__+radius>np.shape(data)[0]:
-                            # self.sp_logger.info(warn_y+f' Artificial supernova is outside the image, skipping')
-                            continue
+                        if c>20:break
+                        if sn_x+x__-radius<0 or sn_x+x__+radius>np.shape(data)[1] or sn_y+y__-radius<0 or sn_y+y__+radius>np.shape(data)[0]:continue
     
-    
-            bkg_cutout=self.cutout_psf(data=data,psf_array=psf,xpos=sn_x+x__,ypos=sn_y+y__)
-            # self.sp_logger.info('bkg_cutout',np.shape(bkg_cutout))
-            flux_bkg=self.psf_fit_noshift(data_cutout=bkg_cutout,psf_array=psf)[0]
+            bkg_cutout=self.cutout_psf(data=data,psf_array=psf,xpos=[sn_x+x__],ypos=[sn_y+y__])[0]
+            # all_cutouts.append(bkg_cutout)
+
+            flux_bkg=self.psf_fit_noshift(data_cutout=[bkg_cutout],psf_array=psf)[0][0]
             #flux_bkg_list is the PSF fitted to the sky
             flux_bkg_list.append(flux_bkg)
 
-            new_sn=bkg_cutout+((psf)*self.psf_fit(self.sn_cutout,psf_array=psf)[0])+self.psf_fit(self.sn_cutout,psf_array=psf)[1]
-            flux_new_sn=self.psf_fit(data_cutout=new_sn,psf_array=psf)[0]
+            new_sn=bkg_cutout+((psf)*self.psf_fit([self.sn_cutout],psf_array=psf)[0][0])+self.psf_fit([self.sn_cutout],psf_array=psf)[0][1]
+            flux_new_sn=self.psf_fit(data_cutout=[new_sn],psf_array=psf)[0][0]
             #flux_new_sn_list is the PSF fitted to the artificial supernova
             flux_new_sn_list.append(flux_new_sn)
 
-        flux_bkg_list=sigma_clip(flux_bkg_list,sigma=3,maxiters=6)
-
-        flux_new_sn_list=sigma_clip(flux_new_sn_list,sigma=3,maxiters=6)
+        self.sp_logger.info(info_g+' Sigma clipping the background flux')
+        flux_bkg_list=sigma_clip(flux_bkg_list,sigma=3,maxiters=3)
+        self.sp_logger.info(info_g+' Sigma clipping the artificial supernova flux')
+        flux_new_sn_list=sigma_clip(flux_new_sn_list,sigma=3,maxiters=3)
 
         SNR = sn_flux/np.std(flux_bkg_list)
         self.SNR = SNR
@@ -4107,10 +4089,7 @@ class subtracted_phot(subphot_data):
             else:
                 self.sys_fact = 1.03
             
-            # self.sp_logger.info('fact',sn_mag,magstd,magstd*self.sys_fact)
             magerr=magstd*self.sys_fact
-            # self.sp_logger.info('magerr',magerr)
-            # self.sp_logger.info('magerr',magerr,magstd/(len(flux_new_sn_list)**0.5),len(flux_new_sn_list),len(flux_new_sn_list)**0.5)
             maglim=-2.5*np.log10(abs(np.median(flux_bkg_list))+abs(np.std(flux_bkg_list)*2))+np.nanmedian(zp_sci)
             # self.sp_logger.info('maglim',maglim)
 
@@ -4136,7 +4115,8 @@ class subtracted_phot(subphot_data):
         sn_flux_err = abs(np.std(flux_new_sn_list))/3631
         # self.sp_logger.info(magerr,magstd)
 
-        self.check_nearby_resid(data,psf,sn_x,sn_y,sn_mag)
+        try:self.check_nearby_resid(data,psf,sn_x,sn_y,sn_mag)
+        except:pass
         return(mag,magstd,magerr,maglim,sn_flux/np.std(flux_bkg_list),sn_flux/np.std(flux_new_sn_list),-2.5*np.log10(np.median(flux_bkg_list)+(np.std(flux_bkg_list)*1))+np.nanmedian(zp_sci),
         -2.5*np.log10(np.median(flux_bkg_list)+(np.std(flux_bkg_list)*3))+np.nanmedian(zp_sci),-2.5*np.log10(np.median(flux_bkg_list)+(np.std(flux_bkg_list)*5))+np.nanmedian(zp_sci),
         minimal_mag,SNR,sn_flux,sn_flux_err)

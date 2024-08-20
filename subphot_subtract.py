@@ -226,6 +226,7 @@ if len(args.down_date_ql)>0:
         ql_day = subphot_data().down_quicklook()
     else:
         for ql_date in args.down_date_ql:
+            # if len(ql_date)
             ql_day = subphot_data().down_quicklook(ql_date)
 
 if len(args.down_date_re)>0:
@@ -291,7 +292,7 @@ if not os.path.exists(path+'config_files/prepsfex.sex')  or mk_new==True:
 if not os.path.exists(path+'config_files/psfex_conf.psfex')  or mk_new==True:
     psfexfile(args.termoutp)
 
-FILTERS = {'g':'SDSS-G','r':'SDSS-R','i':'SDSS-I','z':'SDSS-Z','u':'SDSS-U','B':'Bessel-B','V':'Bessel-V','R':'Bessel-R','I':'Bessel-I'}
+FILTERS = {'g':'SDSS-G','r':'SDSS-R','i':'SDSS-I','z':'SDSS-Z','u':'SDSS-U'}#,'B':'Bessel-B','V':'Bessel-V','R':'Bessel-R','I':'Bessel-I'}
 if args.bands==['All']:
     args.bands_to_process=['g','r','i','z','u']#,'B','V','R','I']
 else:

@@ -24,7 +24,7 @@ FILTER_NAME      /users/arikhind/subphot_pipe/config_files/sex.conv   # name of 
 
 PHOT_APERTURES   30             # <- put the referrence aperture diameter here
 SATUR_LEVEL      30000.0        # <- put the right saturation threshold here
-GAIN             1.62            # <- put the detector gain in e-/ADU here
+GAIN             1.77            # <- put the detector gain in e-/ADU here
 
 #------------------------- Star/Galaxy Separation ----------------------------
 #------------------------------ Background -----------------------------------
