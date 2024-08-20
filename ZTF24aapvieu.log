@@ -1,0 +1,2332 @@
+[38;5;127mapps[0m/[38;5;172mswarp[0m/[38;5;67m2.41.5[0m/[38;5;68mgcc-8.5.0[0m ... [0;33mSKIPPED[0m (already loaded)
+[38;5;127mapps[0m/[38;5;172mpsfex[0m/[38;5;67m3.24.1[0m/[38;5;68mgcc-8.5.0[0m ... [0;33mSKIPPED[0m (already loaded)
+[38;5;127mapps[0m/[38;5;172msextractor[0m/[38;5;67m2.28.0[0m/[38;5;68mgcc-8.5.0[0m ... [0;33mSKIPPED[0m (already loaded)
+[32m[INFO]    ::[0m Logging to /mnt/data1/users/arikhind/phot_data/ZTF24aapvieu_log_t/sedm_comps2_log.log
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For SDSS-G, there are 4 fits
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240606000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240606000002p
+[32m[INFO]    ::[0m Making folder to store entire light curve for ZTF24aapvieu
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mg[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.36 0.00[0m
+[32m[INFO]    ::[0m Creating photometry directory: /mnt/data1/users/arikhind/phot_data/sedm_comps2/cut_outs
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (121,354)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (909x899)[0m
+[32m[INFO]    ::[0m 6.108517708333334 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60467.219[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-06-06T05:15:11.257085[0m
+[32m[INFO]    ::[0m Exposure time: [1m234.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[32m[INFO]    ::[0m Downloading reference image from PS...
+  1 / 1 (100.0%) URLs downloaded
+[32m[INFO]    ::[0m Reference image downloaded 0
+[32m[INFO]    ::[0m Reference image name: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 5 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-06-06T05_18911bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 5 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-06-06T05_18911bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 5 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-06-06T05_18911bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (899, 909)
+[32m[INFO]    ::[0m Original reference size: (5864, 5864)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-06-06T05_18911bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_g2024-06-06T05_18911bkgsub.resamp.fits (905, 749)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (905, 749) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (905, 749)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 749x749 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_g2024-06-06T05_18911bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=73,333.191875arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.002082 0.0 3.360928
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 5
+[32m[INFO]    ::[0m Found 101 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 2, in a 600.0 arcsec search radius
+[32m[INFO]    ::[0m For star in scicence #0 at 645, 330:
+[32m[INFO]    ::[0m - Borders left & right: 602, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 43, 605
+[32m[INFO]    ::[0m - Distance up, down: 330, 920
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? False
+[32m[INFO]    ::[0m For star in reference at 668, 326:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 668, 582
+[32m[INFO]    ::[0m - Distance up, down: 326, 924
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[33m[WARNING] ::[0m Removing star sci: 645, 330, ref: 668, 326
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m For star in scicence #1 at 1036, 877:
+[32m[INFO]    ::[0m - Borders left & right: 602, 1250
+[32m[INFO]    ::[0m - Borders up & down: 84, 882 
+[32m[INFO]    ::[0m - Distance left & right: 434, 214
+[32m[INFO]    ::[0m - Distance up, down: 793, 5
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? False
+[32m[INFO]    ::[0m For star in reference at 1049, 861:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 1049, 201
+[32m[INFO]    ::[0m - Distance up, down: 861, 389
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[33m[WARNING] ::[0m Removing star sci: 1036, 877, ref: 1049, 861
+[32m[INFO]    ::[0m 
+too many indices for array: array is 1-dimensional, but 2 were indexed
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240711000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240711000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mg[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m3.82 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (210,145)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (909x899)[0m
+[32m[INFO]    ::[0m 6.108517708333334 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60502.237[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-11T05:40:52.323200[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 5 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-11T05_20452bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 5 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-11T05_20452bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 5 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-11T05_20452bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (899, 909)
+[32m[INFO]    ::[0m Original reference size: (5864, 5864)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-11T05_20452bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_g2024-07-11T05_20452bkgsub.resamp.fits (772, 843)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (772, 843) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (772, 843)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 772x772 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_g2024-07-11T05_20452bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=73,333.191875arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.082481 0.0 3.402206
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 5
+[32m[INFO]    ::[0m Found 81 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 0, in a 600.0 arcsec search radius
+'positions' must be a (x, y) pixel position or a list or array of (x, y) pixel positions, e.g., [(x1, y1), (x2, y2), (x3, y3)]
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240712010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240712010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mg[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.65 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (220,142)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (909x899)[0m
+[32m[INFO]    ::[0m 6.108517708333334 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60503.182[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-12T04:22:32.372625[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 6 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-12T04_15752bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 6 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-12T04_15752bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 6 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-12T04_15752bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (899, 909)
+[32m[INFO]    ::[0m Original reference size: (5864, 5864)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-12T04_15752bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_g2024-07-12T04_15752bkgsub.resamp.fits (770, 850)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (770, 850) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (770, 850)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 770x770 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_g2024-07-12T04_15752bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=73,333.191875arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.119609 0.0 3.819179
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 5
+[32m[INFO]    ::[0m Found 86 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 0, in a 600.0 arcsec search radius
+'positions' must be a (x, y) pixel position or a list or array of (x, y) pixel positions, e.g., [(x1, y1), (x2, y2), (x3, y3)]
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240714000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240714000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mg[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m3.06 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (211,154)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (909x899)[0m
+[32m[INFO]    ::[0m 6.108517708333334 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60505.21[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-14T05:02:34.044806[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 7 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-14T05_18154bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 7 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-14T05_18154bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 7 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-14T05_18154bkgsub.fits
+[32m[INFO]    ::[0m 733 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (899, 909)
+[32m[INFO]    ::[0m Original reference size: (5864, 5864)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_g2024-07-14T05_18154bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_g2024-07-14T05_18154bkgsub.resamp.fits (781, 843)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (781, 843) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (781, 843)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 781x781 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_g2024-07-14T05_18154bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_g_ra180.655270_dec35.393120_arcsec1466_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=73,333.191875arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.181836 0.0 4.130829
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 6
+[32m[INFO]    ::[0m Found 89 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 0, in a 600.0 arcsec search radius
+'positions' must be a (x, y) pixel position or a list or array of (x, y) pixel positions, e.g., [(x1, y1), (x2, y2), (x3, y3)]
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Finished subtracted photometry in SDSS-G, time taken 1.44 minutes
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For SDSS-R, there are 5 fits
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240606010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240606010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mr[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.06 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (291,527)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (1005x1030)[0m
+[32m[INFO]    ::[0m 6.9986354166666676 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60467.222[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-06-06T05:19:58.259454[0m
+[32m[INFO]    ::[0m Exposure time: [1m234.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[32m[INFO]    ::[0m Downloading reference image from PS...
+  1 / 1 (100.0%) URLs downloaded
+[32m[INFO]    ::[0m Reference image downloaded 0
+[32m[INFO]    ::[0m Reference image name: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 25 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-06-06T05_19198bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 25 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-06-06T05_19198bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 25 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-06-06T05_19198bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (1030, 1005)
+[32m[INFO]    ::[0m Original reference size: (6000, 6000)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-06-06T05_19198bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-06-06T05_19198bkgsub.resamp.fits (1035, 920)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (1035, 920) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (1035, 920)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 920x920 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-06-06T05_19198bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=106,381.74375arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.086203 0.0 9.138352
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 13
+[32m[INFO]    ::[0m Found 157 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 2(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 4(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 9, in a 600.0 arcsec search radius
+[32m[INFO]    ::[0m For star in scicence #0 at 673, 310:
+[32m[INFO]    ::[0m - Borders left & right: 431, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 242, 577
+[32m[INFO]    ::[0m - Distance up, down: 310, 940
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 668, 326:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 668, 582
+[32m[INFO]    ::[0m - Distance up, down: 326, 924
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 673, 310, ref: 668, 326
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m For star in scicence #1 at 465, 332:
+[32m[INFO]    ::[0m - Borders left & right: 430, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 35, 785
+[32m[INFO]    ::[0m - Distance up, down: 332, 918
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? False
+[32m[INFO]    ::[0m For star in reference at 463, 347:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 463, 787
+[32m[INFO]    ::[0m - Distance up, down: 347, 903
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[33m[WARNING] ::[0m Removing star sci: 465, 332, ref: 463, 347
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m For star in scicence #2 at 444, 343:
+[32m[INFO]    ::[0m - Borders left & right: 430, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 14, 806
+[32m[INFO]    ::[0m - Distance up, down: 343, 907
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? False
+[32m[INFO]    ::[0m For star in reference at 463, 347:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 463, 787
+[32m[INFO]    ::[0m - Distance up, down: 347, 903
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[33m[WARNING] ::[0m Removing star sci: 444, 343, ref: 463, 347
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m For star in scicence #3 at 550, 448:
+[32m[INFO]    ::[0m - Borders left & right: 430, 1250
+[32m[INFO]    ::[0m - Borders up & down: 124, 1055 
+[32m[INFO]    ::[0m - Distance left & right: 120, 700
+[32m[INFO]    ::[0m - Distance up, down: 324, 607
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 548, 457:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 548, 702
+[32m[INFO]    ::[0m - Distance up, down: 457, 793
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 550, 448, ref: 548, 457
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m For star in scicence #4 at 442, 462:
+[32m[INFO]    ::[0m - Borders left & right: 430, 1250
+[32m[INFO]    ::[0m - Borders up & down: 124, 1055 
+[32m[INFO]    ::[0m - Distance left & right: 12, 808
+[32m[INFO]    ::[0m - Distance up, down: 338, 593
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? False
+[32m[INFO]    ::[0m For star in reference at 442, 469:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 442, 808
+[32m[INFO]    ::[0m - Distance up, down: 469, 781
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[33m[WARNING] ::[0m Removing star sci: 442, 462, ref: 442, 469
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m For star in scicence #5 at 461, 624:
+[32m[INFO]    ::[0m - Borders left & right: 430, 1250
+[32m[INFO]    ::[0m - Borders up & down: 124, 1055 
+[32m[INFO]    ::[0m - Distance left & right: 31, 789
+[32m[INFO]    ::[0m - Distance up, down: 500, 431
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? False
+[32m[INFO]    ::[0m For star in reference at 475, 602:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 475, 775
+[32m[INFO]    ::[0m - Distance up, down: 602, 648
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[33m[WARNING] ::[0m Removing star sci: 461, 624, ref: 475, 602
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m For star in scicence #6 at 475, 711:
+[32m[INFO]    ::[0m - Borders left & right: 430, 1250
+[32m[INFO]    ::[0m - Borders up & down: 124, 1055 
+[32m[INFO]    ::[0m - Distance left & right: 45, 775
+[32m[INFO]    ::[0m - Distance up, down: 587, 344
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? False
+[32m[INFO]    ::[0m For star in reference at 475, 714:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 475, 775
+[32m[INFO]    ::[0m - Distance up, down: 714, 536
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[33m[WARNING] ::[0m Removing star sci: 475, 711, ref: 475, 714
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m For star in scicence #7 at 1062, 855:
+[32m[INFO]    ::[0m - Borders left & right: 430, 1250
+[32m[INFO]    ::[0m - Borders up & down: 124, 1056 
+[32m[INFO]    ::[0m - Distance left & right: 632, 188
+[32m[INFO]    ::[0m - Distance up, down: 731, 201
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 1049, 861:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 1049, 201
+[32m[INFO]    ::[0m - Distance up, down: 861, 389
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 1062, 855, ref: 1049, 861
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m For star in scicence #8 at 577, 976:
+[32m[INFO]    ::[0m - Borders left & right: 431, 1250
+[32m[INFO]    ::[0m - Borders up & down: 124, 1056 
+[32m[INFO]    ::[0m - Distance left & right: 146, 673
+[32m[INFO]    ::[0m - Distance up, down: 852, 80
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 576, 978:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 576, 674
+[32m[INFO]    ::[0m - Distance up, down: 978, 272
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 577, 976, ref: 576, 978
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m Beginning to convolve images with SeXtractor and PSFEx
+[32m[INFO]    ::[0m Convolving the reference with the PSF of the science image
+[32m[INFO]    ::[0m Creating PSFex catalog with SExtractor
+[32m[INFO]    ::[0m SExtractor status: 0
+[32m[INFO]    ::[0m Running PSFex with SExtractor catalog/mnt/data1/users/arikhind/phot_data/temp_config_files/sci_prepsfex_48564.cat
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+[32m[INFO]    ::[0m PSFex status: 0
+[32m[INFO]    ::[0m PSFEx science image created: /mnt/data1/users/arikhind/phot_data/out/proto_sci_prepsfex_48564.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of science image PSF fit: 1.0
+[32m[INFO]    ::[0m Convolving the science with the PSF of the reference image
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+[32m[INFO]    ::[0m PSFEx reference image created /mnt/data1/users/arikhind/phot_data/out/proto_ref_prepsfex_48564.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of reference image PSF fit: 1.05966145
+[32m[INFO]    ::[0m Reference convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Science convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Generating reference catalogs
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=106,381.74375arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_conv: -0.0429 -0.0 1.838087
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 2
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 8(<=7) stars found in reference catalog, increasing search radius: 1->2
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 18, in a 450.0arcsec search radius
+[32m[INFO]    ::[0m Stars detected in the image= 2550
+[32m[INFO]    ::[0m Length of matched catalog= 18
+[32m[INFO]    ::[0m Finished the star matching process
+[32m[INFO]    ::[0m Number of stars kept after magnitude cut: 18
+[32m[INFO]    ::[0m Combining PSFs
+[32m[INFO]    ::[0m Calculating zeropoints
+[32m[INFO]    ::[0m Number of stars after removing duplicates: 18
+[32m[INFO]    ::[0m Science Zeropoints from (18 stars)
+[32m[INFO]    ::[0m   - ZP Mean: 28.811
+[32m[INFO]    ::[0m   - ZP Std: 1.203
+[32m[INFO]    ::[0m   - ZP Range: [24.100,30.071]
+[32m[INFO]    ::[0m   - ZP Mode: 30.071
+[32m[INFO]    ::[0m   - ZP Median: 29.096
+[32m[INFO]    ::[0m   - ZP 16th & 84th percentiles: 28.892, 29.200
+[32m[INFO]    ::[0m   - # above threshold (0.7): 8
+[32m[INFO]    ::[0m Science RSQ
+[32m[INFO]    ::[0m   - RSQ Mean: 0.574
+[32m[INFO]    ::[0m   - RSQ Std: 0.345
+[32m[INFO]    ::[0m   - RSQ Range: [0.042,0.999]
+[32m[INFO]    ::[0m   - RSQ Mode: 0.411
+[32m[INFO]    ::[0m   - RSQ Median: 0.585
+[32m[INFO]    ::[0m   - RSQ 16th & 84th percentiles: 0.193, 0.972
+[32m[INFO]    ::[0m Reference Zeropoints from (18 stars)
+[32m[INFO]    ::[0m   - ZP Mean: 32.248
+[32m[INFO]    ::[0m   - ZP Std: 1.327
+[32m[INFO]    ::[0m   - ZP Range: [26.837,33.335]
+[32m[INFO]    ::[0m   - ZP Mode: 33.335
+[32m[INFO]    ::[0m   - ZP Median: 32.515
+[32m[INFO]    ::[0m   - ZP 16th & 84th percentiles: 32.453, 32.583
+[32m[INFO]    ::[0m   - # above threshold (0.7): 11
+[32m[INFO]    ::[0m Reference RSQ
+[32m[INFO]    ::[0m   - RSQ Mean: 0.730
+[32m[INFO]    ::[0m   - RSQ Std: 0.311
+[32m[INFO]    ::[0m   - RSQ Range: [0.081,0.999]
+[32m[INFO]    ::[0m   - RSQ Mode: 0.376
+[32m[INFO]    ::[0m   - RSQ Median: 0.884
+[32m[INFO]    ::[0m   - RSQ 16th & 84th percentiles: 0.339, 0.996
+[32m[INFO]    ::[0m Number of stars after rsq cut: 8
+[33m[WARNING] ::[0m No stars removed after sigma clipping
+[32m[INFO]    ::[0m Removing stars with zp values outside 5th and 95th percentiles
+[32m[INFO]    ::[0m Number of stars after sigma clipping: 6
+[32m[INFO]    ::[0m Number of stars used for zeropoint calculation: 6
+[32m[INFO]    ::[0m ZP Sci=29.090 std=0.010 No. stars=6
+[32m[INFO]    ::[0m ZP Ref=32.515 std=0.020 No. stars=6
+[32m[INFO]    ::[0m Subtracting scaled & convolved refrence image
+[32m[INFO]    ::[0m Scale factor: 0.043
+[32m[INFO]    ::[0m Extracting photometry
+[32m[INFO]    ::[0m Calculating magnitudes
+[36m[INFO]    ::[0m Offset of shifted PSF fit (xpos,ypos)=0.113 6.340
+[32m[INFO]    ::[0m xoff_arc=0.042 arcsec, yoff_arc=2.350 arcsec
+[32m[INFO]    ::[0m S/N (std background)= 41.742
+[32m[INFO]    ::[0m S/N (std artifical sn)= 40.768
+[32m[INFO]    ::[0m Mag=19.359+/-0.027 
+[32m[INFO]    ::[0m Flux corresponding to the (marginal) detection + 2*sigma 19.308115057674147
+[32m[INFO]    ::[0m 5-sig limit = 21.648747718531983
+[32m[INFO]    ::[0m 3-sig limit = 22.194009394223357
+[32m[INFO]    ::[0m Checking for nearby residuals
+[32m[INFO]    ::[0m Saving cutout panel to /mnt/data1/users/arikhind/phot_data/sedm_comps2/cut_outs/ZTF24aapvieu_r2024-06-06T05_19198_cutout_panel.png
+[32m[INFO]    ::[0m Systematic zeropoint error: 0.000
+[32m[INFO]    ::[0m Reference zeropoint std: 0.020
+[32m[INFO]    ::[0m Science zeropoint std: 0.010
+--------------------------------------------------------------------------------
+ Mag = 19.359+/-0.035 lim=22.623 MJD=60467.222
+--------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Photometry time: 12.0seconds
+[32m[INFO]    ::[0m Memory usage Mbyte:    0.6
+[32m[INFO]    ::[0m Photometry results written to /mnt/data1/users/arikhind/phot_data/sedm_comps2/ZTF24aapvieu_r2024-06-06T05_19198_photometry.txt
+[32m[INFO]    ::[0m Total time: 75.0 seconds
+[32m[INFO]    ::[0m Cleaning directories
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240711010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240711010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mr[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.37 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (229,310)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (1005x1030)[0m
+[32m[INFO]    ::[0m 6.9986354166666676 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60502.239[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-11T05:44:44.271125[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 1.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 9 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-11T05_20684bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 9 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-11T05_20684bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 9 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-11T05_20684bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 2 matches found between science image 1 and reference image 0
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (1030, 1005)
+[32m[INFO]    ::[0m Original reference size: (6000, 6000)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-11T05_20684bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-11T05_20684bkgsub.resamp.fits (936, 859)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (936, 859) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (936, 859)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 859x859 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-11T05_20684bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=106,381.74375arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.91343 0.0 9.528519
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 14
+[32m[INFO]    ::[0m Found 132 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 600.0 arcsec search radius
+[32m[INFO]    ::[0m For star in scicence #0 at 668, 320:
+[32m[INFO]    ::[0m - Borders left & right: 493, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 175, 582
+[32m[INFO]    ::[0m - Distance up, down: 320, 930
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 668, 326:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 668, 582
+[32m[INFO]    ::[0m - Distance up, down: 326, 924
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 668, 320, ref: 668, 326
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m Beginning to convolve images with SeXtractor and PSFEx
+[32m[INFO]    ::[0m Convolving the reference with the PSF of the science image
+[32m[INFO]    ::[0m Creating PSFex catalog with SExtractor
+[32m[INFO]    ::[0m SExtractor status: 0
+[32m[INFO]    ::[0m Running PSFex with SExtractor catalog/mnt/data1/users/arikhind/phot_data/temp_config_files/sci_prepsfex_91632.cat
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: Not a positive definite matrix in homogenization solver
+
+[32m[INFO]    ::[0m PSFex status: 0
+[32m[INFO]    ::[0m PSFEx science image created: /mnt/data1/users/arikhind/phot_data/out/proto_sci_prepsfex_91632.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of science image PSF fit: 0.0
+[32m[INFO]    ::[0m Convolving the science with the PSF of the reference image
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+[32m[INFO]    ::[0m PSFEx reference image created /mnt/data1/users/arikhind/phot_data/out/proto_ref_prepsfex_91632.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of reference image PSF fit: 1.06853744
+[32m[INFO]    ::[0m Reference convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Science convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Generating reference catalogs
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=106,381.74375arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_conv: -2.920882 -1e-06 9.409779
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 14
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 5->7
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 450.0arcsec search radius
+[32m[INFO]    ::[0m Stars detected in the image= 36
+[32m[INFO]    ::[0m Length of matched catalog= 1
+[33m[WARNING] ::[0m Few stars (1) matched!
+[31m[WARNING] ::[0m ZTF24aapvieu 60502.23940129997 r: Less than 2 matched calibration stars 
+[31m[WARNING] ::[0m Exiting: not enough stars to calibrate!
+[32m[INFO]    ::[0m Cleaning directories
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240712010005p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240712010005p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mr[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.17 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (236,306)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (1005x1030)[0m
+[32m[INFO]    ::[0m 6.9986354166666676 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60503.185[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-12T04:26:24.326508[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 1.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 9 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-12T04_15984bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 9 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-12T04_15984bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 9 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-12T04_15984bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 2 matches found between science image 1 and reference image 0
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (1030, 1005)
+[32m[INFO]    ::[0m Original reference size: (6000, 6000)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-12T04_15984bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-12T04_15984bkgsub.resamp.fits (933, 865)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (933, 865) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (933, 865)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 865x865 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-12T04_15984bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=106,381.74375arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.815168 0.0 9.335598
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 14
+[32m[INFO]    ::[0m Found 127 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 600.0 arcsec search radius
+[32m[INFO]    ::[0m For star in scicence #0 at 669, 320:
+[32m[INFO]    ::[0m - Borders left & right: 486, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 183, 581
+[32m[INFO]    ::[0m - Distance up, down: 320, 930
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 668, 326:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 668, 582
+[32m[INFO]    ::[0m - Distance up, down: 326, 924
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 669, 320, ref: 668, 326
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m Beginning to convolve images with SeXtractor and PSFEx
+[32m[INFO]    ::[0m Convolving the reference with the PSF of the science image
+[32m[INFO]    ::[0m Creating PSFex catalog with SExtractor
+[32m[INFO]    ::[0m SExtractor status: 0
+[32m[INFO]    ::[0m Running PSFex with SExtractor catalog/mnt/data1/users/arikhind/phot_data/temp_config_files/sci_prepsfex_73320.cat
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: Not a positive definite matrix in homogenization solver
+
+[32m[INFO]    ::[0m PSFex status: 0
+[32m[INFO]    ::[0m PSFEx science image created: /mnt/data1/users/arikhind/phot_data/out/proto_sci_prepsfex_73320.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of science image PSF fit: 0.0
+[32m[INFO]    ::[0m Convolving the science with the PSF of the reference image
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+[32m[INFO]    ::[0m PSFEx reference image created /mnt/data1/users/arikhind/phot_data/out/proto_ref_prepsfex_73320.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of reference image PSF fit: 1.07177898
+[32m[INFO]    ::[0m Reference convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Science convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Generating reference catalogs
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=106,381.74375arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_conv: -2.803232 -1e-06 8.88132
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 13
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius again: 5->7
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 450.0arcsec search radius
+[32m[INFO]    ::[0m Stars detected in the image= 36
+[32m[INFO]    ::[0m Length of matched catalog= 1
+[33m[WARNING] ::[0m Few stars (1) matched!
+[31m[WARNING] ::[0m ZTF24aapvieu 60503.18500389997 r: Less than 2 matched calibration stars 
+[31m[WARNING] ::[0m Exiting: not enough stars to calibrate!
+[32m[INFO]    ::[0m Cleaning directories
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240714010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240714010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mr[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.03 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (228,318)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (1005x1030)[0m
+[32m[INFO]    ::[0m 6.9986354166666676 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60505.213[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-14T05:06:26.584920[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 1.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 10 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-14T05_18386bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 10 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-14T05_18386bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 10 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-14T05_18386bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 2 matches found between science image 1 and reference image 0
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (1030, 1005)
+[32m[INFO]    ::[0m Original reference size: (6000, 6000)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-14T05_18386bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-14T05_18386bkgsub.resamp.fits (943, 858)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (943, 858) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (943, 858)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 858x858 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-14T05_18386bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=106,381.74375arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -1.048512 0.0 9.946963
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 14
+[32m[INFO]    ::[0m Found 129 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 600.0 arcsec search radius
+[32m[INFO]    ::[0m For star in scicence #0 at 669, 321:
+[32m[INFO]    ::[0m - Borders left & right: 493, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 176, 581
+[32m[INFO]    ::[0m - Distance up, down: 321, 929
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 668, 326:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 668, 582
+[32m[INFO]    ::[0m - Distance up, down: 326, 924
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 669, 321, ref: 668, 326
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m Beginning to convolve images with SeXtractor and PSFEx
+[32m[INFO]    ::[0m Convolving the reference with the PSF of the science image
+[32m[INFO]    ::[0m Creating PSFex catalog with SExtractor
+[32m[INFO]    ::[0m SExtractor status: 0
+[32m[INFO]    ::[0m Running PSFex with SExtractor catalog/mnt/data1/users/arikhind/phot_data/temp_config_files/sci_prepsfex_09321.cat
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: Not a positive definite matrix in homogenization solver
+
+[32m[INFO]    ::[0m PSFex status: 0
+[32m[INFO]    ::[0m PSFEx science image created: /mnt/data1/users/arikhind/phot_data/out/proto_sci_prepsfex_09321.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of science image PSF fit: 0.0
+[32m[INFO]    ::[0m Convolving the science with the PSF of the reference image
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+[32m[INFO]    ::[0m PSFEx reference image created /mnt/data1/users/arikhind/phot_data/out/proto_ref_prepsfex_09321.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of reference image PSF fit: 1.00375408
+[32m[INFO]    ::[0m Reference convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Science convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Generating reference catalogs
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=106,381.74375arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_conv: -3.704475 -0.005252 9.509301
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 14
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius again: 5->7
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 450.0arcsec search radius
+[32m[INFO]    ::[0m Stars detected in the image= 29
+[32m[INFO]    ::[0m Length of matched catalog= 1
+[33m[WARNING] ::[0m Few stars (1) matched!
+[31m[WARNING] ::[0m ZTF24aapvieu 60505.21280780016 r: Less than 2 matched calibration stars 
+[31m[WARNING] ::[0m Exiting: not enough stars to calibrate!
+[32m[INFO]    ::[0m Cleaning directories
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240730000003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240730000003p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mr[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.02 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (110,191)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (1005x1030)[0m
+[32m[INFO]    ::[0m 6.9986354166666676 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60521.176[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-30T04:13:39.270804[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 1.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 12 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-30T04_15219bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 12 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-30T04_15219bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 12 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-30T04_15219bkgsub.fits
+[32m[INFO]    ::[0m 1339 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 2 matches found between science image 1 and reference image 0
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (1030, 1005)
+[32m[INFO]    ::[0m Original reference size: (6000, 6000)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_r2024-07-30T04_15219bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-30T04_15219bkgsub.resamp.fits (818, 742)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (818, 742) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (818, 742)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 742x742 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-30T04_15219bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_r_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=106,381.74375arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.059332 0.0 2.703508
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 4
+[32m[INFO]    ::[0m Found 76 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 600.0 arcsec search radius
+[32m[INFO]    ::[0m For star in scicence #0 at 667, 324:
+[32m[INFO]    ::[0m - Borders left & right: 613, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 54, 583
+[32m[INFO]    ::[0m - Distance up, down: 324, 926
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? False
+[32m[INFO]    ::[0m For star in reference at 668, 326:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 668, 582
+[32m[INFO]    ::[0m - Distance up, down: 326, 924
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[33m[WARNING] ::[0m Removing star sci: 667, 324, ref: 668, 326
+[32m[INFO]    ::[0m 
+too many indices for array: array is 1-dimensional, but 2 were indexed
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Finished subtracted photometry in SDSS-R, time taken 2.29 minutes
+            obj   filt                mjd  ...     flux  flux_err  seeing
+0  ZTF24aapvieu  sdssr  60467.22220209986  ...  2.14911  0.052716   2.063
+
+[1 rows x 12 columns]
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For SDSS-I, there are 5 fits
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240606010005p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240606010005p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mi[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.19 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (121,433)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (909x985)[0m
+[32m[INFO]    ::[0m 6.692869791666666 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60467.226[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-06-06T05:24:46.761872[0m
+[32m[INFO]    ::[0m Exposure time: [1m234.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[32m[INFO]    ::[0m Downloading reference image from PS...
+  1 / 1 (100.0%) URLs downloaded
+[32m[INFO]    ::[0m Reference image downloaded 0
+[32m[INFO]    ::[0m Reference image name: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 13 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-06-06T05_19486bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 13 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-06-06T05_19486bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 13 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-06-06T05_19486bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (985, 909)
+[32m[INFO]    ::[0m Original reference size: (6000, 6000)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-06-06T05_19486bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-06-06T05_19486bkgsub.resamp.fits (997, 749)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (997, 749) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (997, 749)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 749x749 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-06-06T05_19486bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=113,365.065625arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: 0.032558 0.0 4.643815
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 6
+[32m[INFO]    ::[0m Found 84 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 1(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 600.0 arcsec search radius
+[32m[INFO]    ::[0m For star in scicence #0 at 1044, 858:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 73, 964 
+[32m[INFO]    ::[0m - Distance left & right: 1044, 206
+[32m[INFO]    ::[0m - Distance up, down: 785, 106
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 1049, 861:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 1049, 201
+[32m[INFO]    ::[0m - Distance up, down: 861, 389
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 1044, 858, ref: 1049, 861
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m Beginning to convolve images with SeXtractor and PSFEx
+[32m[INFO]    ::[0m Convolving the reference with the PSF of the science image
+[32m[INFO]    ::[0m Creating PSFex catalog with SExtractor
+[32m[INFO]    ::[0m SExtractor status: 0
+[32m[INFO]    ::[0m Running PSFex with SExtractor catalog/mnt/data1/users/arikhind/phot_data/temp_config_files/sci_prepsfex_09082.cat
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+[32m[INFO]    ::[0m PSFex status: 0
+[32m[INFO]    ::[0m PSFEx science image created: /mnt/data1/users/arikhind/phot_data/out/proto_sci_prepsfex_09082.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of science image PSF fit: 1.0
+[32m[INFO]    ::[0m Convolving the science with the PSF of the reference image
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+[32m[INFO]    ::[0m PSFEx reference image created /mnt/data1/users/arikhind/phot_data/out/proto_ref_prepsfex_09082.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of reference image PSF fit: 0.93089665
+[32m[INFO]    ::[0m Reference convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Science convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Generating reference catalogs
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=113,365.065625arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_conv: 0.32549 0.0 3.118647
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 4
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 3(<=7) stars found in reference catalog, increasing search radius: 1->2
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 9, in a 450.0arcsec search radius
+[32m[INFO]    ::[0m Stars detected in the image= 2209
+[32m[INFO]    ::[0m Length of matched catalog= 9
+[32m[INFO]    ::[0m Finished the star matching process
+[32m[INFO]    ::[0m Number of stars kept after magnitude cut: 9
+[32m[INFO]    ::[0m Combining PSFs
+[32m[INFO]    ::[0m Calculating zeropoints
+[32m[INFO]    ::[0m Number of stars after removing duplicates: 9
+[32m[INFO]    ::[0m Science Zeropoints from (9 stars)
+[32m[INFO]    ::[0m   - ZP Mean: 28.824
+[32m[INFO]    ::[0m   - ZP Std: 0.920
+[32m[INFO]    ::[0m   - ZP Range: [27.445,30.298]
+[32m[INFO]    ::[0m   - ZP Mode: 29.229
+[32m[INFO]    ::[0m   - ZP Median: 28.725
+[32m[INFO]    ::[0m   - ZP 16th & 84th percentiles: 27.854, 29.862
+[32m[INFO]    ::[0m   - # above threshold (0.7): 0
+[32m[INFO]    ::[0m Science RSQ
+[32m[INFO]    ::[0m   - RSQ Mean: 0.062
+[32m[INFO]    ::[0m   - RSQ Std: 0.039
+[32m[INFO]    ::[0m   - RSQ Range: [0.005,0.121]
+[32m[INFO]    ::[0m   - RSQ Mode: 0.075
+[32m[INFO]    ::[0m   - RSQ Median: 0.075
+[32m[INFO]    ::[0m   - RSQ 16th & 84th percentiles: 0.013, 0.097
+[32m[INFO]    ::[0m Reference Zeropoints from (9 stars)
+[32m[INFO]    ::[0m   - ZP Mean: 33.151
+[32m[INFO]    ::[0m   - ZP Std: 0.390
+[32m[INFO]    ::[0m   - ZP Range: [32.772,33.949]
+[32m[INFO]    ::[0m   - ZP Mode: 33.949
+[32m[INFO]    ::[0m   - ZP Median: 33.016
+[32m[INFO]    ::[0m   - ZP 16th & 84th percentiles: 32.863, 33.570
+[32m[INFO]    ::[0m   - # above threshold (0.7): 4
+[32m[INFO]    ::[0m Reference RSQ
+[32m[INFO]    ::[0m   - RSQ Mean: 0.578
+[32m[INFO]    ::[0m   - RSQ Std: 0.282
+[32m[INFO]    ::[0m   - RSQ Range: [0.140,0.986]
+[32m[INFO]    ::[0m   - RSQ Mode: 0.701
+[32m[INFO]    ::[0m   - RSQ Median: 0.603
+[32m[INFO]    ::[0m   - RSQ 16th & 84th percentiles: 0.267, 0.870
+[33m[WARNING] ::[0m Lowering threshold for rsq values to 0.65
+[33m[WARNING] ::[0m Lowering threshold for rsq values to 0.60
+[33m[WARNING] ::[0m Lowering threshold for rsq values to 0.55
+[33m[WARNING] ::[0m Lowering threshold for rsq values to 0.50
+[33m[WARNING] ::[0m Lowering threshold for rsq values to 0.45
+[33m[WARNING] ::[0m Lowering threshold for rsq values to 0.40
+[31m[WARNING] ::[0m No stars with rsq values above threshold
+[31m[WARNING] ::[0m Exiting..
+[31m[WARNING] ::[0m All stars in the science images fit poorly or returned anomalous zeropoint measurements!
+[31m[WARNING] ::[0m ZTF24aapvieu i 60467.22554120002 science images fit poorly or returned anomalous zeropoint measurements!
+[31m[WARNING] ::[0m Exiting...
+[32m[INFO]    ::[0m Cleaning directories
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240711010005p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240711010005p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mi[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.81 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (221,221)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (909x985)[0m
+[32m[INFO]    ::[0m 6.692869791666666 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60502.242[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-11T05:48:37.418664[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 10 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-11T05_20917bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 10 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-11T05_20917bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 10 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-11T05_20917bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (985, 909)
+[32m[INFO]    ::[0m Original reference size: (6000, 6000)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-11T05_20917bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-11T05_20917bkgsub.resamp.fits (846, 855)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (846, 855) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (846, 855)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 846x846 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-11T05_20917bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=113,365.065625arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.048054 0.0 5.62995
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 8
+[32m[INFO]    ::[0m Found 85 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 600.0 arcsec search radius
+[32m[INFO]    ::[0m For star in scicence #0 at 643, 318:
+[32m[INFO]    ::[0m - Borders left & right: 500, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 143, 607
+[32m[INFO]    ::[0m - Distance up, down: 318, 932
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 668, 326:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 668, 582
+[32m[INFO]    ::[0m - Distance up, down: 326, 924
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 643, 318, ref: 668, 326
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m Beginning to convolve images with SeXtractor and PSFEx
+[32m[INFO]    ::[0m Convolving the reference with the PSF of the science image
+[32m[INFO]    ::[0m Creating PSFex catalog with SExtractor
+[32m[INFO]    ::[0m SExtractor status: 0
+[32m[INFO]    ::[0m Running PSFex with SExtractor catalog/mnt/data1/users/arikhind/phot_data/temp_config_files/sci_prepsfex_98703.cat
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: Not a positive definite matrix in homogenization solver
+
+[32m[INFO]    ::[0m PSFex status: 0
+[32m[INFO]    ::[0m PSFEx science image created: /mnt/data1/users/arikhind/phot_data/out/proto_sci_prepsfex_98703.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of science image PSF fit: 0.0
+[32m[INFO]    ::[0m Convolving the science with the PSF of the reference image
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+[32m[INFO]    ::[0m PSFEx reference image created /mnt/data1/users/arikhind/phot_data/out/proto_ref_prepsfex_98703.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of reference image PSF fit: 0.93089665
+[32m[INFO]    ::[0m Reference convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Science convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Generating reference catalogs
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=113,365.065625arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_conv: -0.140851 -0.0 6.61545
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 9
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 2(<=7) stars found in reference catalog, increasing search radius again: 5->7
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 3, in a 450.0arcsec search radius
+[32m[INFO]    ::[0m Stars detected in the image= 40
+[32m[INFO]    ::[0m Length of matched catalog= 3
+[33m[WARNING] ::[0m Few stars (3) matched!
+[32m[INFO]    ::[0m Finished the star matching process
+[32m[INFO]    ::[0m Number of stars kept after magnitude cut: 3
+[32m[INFO]    ::[0m Combining PSFs
+[32m[INFO]    ::[0m Calculating zeropoints
+[32m[INFO]    ::[0m Number of stars after removing duplicates: 3
+[32m[INFO]    ::[0m Science Zeropoints from (3 stars)
+[32m[INFO]    ::[0m   - ZP Mean: nan
+[32m[INFO]    ::[0m   - ZP Std: nan
+[32m[INFO]    ::[0m   - ZP Range: [nan,nan]
+[32m[INFO]    ::[0m   - ZP Mode: nan
+[32m[INFO]    ::[0m   - ZP Median: nan
+[32m[INFO]    ::[0m   - ZP 16th & 84th percentiles: nan, nan
+[32m[INFO]    ::[0m   - # above threshold (0.7): 0
+[32m[INFO]    ::[0m Science RSQ
+[32m[INFO]    ::[0m   - RSQ Mean: nan
+[32m[INFO]    ::[0m   - RSQ Std: nan
+[32m[INFO]    ::[0m   - RSQ Range: [nan,nan]
+[32m[INFO]    ::[0m   - RSQ Mode: nan
+[32m[INFO]    ::[0m   - RSQ Median: nan
+[32m[INFO]    ::[0m   - RSQ 16th & 84th percentiles: nan, nan
+[32m[INFO]    ::[0m Reference Zeropoints from (3 stars)
+[32m[INFO]    ::[0m   - ZP Mean: nan
+[32m[INFO]    ::[0m   - ZP Std: nan
+[32m[INFO]    ::[0m   - ZP Range: [nan,nan]
+[32m[INFO]    ::[0m   - ZP Mode: nan
+[32m[INFO]    ::[0m   - ZP Median: nan
+[32m[INFO]    ::[0m   - ZP 16th & 84th percentiles: nan, nan
+[32m[INFO]    ::[0m   - # above threshold (0.7): 0
+[32m[INFO]    ::[0m Reference RSQ
+[32m[INFO]    ::[0m   - RSQ Mean: 0.000
+[32m[INFO]    ::[0m   - RSQ Std: 0.000
+[32m[INFO]    ::[0m   - RSQ Range: [0.000,0.000]
+[32m[INFO]    ::[0m   - RSQ Mode: 0.000
+[32m[INFO]    ::[0m   - RSQ Median: 0.000
+[32m[INFO]    ::[0m   - RSQ 16th & 84th percentiles: 0.000, 0.000
+[33m[WARNING] ::[0m Few stars in the field
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.70. Lowering threshold for rsq values to 0.65
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.65. Lowering threshold for rsq values to 0.60
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.60. Lowering threshold for rsq values to 0.55
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.55. Lowering threshold for rsq values to 0.50
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.50. Lowering threshold for rsq values to 0.45
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.45. Lowering threshold for rsq values to 0.40
+[31m[WARNING] ::[0m No stars with rsq values above threshold
+[31m[WARNING] ::[0m Exiting..
+[31m[WARNING] ::[0m All stars in the reference images fit poorly or returned anomalous zeropoint measurements!
+[31m[WARNING] ::[0m ZTF24aapvieu i 60502.2420998998 reference images fit poorly or returned anomalous zeropoint measurements!
+[31m[WARNING] ::[0m Exiting...
+[32m[INFO]    ::[0m Cleaning directories
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240712010006p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240712010006p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mi[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.44 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (224,217)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (909x985)[0m
+[32m[INFO]    ::[0m 6.692869791666666 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60503.188[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-12T04:30:17.403944[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 11 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-12T04_16217bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 11 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-12T04_16217bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 11 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-12T04_16217bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (985, 909)
+[32m[INFO]    ::[0m Original reference size: (6000, 6000)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-12T04_16217bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-12T04_16217bkgsub.resamp.fits (842, 853)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (842, 853) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (842, 853)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 842x842 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-12T04_16217bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=113,365.065625arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.067698 0.0 5.825437
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 8
+[32m[INFO]    ::[0m Found 112 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 600.0 arcsec search radius
+[32m[INFO]    ::[0m For star in scicence #0 at 647, 317:
+[32m[INFO]    ::[0m - Borders left & right: 498, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 149, 603
+[32m[INFO]    ::[0m - Distance up, down: 317, 933
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 668, 326:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 668, 582
+[32m[INFO]    ::[0m - Distance up, down: 326, 924
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 647, 317, ref: 668, 326
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m Beginning to convolve images with SeXtractor and PSFEx
+[32m[INFO]    ::[0m Convolving the reference with the PSF of the science image
+[32m[INFO]    ::[0m Creating PSFex catalog with SExtractor
+[32m[INFO]    ::[0m SExtractor status: 0
+[32m[INFO]    ::[0m Running PSFex with SExtractor catalog/mnt/data1/users/arikhind/phot_data/temp_config_files/sci_prepsfex_11619.cat
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: Not a positive definite matrix in homogenization solver
+
+[32m[INFO]    ::[0m PSFex status: 0
+[32m[INFO]    ::[0m PSFEx science image created: /mnt/data1/users/arikhind/phot_data/out/proto_sci_prepsfex_11619.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of science image PSF fit: 0.0
+[32m[INFO]    ::[0m Convolving the science with the PSF of the reference image
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+[32m[INFO]    ::[0m PSFEx reference image created /mnt/data1/users/arikhind/phot_data/out/proto_ref_prepsfex_11619.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of reference image PSF fit: 0.93089665
+[32m[INFO]    ::[0m Reference convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Science convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Generating reference catalogs
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=113,365.065625arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_conv: -0.246449 -0.0 6.864352
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 10
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 3(<=7) stars found in reference catalog, increasing search radius again: 5->7
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 4, in a 450.0arcsec search radius
+[32m[INFO]    ::[0m Stars detected in the image= 55
+[32m[INFO]    ::[0m Length of matched catalog= 4
+[33m[WARNING] ::[0m Few stars (4) matched!
+[32m[INFO]    ::[0m Finished the star matching process
+[32m[INFO]    ::[0m Number of stars kept after magnitude cut: 4
+[32m[INFO]    ::[0m Combining PSFs
+[32m[INFO]    ::[0m Calculating zeropoints
+[32m[INFO]    ::[0m Number of stars after removing duplicates: 4
+[32m[INFO]    ::[0m Science Zeropoints from (4 stars)
+[32m[INFO]    ::[0m   - ZP Mean: nan
+[32m[INFO]    ::[0m   - ZP Std: nan
+[32m[INFO]    ::[0m   - ZP Range: [nan,nan]
+[32m[INFO]    ::[0m   - ZP Mode: nan
+[32m[INFO]    ::[0m   - ZP Median: nan
+[32m[INFO]    ::[0m   - ZP 16th & 84th percentiles: nan, nan
+[32m[INFO]    ::[0m   - # above threshold (0.7): 0
+[32m[INFO]    ::[0m Science RSQ
+[32m[INFO]    ::[0m   - RSQ Mean: nan
+[32m[INFO]    ::[0m   - RSQ Std: nan
+[32m[INFO]    ::[0m   - RSQ Range: [nan,nan]
+[32m[INFO]    ::[0m   - RSQ Mode: nan
+[32m[INFO]    ::[0m   - RSQ Median: nan
+[32m[INFO]    ::[0m   - RSQ 16th & 84th percentiles: nan, nan
+[32m[INFO]    ::[0m Reference Zeropoints from (4 stars)
+[32m[INFO]    ::[0m   - ZP Mean: nan
+[32m[INFO]    ::[0m   - ZP Std: nan
+[32m[INFO]    ::[0m   - ZP Range: [nan,nan]
+[32m[INFO]    ::[0m   - ZP Mode: nan
+[32m[INFO]    ::[0m   - ZP Median: nan
+[32m[INFO]    ::[0m   - ZP 16th & 84th percentiles: nan, nan
+[32m[INFO]    ::[0m   - # above threshold (0.7): 0
+[32m[INFO]    ::[0m Reference RSQ
+[32m[INFO]    ::[0m   - RSQ Mean: 0.000
+[32m[INFO]    ::[0m   - RSQ Std: 0.000
+[32m[INFO]    ::[0m   - RSQ Range: [0.000,0.000]
+[32m[INFO]    ::[0m   - RSQ Mode: 0.000
+[32m[INFO]    ::[0m   - RSQ Median: 0.000
+[32m[INFO]    ::[0m   - RSQ 16th & 84th percentiles: 0.000, 0.000
+[33m[WARNING] ::[0m Few stars in the field
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.70. Lowering threshold for rsq values to 0.65
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.65. Lowering threshold for rsq values to 0.60
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.60. Lowering threshold for rsq values to 0.55
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.55. Lowering threshold for rsq values to 0.50
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.50. Lowering threshold for rsq values to 0.45
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.45. Lowering threshold for rsq values to 0.40
+[31m[WARNING] ::[0m No stars with rsq values above threshold
+[31m[WARNING] ::[0m Exiting..
+[31m[WARNING] ::[0m All stars in the reference images fit poorly or returned anomalous zeropoint measurements!
+[31m[WARNING] ::[0m ZTF24aapvieu i 60503.1877013999 reference images fit poorly or returned anomalous zeropoint measurements!
+[31m[WARNING] ::[0m Exiting...
+[32m[INFO]    ::[0m Cleaning directories
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240714010005p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240714010005p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mi[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.46 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (219,229)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (909x985)[0m
+[32m[INFO]    ::[0m 6.692869791666666 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60505.216[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-14T05:10:19.544063[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 11 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-14T05_18619bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 11 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-14T05_18619bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 11 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-14T05_18619bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (985, 909)
+[32m[INFO]    ::[0m Original reference size: (6000, 6000)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-14T05_18619bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-14T05_18619bkgsub.resamp.fits (854, 852)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (854, 852) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (854, 852)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 852x852 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-14T05_18619bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=113,365.065625arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.084178 0.0 6.341637
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 9
+[32m[INFO]    ::[0m Found 113 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 1, in a 600.0 arcsec search radius
+[32m[INFO]    ::[0m For star in scicence #0 at 644, 316:
+[32m[INFO]    ::[0m - Borders left & right: 503, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 141, 606
+[32m[INFO]    ::[0m - Distance up, down: 316, 934
+[32m[INFO]    ::[0m Star is sci 20 pix from all border? True
+[32m[INFO]    ::[0m For star in reference at 668, 326:
+[32m[INFO]    ::[0m - Borders left & right: 0, 1250
+[32m[INFO]    ::[0m - Borders up & down: 0, 1250 
+[32m[INFO]    ::[0m - Distance left & right: 668, 582
+[32m[INFO]    ::[0m - Distance up, down: 326, 924
+[32m[INFO]    ::[0m Star is ref 20 pix from all border? True
+[32m[INFO]    ::[0m Keeping star sci: 644, 316, ref: 668, 326
+[32m[INFO]    ::[0m 
+[32m[INFO]    ::[0m Beginning to convolve images with SeXtractor and PSFEx
+[32m[INFO]    ::[0m Convolving the reference with the PSF of the science image
+[32m[INFO]    ::[0m Creating PSFex catalog with SExtractor
+[32m[INFO]    ::[0m SExtractor status: 0
+[32m[INFO]    ::[0m Running PSFex with SExtractor catalog/mnt/data1/users/arikhind/phot_data/temp_config_files/sci_prepsfex_51494.cat
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: No source with appropriate FWHM found!!
+
+
+> WARNING: Not a positive definite matrix in homogenization solver
+
+[32m[INFO]    ::[0m PSFex status: 0
+[32m[INFO]    ::[0m PSFEx science image created: /mnt/data1/users/arikhind/phot_data/out/proto_sci_prepsfex_51494.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of science image PSF fit: 0.0
+[32m[INFO]    ::[0m Convolving the science with the PSF of the reference image
+
+> WARNING: This executable has been compiled using a version of the ATLAS library without support for multithreading. Performance will be degraded.
+
+[32m[INFO]    ::[0m PSFEx reference image created /mnt/data1/users/arikhind/phot_data/out/proto_ref_prepsfex_51494.fits
+[32m[INFO]    ::[0m Reduced Chi^2 of reference image PSF fit: 0.93089665
+[32m[INFO]    ::[0m Reference convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Science convolved image size: (1250, 1250)
+[32m[INFO]    ::[0m Generating reference catalogs
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=113,365.065625arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_conv: -0.730287 -0.0 7.213265
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 10
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 2(<=7) stars found in reference catalog, increasing search radius again: 5->7
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 4, in a 450.0arcsec search radius
+[32m[INFO]    ::[0m Stars detected in the image= 39
+[32m[INFO]    ::[0m Length of matched catalog= 4
+[33m[WARNING] ::[0m Few stars (4) matched!
+[32m[INFO]    ::[0m Finished the star matching process
+[32m[INFO]    ::[0m Number of stars kept after magnitude cut: 4
+[32m[INFO]    ::[0m Combining PSFs
+[32m[INFO]    ::[0m Calculating zeropoints
+[32m[INFO]    ::[0m Number of stars after removing duplicates: 4
+[32m[INFO]    ::[0m Science Zeropoints from (4 stars)
+[32m[INFO]    ::[0m   - ZP Mean: nan
+[32m[INFO]    ::[0m   - ZP Std: nan
+[32m[INFO]    ::[0m   - ZP Range: [nan,nan]
+[32m[INFO]    ::[0m   - ZP Mode: nan
+[32m[INFO]    ::[0m   - ZP Median: nan
+[32m[INFO]    ::[0m   - ZP 16th & 84th percentiles: nan, nan
+[32m[INFO]    ::[0m   - # above threshold (0.7): 0
+[32m[INFO]    ::[0m Science RSQ
+[32m[INFO]    ::[0m   - RSQ Mean: nan
+[32m[INFO]    ::[0m   - RSQ Std: nan
+[32m[INFO]    ::[0m   - RSQ Range: [nan,nan]
+[32m[INFO]    ::[0m   - RSQ Mode: nan
+[32m[INFO]    ::[0m   - RSQ Median: nan
+[32m[INFO]    ::[0m   - RSQ 16th & 84th percentiles: nan, nan
+[32m[INFO]    ::[0m Reference Zeropoints from (4 stars)
+[32m[INFO]    ::[0m   - ZP Mean: nan
+[32m[INFO]    ::[0m   - ZP Std: nan
+[32m[INFO]    ::[0m   - ZP Range: [nan,nan]
+[32m[INFO]    ::[0m   - ZP Mode: nan
+[32m[INFO]    ::[0m   - ZP Median: nan
+[32m[INFO]    ::[0m   - ZP 16th & 84th percentiles: nan, nan
+[32m[INFO]    ::[0m   - # above threshold (0.7): 0
+[32m[INFO]    ::[0m Reference RSQ
+[32m[INFO]    ::[0m   - RSQ Mean: 0.000
+[32m[INFO]    ::[0m   - RSQ Std: 0.000
+[32m[INFO]    ::[0m   - RSQ Range: [0.000,0.000]
+[32m[INFO]    ::[0m   - RSQ Mode: 0.000
+[32m[INFO]    ::[0m   - RSQ Median: 0.000
+[32m[INFO]    ::[0m   - RSQ 16th & 84th percentiles: 0.000, 0.000
+[33m[WARNING] ::[0m Few stars in the field
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.70. Lowering threshold for rsq values to 0.65
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.65. Lowering threshold for rsq values to 0.60
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.60. Lowering threshold for rsq values to 0.55
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.55. Lowering threshold for rsq values to 0.50
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.50. Lowering threshold for rsq values to 0.45
+[33m[WARNING] ::[0m No stars with rsq values above threshold of 0.45. Lowering threshold for rsq values to 0.40
+[31m[WARNING] ::[0m No stars with rsq values above threshold
+[31m[WARNING] ::[0m Exiting..
+[31m[WARNING] ::[0m All stars in the reference images fit poorly or returned anomalous zeropoint measurements!
+[31m[WARNING] ::[0m ZTF24aapvieu i 60505.21550410008 reference images fit poorly or returned anomalous zeropoint measurements!
+[31m[WARNING] ::[0m Exiting...
+[32m[INFO]    ::[0m Cleaning directories
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240730010005p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240730010005p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mi[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.27 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (104,98)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (909x985)[0m
+[32m[INFO]    ::[0m 6.692869791666666 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60521.179[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-30T04:17:32.332111[0m
+[32m[INFO]    ::[0m Exposure time: [1m180.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[36m[INFO]    ::[0m PS1 reference image already exists: /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[31m[WARNING] ::[0m No alignment center specified!
+[32m[INFO]    ::[0m Attempting to match science image to reference image 0
+[32m[INFO]    ::[0m Using search radius of 100.0 pixels
+[32m[INFO]    ::[0m 11 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-30T04_15452bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 1
+[32m[INFO]    ::[0m Expanding search radius to 130.0 pixels
+[32m[INFO]    ::[0m 11 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-30T04_15452bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[33m[WARNING] ::[0m No matches.
+[32m[INFO]    ::[0m 0 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (0found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 2
+[32m[INFO]    ::[0m Expanding search radius to 160.0 pixels
+[32m[INFO]    ::[0m 11 objects detected in science image /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-30T04_15452bkgsub.fits
+[32m[INFO]    ::[0m 1485 objects detected in reference image /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits
+[32m[INFO]    ::[0m 1 matches found between science image 1 and reference image 0
+[33m[WARNING] ::[0m Not enough matches to nudge (1found, 2required)
+[32m[INFO]    ::[0m Attempting to match science image to reference image 3
+[32m[INFO]    ::[0m Expanding search radius to 190.0 pixels
+[31m[WARNING] ::[0m Could not find enough matches to nudge
+[32m[INFO]    ::[0m Original science size: (985, 909)
+[32m[INFO]    ::[0m Original reference size: (6000, 6000)
+[32m[INFO]    ::[0m Aligning images with SWarp making a resampled image of size 1250x1250 pixels
+[32m[INFO]    ::[0m Aligning images to a centre of 180.655270,+35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp /mnt/data1/users/arikhind/phot_data/bkg_subtracted_science/ZTF24aapvieu_i2024-07-30T04_15452bkgsub.fits /mnt/data1/users/arikhind/phot_data/ref_imgs/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.fits -c /users/arikhind/subphot_pipe/config_files/config.swarp -CENTER '180.655270 +35.393120' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '/mnt/data1/users/arikhind/phot_data/aligned_images/' -COMBINE N -IMAGE_SIZE '1250,1250'
+[32m[INFO]    ::[0m SWarp status: 0
+[32m[INFO]    ::[0m Alignment attempt 1
+[32m[INFO]    ::[0m Aligned science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-30T04_15452bkgsub.resamp.fits (725, 734)
+[32m[INFO]    ::[0m Aligned reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits (1250, 1250)
+[32m[INFO]    ::[0m Science & Reference image sizes : (725, 734) (1250, 1250)
+[36m[INFO]    ::[0m Target size : 1250.0x1250.0
+[32m[INFO]    ::[0m Aligned Science image size : (725, 734)
+[32m[INFO]    ::[0m Aligned Reference image size : (1250, 1250)
+[33m[WARNING] ::[0m Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image
+[33m[WARNING] ::[0m Trying image size of 725x725 pixels
+[32m[INFO]    ::[0m Padding science image to match reference image size of 1250x1250 pixels
+[33m[WARNING] ::[0m Error padding science image, error encountered, changing cominy+=1 can only concatenate str (not "int") to str
+[32m[INFO]    ::[0m Successfully padded science image
+[32m[INFO]    ::[0m Alignment with padding successful
+[32m[INFO]    ::[0m Aligned Science image: /mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-30T04_15452bkgsub_padded.fits 1250x1250
+[32m[INFO]    ::[0m Aligned Reference image: /mnt/data1/users/arikhind/phot_data/aligned_images/stack_i_ra180.655270_dec35.393120_arcsec1500_skycell2047.083.resamp.fits 1250x1250
+[32m[INFO]    ::[0m Alignment successful
+[32m[INFO]    ::[0m Attempting to solve distortion in science image
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found=113,365.065625arcsec search radius
+[32m[INFO]    ::[0m Mean, Median, Std of sci_ali: -0.005141 0.0 1.716534
+[32m[INFO]    ::[0m Detecting stars with SExtractor
+[32m[INFO]    ::[0m Detecting stars with IRAFStarFinder
+[32m[INFO]    ::[0m Threshold for detecting stars: 2
+[32m[INFO]    ::[0m Found 68 stars in science image
+[32m[INFO]    ::[0m Searching for stars in reference catalog
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius: 1->2
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 2->5
+[33m[WARNING] ::[0m 0(<=7) stars found in reference catalog, increasing search radius again: 5->10
+[32m[INFO]    ::[0m Catalog stars in PS1/SDSS found = 0, in a 600.0 arcsec search radius
+'positions' must be a (x, y) pixel position or a list or array of (x, y) pixel positions, e.g., [(x1, y1), (x2, y2), (x3, y3)]
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Finished subtracted photometry in SDSS-I, time taken 2.02 minutes
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For SDSS-Z, there are 0 fits
+[33m[WARNING] ::[0m No fits files found in filter: SDSS-Z
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For SDSS-U, there are 1 fits
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240712000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF24aapvieu/20240712000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF24aapvieu in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF24aapvieu if it does not already exist
+[32m[INFO]    ::[0m Telescope: [1mSEDM-P60[0m
+[32m[INFO]    ::[0m This is an ACQ image, trimming the image to remove the edges
+[32m[INFO]    ::[0m Single filter: [1mu[0m
+[32m[INFO]    ::[0m Seeing (observed,estimated): [1m2.86 0.00[0m
+[32m[INFO]    ::[0m Object name: [1mZTF24aapvieu[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) J2000:[1m (12:02:37.2648,+35:23:35.232)[0m
+[32m[INFO]    ::[0m Object position (RA,Dec) deg:[1m (180.655270,35.393120)[0m
+[32m[INFO]    ::[0m Object position (x,y)[1m (245,143)[0m
+[32m[INFO]    ::[0m Image dimensions (x,y):[1m (1015x899)[0m
+[32m[INFO]    ::[0m 6.108517708333334 arcmin reference width
+[32m[INFO]    ::[0m Observation date: [1m60503.178[0m
+[32m[INFO]    ::[0m Observation time: [1m2024-07-12T04:16:40.039864[0m
+[32m[INFO]    ::[0m Exposure time: [1m300.0[0m
+[32m[INFO]    ::[0m Subtracting background
+[32m[INFO]    ::[0m Background subtraction time: 0.0 seconds
+[32m[INFO]    ::[0m Removing cosmic rays
+[32m[INFO]    ::[0m Cosmic Removal time: 0.0 seconds
+[32m[INFO]    ::[0m Aligning science with reference image
+[32m[INFO]    ::[0m Making SDSS reference image
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-5, -5))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-5, -4))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-5, -3))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-5, -2))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-5, -1))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-5, 0))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-5, 1))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-5, 2))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-5, 3))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-5, 4))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-4, -5))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-4, -4))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-4, -3))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-4, -2))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-4, -1))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-4, 0))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-4, 1))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-4, 2))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-4, 3))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-4, 4))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-3, -5))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-3, -4))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-3, -3))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-3, -2))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-3, -1))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-3, 0))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-3, 1))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-3, 2))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-3, 3))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-3, 4))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-2, -5))
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-2, -4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-2, -3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-2, -2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-2, -1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-2, 0))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-2, 1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-2, 2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-2, 3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-2, 4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-1, -5))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-1, -4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-1, -3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-1, -2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-1, -1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-1, 0))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-1, 1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-1, 2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-1, 3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (-1, 4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (0, -5))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (0, -4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (0, -3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (0, -2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (0, -1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (0, 0))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (0, 1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (0, 2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (0, 3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (0, 4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (1, -5))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (1, -4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (1, -3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (1, -2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (1, -1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (1, 0))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (1, 1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (1, 2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (1, 3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (1, 4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (2, -5))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (2, -4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (2, -3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (2, -2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (2, -1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (2, 0))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (2, 1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (2, 2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (2, 3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (2, 4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (3, -5))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (3, -4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (3, -3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (3, -2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (3, -1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (3, 0))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (3, 1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (3, 2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (3, 3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (3, 4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (4, -5))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (4, -4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (4, -3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (4, -2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (4, -1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (4, 0))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (4, 1))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (4, 2))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (4, 3))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+('\x1b[32m[INFO]    ::\x1b[0m Querrying SDSS for reference imaging in u-band', (4, 4))
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[31m[WARNING] ::[0m Exiting... Not in the SDSS footprint, no u-band!
+[32m[INFO]    ::[0m Combining SDSS images with swarp centering on the object at 180.655270 35.393120
+/opt/apps/alces/swarp/2.41.5/gcc-8.5.0/bin/swarp @/mnt/data1/users/arikhind/phot_data/ref_imgs/ZTF24aapvieu_sdss_list_u.txt -c /users/arikhind/subphot_pipe/config_files/swarp_sdss.conf -CENTER '180.655270 35.393120' -IMAGE_SIZE '4000,4000' -IMAGEOUT_NAME /mnt/data1/users/arikhind/phot_data/ref_imgs/ZTF24aapvieu_ref_u.fits -VERBOSE_TYPE QUIET
+
+> Could not allocate memory for multinbuf (nbuflinesmax*(size_t)outwidth elements=-250848 bytes) at line 533 in module coadd.c !
+
+[32m[INFO]    ::[0m Using SDSS reference image for alignment: /mnt/data1/users/arikhind/phot_data/ref_imgs/ZTF24aapvieu_ref_u.fits
+list index out of range
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Finished subtracted photometry in SDSS-U, time taken 5.89 minutes
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For Bessell-V, there are 0 fits
+[33m[WARNING] ::[0m No fits files found in filter: Bessell-V
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For Bessell-R, there are 0 fits
+[33m[WARNING] ::[0m No fits files found in filter: Bessell-R
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For Bessell-I, there are 0 fits
+[33m[WARNING] ::[0m No fits files found in filter: Bessell-I
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For Bessell-B, there are 0 fits
+[33m[WARNING] ::[0m No fits files found in filter: Bessell-B
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Completed photometry on ZTF24aapvieu in g,r,i,z,u in 699.0 seconds 
+---------------------------------------------------------------------------------------------
+            obj   filt                mjd  ...     flux  flux_err  seeing
+0  ZTF24aapvieu  sdssr  60467.22220209986  ...  2.14911  0.052716   2.063
+
+[1 rows x 12 columns]
+[32m[INFO]    ::[0m PS1 Catalog downloaded to: ps_catalogs/ps_180.65527_35.39312_0.092553.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.092553.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.092553.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.092553.xml
+[32m[INFO]    ::[0m PS1 Catalog downloaded to: ps_catalogs/ps_180.65527_35.39312_0.10604.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.10604.xml
+/mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-06-06T05_19198bkgsub_padded_ref_sci_warped_order1.fits
+[30.07106651 29.03435051 29.11144145 29.07598463 29.39495535 29.33897333
+ 29.10786521 29.08272922 29.09665754 24.09999148 29.09515047 29.08413106
+ 29.11886164 28.52587987 29.1462615  28.03262969 29.1039911  29.08476959]
+[0.41087556 0.94237353 0.99936701 0.77101697 0.3302294  0.19869621
+ 0.37037543 0.96199213 0.95735585 0.04166427 0.99767312 0.72094766
+ 0.22868311 0.05576803 0.52480121 0.17715055 0.99935625 0.64449951]
+[33.33536207 32.4869588  32.48854861 32.52372582 32.64139413 32.54268705
+ 32.46111978 32.49460338 32.55091448 26.83666238 32.51136499 32.56099196
+ 32.41837117 32.63889357 32.52408293 32.50575671 32.51795386 32.43238829]
+[0.37635542 0.99508046 0.99867148 0.82943122 0.17253786 0.24393905
+ 0.57393775 0.99542547 0.99351642 0.08075077 0.99814338 0.96013024
+ 0.68395467 0.53633489 0.9006126  0.94249309 0.9987723  0.86640894]
+[29.07598463 29.08272922 29.09665754 29.09515047 29.08413106 29.1039911 ]
+[0.94237353 0.99936701 0.77101697 0.96199213 0.95735585 0.99767312
+ 0.72094766 0.99935625]
+[32.48854861 32.52372582 32.49460338 32.55091448 32.51136499 32.51795386]
+[0.99508046 0.99867148 0.82943122 0.99542547 0.99351642 0.99814338
+ 0.96013024 0.9987723 ]
+29.089640764778913 0.00957456652319367 32.51465942388752 0.02042153765805584
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.10604.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.10604.xml
+/mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-11T05_20684bkgsub_padded_ref_sci_warped_order1.fits
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.10604.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.10604.xml
+/mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-12T04_15984bkgsub_padded_ref_sci_warped_order1.fits
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.10604.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.10604.xml
+/mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_r2024-07-14T05_18386bkgsub_padded_ref_sci_warped_order1.fits
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.10604.xml
+[32m[INFO]    ::[0m PS1 Catalog downloaded to: ps_catalogs/ps_180.65527_35.39312_0.101407.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.101407.xml
+/mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-06-06T05_19486bkgsub_padded_ref_sci_warped_order1.fits
+[29.22934952 29.94817532 28.65670312 27.77238333 28.45096051 27.44527017
+ 28.7929259  30.29789214         nan]
+[0.07469488 0.07514923 0.05670706 0.1006705  0.02694566 0.00697816
+ 0.08799591 0.1210664  0.00461012]
+[33.94928612 33.09176537 32.85995285 33.05154519 33.75587843 32.99305044
+ 33.01609232 32.77158619 32.8721715 ]
+[0.70133537 0.13957932 0.60285264 0.98559928 0.20680515 0.89037565
+ 0.81905317 0.42963125 0.42243261]
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.101407.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.101407.xml
+/mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-11T05_20917bkgsub_padded_ref_sci_warped_order1.fits
+[nan nan nan]
+[nan nan nan]
+[nan nan nan]
+[0. 0. 0.]
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.101407.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.101407.xml
+/mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-12T04_16217bkgsub_padded_ref_sci_warped_order1.fits
+[nan nan nan nan]
+[nan nan nan nan]
+[nan nan nan nan]
+[0. 0. 0. 0.]
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.101407.xml
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.101407.xml
+/mnt/data1/users/arikhind/phot_data/aligned_images/ZTF24aapvieu_i2024-07-14T05_18619bkgsub_padded_ref_sci_warped_order1.fits
+[nan nan nan nan]
+[nan nan nan nan]
+[nan nan nan nan]
+[0. 0. 0. 0.]
+[32m[INFO]    ::[0m PS1 Catalog already downloaded to: ps_catalogs/ps_180.65527_35.39312_0.101407.xml

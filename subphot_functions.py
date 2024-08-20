@@ -526,26 +526,26 @@ def panstarrs_query(ra_deg, dec_deg, rad_deg, mindet=1,
                 server: servername
     returns: astropy.table object
     """
-    if not os.path.exists('./ps_catalogs'):
-      os.makedirs('./ps_catalogs')
+    if not os.path.exists(data1_path+'ps_catalogs'):
+      os.makedirs(data1+path+'ps_catalogs')
     
 
-    if not os.path.exists(path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml'):  
+    if not os.path.exists(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml'):  
         r = requests.get(server, 
                 params= {'RA': ra_deg, 'DEC': dec_deg, 
                 'SR': rad_deg, 'max_records': maxsources, 
                 'outputformat': 'VOTable', 
                 'ndetections': ('>%d' % mindet)})
                 
-        outf = open(path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml', 'w') 
+        outf = open(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml', 'w') 
         outf.write(r.text) 
         outf.close() 
-        print(info_g+f" PS1 Catalog downloaded to:",'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+        print(info_g+f" PS1 Catalog downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
     else:
-        print(info_g+f" PS1 Catalog already downloaded to:",'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+        print(info_g+f" PS1 Catalog already downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
     # write query data into local file
     # parse local file into astropy.table object 
-    data = parse_single_table(path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+    data = parse_single_table(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
     return data.to_table(use_names_over_ids=True) 
 
 ##################################
@@ -625,13 +625,13 @@ def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None):
             print(info_b+' SDSS image already downloaded',image_name[:-4], (nx,ny))
         if not os.path.exists(image_name[:-4]):
             zname=image_name
-            zfile = open(path+'ref_imgs/'+image_name, 'wb')
+            zfile = open(data1_path+'ref_imgs/'+image_name, 'wb')
             zfile.write(r.content)
             zfile.close()
-            os.system('bzip2 -d '+path+'ref_imgs/'+image_name )
+            os.system('bzip2 -d '+data1_path+'ref_imgs/'+image_name )
             # if self.termoutp!='quiet':
             print(info_g+' Downloading new SDSS ',str(filt),'-band..',image_name[:-4], (nx,ny))
-            ref_path=path+'ref_imgs/'+image_name[:-4]
+            ref_path=data1_path+'ref_imgs/'+image_name[:-4]
             # os.system('rm '+path+'ref_imgs/'+image_name+'.bz2')
     except requests.exceptions.HTTPError as err:
         print(warn_r+' Not in SDSS footprint! Exiting..')

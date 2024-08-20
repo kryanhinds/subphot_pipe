@@ -1,0 +1,958 @@
+[38;5;127mapps[0m/[38;5;172mswarp[0m/[38;5;67m2.41.5[0m/[38;5;68mgcc-8.5.0[0m ... [0;33mSKIPPED[0m (already loaded)
+[38;5;127mapps[0m/[38;5;172mpsfex[0m/[38;5;67m3.24.1[0m/[38;5;68mgcc-8.5.0[0m ... [0;33mSKIPPED[0m (already loaded)
+[38;5;127mapps[0m/[38;5;172msextractor[0m/[38;5;67m2.28.0[0m/[38;5;68mgcc-8.5.0[0m ... [0;33mSKIPPED[0m (already loaded)
+[32m[INFO]    ::[0m Logging to /mnt/data1/users/arikhind/phot_data/ZTF22aapubuy_log_t/sedm_comps2_log.log
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For SDSS-G, there are 39 fits
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010029p
+[32m[INFO]    ::[0m Making folder to store entire light curve for ZTF22aapubuy
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220719010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220719010029p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220719010029p_anet
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220719010029p_anet
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726010029p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220804010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220804010029p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220811000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220811000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220816000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220816000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220818010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220818010029p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220828010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220828010029p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220831010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220831010029p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908010031p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908010031p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220916000032p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220916000032p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220921000033p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220921000033p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221001010003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221001010003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221002010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221002010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221005010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221005010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221011010003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221011010003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221014010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221014010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221021010010p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221021010010p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221022010012p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221022010012p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221030010013p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221030010013p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221115010003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221115010003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221127010003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221127010003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221207000135p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221207000135p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221211000088p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221211000088p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221220000199p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221220000199p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000472p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000472p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000477p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000477p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230128010003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230128010003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230129010003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230129010003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230203000003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230203000003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230204000025p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230204000025p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230206000079p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230206000079p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230207010003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230207010003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230208000032p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230208000032p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230210010003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230210010003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230705000023p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230705000023p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Finished subtracted photometry in SDSS-G, time taken 0.92 seconds
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For SDSS-R, there are 72 fits
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220629000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220629000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220629000027p_anet
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220629000027p_anet
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220629000027p_trimmed
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220629000027p_trimmed
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220629000027p_trimmed_anet
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220629000027p_trimmed_anet
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010030p_anet
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010030p_anet
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010030p_trimmed
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010030p_trimmed
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010030p_trimmed_anet
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010030p_trimmed_anet
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220719000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220719000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220719010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220719010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726000027p_trimmed
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726000027p_trimmed
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726000027p_trimmed_anet
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726000027p_trimmed_anet
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220804000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220804000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220804010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220804010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220811010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220811010029p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220816010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220816010029p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220818000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220818000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220818010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220818010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823000028p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823000028p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823000028p_trimmed
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823000028p_trimmed
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823000028p_trimmed_anet
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823000028p_trimmed_anet
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823010029p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220828000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220828000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220828010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220828010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220831010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220831010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908010029p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908010029p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908010032p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908010032p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220916000031p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220916000031p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220916000033p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220916000033p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220921000032p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220921000032p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221001000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221001000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221002000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221002000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221002010003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221002010003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221005000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221005000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221005010003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221005010003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221011000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221011000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221011010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221011010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221014000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221014000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221014010005p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221014010005p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221021000008p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221021000008p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221021010011p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221021010011p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221022000010p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221022000010p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221022010013p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221022010013p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221030000011p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221030000011p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221030010014p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221030010014p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221115000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221115000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221115010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221115010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221127000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221127000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221127010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221127010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221207000136p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221207000136p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221211000087p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221211000087p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221211000089p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221211000089p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221220000198p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221220000198p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221220000200p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221220000200p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000471p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000471p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000476p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000476p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000478p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000478p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230128000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230128000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230129000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230129000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230202000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230202000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230203000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230203000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230204000024p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230204000024p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230206000078p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230206000078p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230207000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230207000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230208000031p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230208000031p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230210000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230210000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230705010025p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230705010025p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230713000001p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230713000001p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Finished subtracted photometry in SDSS-R, time taken 1.92 seconds
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For SDSS-I, there are 38 fits
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010031p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220707010031p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220719010031p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220719010031p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726000028p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220726000028p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220804000028p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220804000028p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220811010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220811010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220816010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220816010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220818010031p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220818010031p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823010030p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220823010030p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220828000028p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220828000028p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220831010031p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220831010031p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908000028p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908000028p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908010033p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220908010033p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220916000034p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220916000034p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220921000034p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220921000034p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221001000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221001000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221002000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221002000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221005000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221005000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221011000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221011000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221014000003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221014000003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221021000009p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221021000009p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221022000011p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221022000011p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221030000012p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221030000012p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221115000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221115000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221127000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221127000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221207000137p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221207000137p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221211000090p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221211000090p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221220000201p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221220000201p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000473p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000473p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000479p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230113000479p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230128000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230128000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230129010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230129010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230203000004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230203000004p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230204000026p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230204000026p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230206000080p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230206000080p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230207010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230207010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230208000033p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230208000033p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230210000002p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230210000002p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230705000024p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20230705000024p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Finished subtracted photometry in SDSS-I, time taken 0.89 seconds
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For SDSS-Z, there are 0 fits
+[33m[WARNING] ::[0m No fits files found in filter: SDSS-Z
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For SDSS-U, there are 4 fits
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220831000027p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220831000027p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220921000035p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20220921000035p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221001010004p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221001010004p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Performing image subtraction on /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221005000003p
+[32m[INFO]    ::[0m Extracting header information from /mnt/data1/users/arikhind/phot_data//ZTF22aapubuy/20221005000003p
+[32m[INFO]    ::[0m Storing image/s for ZTF22aapubuy in /mnt/data1/users/arikhind/phot_data/entire_lc_imgs/ZTF22aapubuy if it does not already exist
+---------------------------------------------------------------------------------------------
+name 'sp' is not defined
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Finished subtracted photometry in SDSS-U, time taken 0.15 seconds
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For Bessell-V, there are 0 fits
+[33m[WARNING] ::[0m No fits files found in filter: Bessell-V
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For Bessell-R, there are 0 fits
+[33m[WARNING] ::[0m No fits files found in filter: Bessell-R
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For Bessell-I, there are 0 fits
+[33m[WARNING] ::[0m No fits files found in filter: Bessell-I
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m For Bessell-B, there are 0 fits
+[33m[WARNING] ::[0m No fits files found in filter: Bessell-B
+---------------------------------------------------------------------------------------------
+[32m[INFO]    ::[0m Completed photometry on ZTF22aapubuy in g,r,i,z,u in 4.37 seconds 
+---------------------------------------------------------------------------------------------
