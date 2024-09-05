@@ -1,7 +1,8 @@
 
 '''#!/home/arikhind/miniconda3/envs/ltsub/bin python3'''
 
-# Import the relevant packages
+from io import StringIO
+from tabulate import tabulate
 import logging
 import concurrent.futures
 import sys
@@ -203,18 +204,31 @@ if args.list_fits!=None:
         else:
             # print(info_g+' Listing fits files in '+args.list_fits)
             args.list_fits[0]+='/'
-        df = pd.DataFrame(columns=['IMG','OBJ','FILT','MJD','SEE','AIRM','EXPTIME','RA','DEC'])
-        print(info_g+' Listing fits files in '+data1_path+args.list_fits)
-        for file_ in os.listdir(data1_path+args.list_fits):
-            if file_.endswith('.fits'):
-                hdul = fits.open(data1_path+args.list_fits+file_)
-                hdr = hdul[0].header
-                try:
-                    df = df.append({'IMG':file_,'OBJ':hdr['OBJECT'],'FILT':hdr['FILTER'],'MJD':hdr['MJD-OBS'],'SEE':hdr['SEEING'],'AIRM':hdr['AIRMASS'],'EXPTIME':hdr['EXPTIME'],'RA':hdr['RA'],'DEC':hdr['DEC']},ignore_index=True)
-                except:
-                    df = df.append({'IMG':file_,'OBJ':hdr['OBJECT'],'FILT':hdr['FILTER1'],'MJD':hdr['MJD'],'SEE':hdr['L1SEESEC'],'AIRM':hdr['AIRMASS'],'EXPTIME':hdr['EXPTIME'],'RA':hdr['CAT-RA'],'DEC':hdr['CAT-DEC']},ignore_index=True)
-        print(df)
-    # sys.exit(1)
+        print(info_g+' Listing fits files in '+data1_path+' '.join(args.list_fits))
+        for fold_ in args.list_fits:
+            arr=[]
+            for file_ in os.listdir(data1_path+fold_):
+                print(file_)
+                if file_.endswith('.fits') and 'tpv' not in file_:
+                    hdul = fits.open(data1_path+fold_+file_)
+                    hdr = hdul[0].header
+                    try:
+                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD-OBS'],hdr['SEEING'],hdr['AIRMASS'],hdr['EXPTIME']])
+                        continue#,hdr['RA'],hdr['DEC']])
+                    except:pass
+                    try:
+                        arr.append([file_,hdr['OBJECT'],hdr['FILTER1'],hdr['MJD'],hdr['L1SEESEC'],hdr['AIRMASS'],hdr['EXPTIME'],])
+                        continue#hdr['CAT-RA'],hdr['CAT-DEC']])
+                    except:pass
+                    try:
+                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD_OBS'],hdr['FWHM'],hdr['AIRMASS'],hdr['EXPTIME']])
+                        continue#,hdr['OBJRA'],hdr['OBJDEC']])
+                    except:pass
+            df = pd.DataFrame(arr,columns=['IMG','OBJ','FILT','MJD','SEE','AIRM','EXPTIME'])#,'RA','DEC'])
+
+            print(tabulate(df.sort_values(by=['FILT','MJD']), headers='keys', tablefmt='psql'))
+
+    sys.exit(1)
 
 # print(args.use_psfex)
 # print(args.use_swarp)
@@ -357,8 +371,8 @@ class multi_subtract():
         self.data1_path=data1_path
         self.g_fits,self.r_fits,self.i_fits,self.z_fits,self.u_fits=[],[],[],[],[]
         self.bess_V_fits,self.bess_R_fits,self.bess_I_fits,self.bess_B_fits = [],[],[],[]
-        self.fits_dict = {'SDSS-G':self.g_fits,'SDSS-R':self.r_fits,'SDSS-I':self.i_fits,'SDSS-Z':self.z_fits,'SDSS-U':self.u_fits,
-                        'Bessell-V':self.bess_V_fits,'Bessell-R':self.bess_R_fits,'Bessell-I':self.bess_I_fits,'Bessell-B':self.bess_B_fits}
+        self.fits_dict = {'SDSS-G':self.g_fits,'SDSS-R':self.r_fits,'SDSS-I':self.i_fits,'SDSS-Z':self.z_fits,'SDSS-U':self.u_fits}
+                        # 'Bessell-V':self.bess_V_fits,'Bessell-R':self.bess_R_fits,'Bessell-I':self.bess_I_fits,'Bessell-B':self.bess_B_fits}
         self.filts = {'SDSS-U':'u','SDSS-G':'g','SDSS-R':'r','SDSS-I':'i','SDSS-Z':'z',
                     'Bessell-V':'V','Bessell-R':'R','Bessell-I':'I','Bessell-B':'B',
                     'up_Astrondon_2018':'u','gp_Astrondon_2018':'g','rp_Astrondon_2018':'r','ip_Astrondon_2018':'i','zp_Astrondon_2018':'z',}
@@ -537,7 +551,7 @@ def run_subtraction(data_dict):
                 fits_file = file_array[2]      
                 sub_file = file_array[0]
             
-            if fits_file.endswith('.fits'):# and fits_file.startswith('h_'):
+            if fits_file.endswith('.fits') and 'tpv' not in fits_file:# and fits_file.startswith('h_'):
                 fits_name = sub_file 
                 sub_file[0] = str(FOLDER)+"/"+sub_file[0]
                 if data1_path not in sub_file[0]:
@@ -823,7 +837,9 @@ def run_subtraction(data_dict):
         sp_logger.info(colored('---------------------------------------------------------------------------------------------','blue'))
         sp_logger.info(info_g+f" Finished subtracted photometry in {filter_}, time taken {np.round(f_time_total,2)} {time_unit}")
         #sp_logger.info a table of the photometry
-        if len(final_phot)>0: sp_logger.info(pd.DataFrame(final_phot,columns=final_phot[0].keys()).sort_values(by=['obj','mjd']))    
+        if len(final_phot)>0: 
+            # sp_logger.info(pd.DataFrame(final_phot,columns=final_phot[0].keys()).sort_values(by=['obj','mjd']))    
+            sp_logger.info(tabulate(pd.DataFrame(final_phot,columns=final_phot[0].keys()).sort_values(by=['obj','mjd']), headers='keys', tablefmt='psql'))
     return final_phot
             
 FILTS=[]
@@ -1161,7 +1177,9 @@ elif len(args.folder)>0 and args.plc[0]!=[None]:
         #combine all photometry into one list
         all_phot = [item for sublist in all_phot for item in sublist]
         #sp_logger.info a table of the photometry
-        if len(all_phot)>0: sp_logger.info(pd.DataFrame(all_phot,columns=all_phot[0].keys()).sort_values(by=['obj','mjd']))
+        if len(all_phot)>0: 
+            # sp_logger.info(pd.DataFrame(all_phot,columns=all_phot[0].keys()).sort_values(by=['obj','mjd']))
+            sp_logger.info(tabulate(pd.DataFrame(all_phot,columns=all_phot[0].keys()).sort_values(by=['obj','mjd']), headers='keys', tablefmt='psql'))
 
 
 

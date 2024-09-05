@@ -25,7 +25,7 @@ parser.add_argument('--mrup_log','-mlog',default=None,help="Log file for morning
 args = parser.parse_args()
 
 def query_recent_data(DATE,proposals=['all'],email_to=email_to):
-    DATE = '20240815'
+    # DATE = '20240815'
 
     today_phot_files = [f for f in os.listdir(data1_path+'photometry_date/'+DATE) if f!='cut_outs' and f!='morning_rup']
     if os.path.exists(data1_path+'photometry_date/'+DATE+'/morning_rup'):

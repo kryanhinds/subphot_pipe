@@ -38,7 +38,7 @@ if [ $(date +%H%M) -gt 2000 ] && [ $(date +%H%M) -lt 2359 ]; then
 fi
 
 #cehck if the time is after midnight buyt before 7.01am
-if [ $(date +%H%M) -gt 0000 ] && [ $(date +%H%M) -lt 0900 ]; then
+if [ $(date +%H%M) -gt 0000 ] && [ $(date +%H%M) -lt 0800 ]; then
     echo -e $INFO_G Logging to /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log #| tee /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
     echo -e $INFO_G "Time is after midnight"
     if [ ! -d /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d) ]; then
@@ -68,13 +68,13 @@ fi
 
 #see if the time is 8.01am
 #see if the time is 8.01am
-if [ $(date +%H%M) -eq 0801 ]; then
-    echo -e $INFO_G "Running morning_routine"
-    if [ ! -d /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d) ]; then
+if [ $(date +%H%M) -gt 0830 ] && [ ! -d /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d) ]; then
+
+    echo -e $INFO_G "Running morning routine"
     mkdir /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)
     mkdir /mnt/data1/users/arikhind/phot_data/photometry_date/$(date -d "yesterday" +%Y%m%d)
     echo -e $INFO_G Created directory /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d) | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
-    fi
+
     # echo Logging terminal output to /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
     echo
     #download data 
@@ -91,7 +91,7 @@ if [ $(date +%H%M) -eq 0801 ]; then
 
     #run email
     echo -e $INFO_G Sending email | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
-    python3 -u /users/arikhind/subphot_pipe/subphot_morning_email.py -p JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24A04 JL24A09 JL24B15 -e K.C.Hinds@2021.ljmu.ac.uk -mlog /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+    python3 -u /users/arikhind/subphot_pipe/subphot_morning_email.py -p JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24A04 JL24A09 JL24B15 -e K.C.Hinds@2021.ljmu.ac.uk d.a.perly@ljmu.ac.uk j.l.wise@2022.ljmu.ac.uk a.m.bochenek@2023.ljmu.ac.uk -mlog /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
 
 
     

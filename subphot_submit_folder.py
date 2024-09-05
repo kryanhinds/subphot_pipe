@@ -35,6 +35,7 @@ if args.sedm==True:sedm_tel='-tel sedm'
 else: sedm_tel=''
 
 if args.upload==True:upload = '-up'
+else: upload = ''
 for fold in args.folder:
     if '/' in fold:fold_log = fold.split('/')[-1]
     else: fold_log = fold
@@ -61,4 +62,13 @@ python3 ~/subphot_pipe/subphot_subtract.py -f {fold} -o {args.out_dir} -swarp -p
         f.write(fold_file_)
         f.close()
 
-print('Written ',path+f'subphot_shell_scripts/subphot_rf_{fold}.sh')
+    print('Written ',path+f'subphot_shell_scripts/subphot_rf_{fold}.sh')
+
+submit = input('Press Enter to submit jobs')
+if submit == '':
+    for fold in args.folder:
+        if '/' in fold:fold = fold.split('/')[-1]
+        os.system(f'sbatch {path}subphot_shell_scripts/subphot_rf_{fold}.sh')
+        print(f'Submitted {fold}')
+        
+

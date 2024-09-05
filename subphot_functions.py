@@ -560,85 +560,182 @@ def sdss_query(ra_deg, dec_deg, rad_deg):
     queryurl = 'http://skyserver.sdss.org/dr16/en/tools/search/x_results.aspx?searchtool=Radial&TaskName=Skyserver.Search.Radial&whichphotometry=optical&coordtype=equatorial&ra='+str(ra_deg)+'&dec='+str(dec_deg)+'&radius='+str(rad_deg)+'&min_u=0&max_u=30&min_g=0&max_g=30&min_r=0&max_r=30&min_i=0&max_i=30&min_z=0&max_z=30&min_j=0&max_j=30&min_h=0&max_h=30&min_k=0&max_k=30&format=csv&limit=5000'
     # print(queryurl)
     with requests.Session() as s:
-     download = s.get(queryurl)
-     decoded_content = download.content.decode('utf-8')
-     cr = csv.reader(decoded_content.splitlines(), delimiter=',')
-     next(cr)
-     fields2= next(cr)
-     #print(fields2)
-     #cr.readlines()
-    #  print(cr.readlines())
-     for row in cr:
-        #  print(row)
-         if row[6]=='6':# its a star
-          catra.append(float(row[7]))
-          catdec.append(float(row[8]))
-          catmag.append(float(row[9]))
-          data.append([float(row[7]),float(row[8]),float(row[9])])
-         
-          
+        download = s.get(queryurl)
+        #  print
+        decoded_content = download.content.decode('utf-8')
+        cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+        fields2= next(cr)
+        #print(fields2)
+        #cr.readlines()
+        #  print(cr.readlines())
+        print(cr)
+        for ind,row in enumerate(cr):
+            #  print(row)
+            #  print(ind)
+            if row[6]=='6':# its a star
+                catra.append(float(row[7]))
+                catdec.append(float(row[8]))
+                catmag.append(float(row[9]))
+                data.append([float(row[7]),float(row[8]),float(row[9])])
+
     print(info_g+" Catalog SDSS dr16; length:",len(catra))       
     cat_table = pd.DataFrame(data=data,columns=['ra','dec','mag'])
     # print(cat_table)
     #return catra,catdec,catmag
     return cat_table
 
-def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None):
+# def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None):
 
 
-    print(info_g+f" Querrying SDSS for reference imaging in {filt}-band",(nx,ny))
-    sdss_url='https://dr12.sdss.org'
-    url=sdss_url+'/fields/raDec?ra='+str(ra_string)+'&dec='+str(dec_string)
-    # print(url)
-    # sys.exit(1)
-    #html_page = urllib2.urlopen(url) python2.7 version
-    html_page = urllib.request.urlopen(url)
+#     print(info_g+f" Querrying SDSS for reference imaging in {filt}-band",(nx,ny))
+#     sdss_url='https://dr12.sdss.org'
+#     url=sdss_url+'/fields/raDec?ra='+str(ra_string)+'&dec='+str(dec_string)
+#     # print(url)
+#     # sys.exit(1)
+#     #html_page = urllib2.urlopen(url) python2.7 version
+#     html_page = urllib.request.urlopen(url)
 
-    image_link=[]
-    soup = BeautifulSoup(html_page)
-    for link in soup.findAll('a'):
-        if 'frame-'+str(filt) in link.get('href'):
-            image_link.append(sdss_url+link.get('href'))
+#     image_link=[]
+#     soup = BeautifulSoup(html_page)
+#     for link in soup.findAll('a'):
+#         if 'frame-'+str(filt) in link.get('href'):
+#             image_link.append(sdss_url+link.get('href'))
 
-    try:
-        image_link=image_link[0]
-        image_name=image_link.rsplit('/', 1)[-1]
-        # sys.exit(1)
-    except IndexError:
-        print(Exception(warn_r+f' Exiting... Not in the SDSS footprint, no {filt}-band!'))
-        return
+#     try:
+#         image_link=image_link[0]
+#         image_name=image_link.rsplit('/', 1)[-1]
+#         # sys.exit(1)
+#     except IndexError:
+#         print(warn_r+f' Exiting... Not in the SDSS footprint, no {filt}-band!')
+#         return
 
-    try:
-        if filt=='i': 
-            image_link = re.sub('irg','i',image_link)
-            image_link = re.sub('.jpg','.fits.bz2',image_link)
-            image_name = image_link.rsplit('/', 1)[-1]
-            # sys.exit(1)
+#     try:
+#         if filt=='i': 
+#             image_link = re.sub('irg','i',image_link)
+#             image_link = re.sub('.jpg','.fits.bz2',image_link)
+#             image_name = image_link.rsplit('/', 1)[-1]
+#             # sys.exit(1)
         
-        # print(image_link)
-        # sys.exit(1)
+#         # print(image_link)
+#         # sys.exit(1)
 
-        r=requests.get(image_link)
-        r.raise_for_status()
-        if os.path.exists(image_name[:-4]):
-            # if self.termoutp!='quiet':
-            print(info_b+' SDSS image already downloaded',image_name[:-4], (nx,ny))
-        if not os.path.exists(image_name[:-4]):
-            zname=image_name
-            zfile = open(data1_path+'ref_imgs/'+image_name, 'wb')
-            zfile.write(r.content)
-            zfile.close()
-            os.system('bzip2 -d '+data1_path+'ref_imgs/'+image_name )
-            # if self.termoutp!='quiet':
-            print(info_g+' Downloading new SDSS ',str(filt),'-band..',image_name[:-4], (nx,ny))
-            ref_path=data1_path+'ref_imgs/'+image_name[:-4]
-            # os.system('rm '+path+'ref_imgs/'+image_name+'.bz2')
+#         r=requests.get(image_link)
+#         r.raise_for_status()
+#         if os.path.exists(image_name[:-4]):
+#             # if self.termoutp!='quiet':
+#             print(info_b+' SDSS image already downloaded',image_name[:-4], (nx,ny))
+#         if not os.path.exists(image_name[:-4]):
+#             zname=image_name
+#             zfile = open(data1_path+'ref_imgs/'+image_name, 'wb')
+#             zfile.write(r.content)
+#             zfile.close()
+#             os.system('bzip2 -d '+data1_path+'ref_imgs/'+image_name )
+#             # if self.termoutp!='quiet':
+#             print(info_g+' Downloading new SDSS ',str(filt),'-band..',image_name[:-4], (nx,ny))
+#             ref_path=data1_path+'ref_imgs/'+image_name[:-4]
+#             # os.system('rm '+path+'ref_imgs/'+image_name+'.bz2')
+#     except requests.exceptions.HTTPError as err:
+#         print(warn_r+' Not in SDSS footprint! Exiting..')
+
+#         return
+#     # sys.exit(1)
+#     return(ref_path)
+
+def submit_sql_query(ra,dec):
+    url = 'https://skyserver.sdss.org/dr18/en/tools/search/x_results.aspx'
+    # Your SQL query
+    query = f'''SELECT TOP 50 
+p.run,p.rerun,p.camCol,p.field,p.obj 
+FROM ..PhotoObj AS p 
+JOIN dbo.fGetNearbyObjEq({str(ra)},{str(dec)},5) AS b ON  b.objID = P.objID 
+WHERE  ( p.type = 3 OR p.type = 6) '''
+    payload = {
+        'cmd': query,
+        'format': 'json',
+        'searchtool': 'SQL',
+        'taskname': 'Skyserver.Search.SQL',
+        'syntax': 'NoSyntax',
+        'returnquery': 'true'
+    }
+    
+    response = requests.post(url, data=payload)
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return f"Error: {response.status_code}, {response.text}"
+
+def response_to_dataframe(response,filt='u'):
+    if isinstance(response, list) and len(response) > 0:
+        first_item = response[0]
+        if isinstance(first_item, dict) and 'Rows' in first_item:
+            df = pd.DataFrame(first_item['Rows'])
+            df['frame_name'] = 'http://dr16.sdss.org/sas/dr16/eboss/photoObj/frames/'+df['rerun'].astype(str)+'/'+df['run'].astype(str)+'/'+df['camCol'].astype(str)+'/frame-'+filt+\
+                '-'+df['run'].astype(str).str.zfill(6)+'-'+df['camCol'].astype(str)+'-'+df['field'].astype(str).str.zfill(4)+'.fits.bz2'
+            # df = df.loc[requests.head(df['frame_name'].values).status_code==200]
+            drop_list = []
+            for i in range(len(df)):
+                # print(df['frame_name'].values[i],requests.head(df['frame_name'].values[i]).status_code)
+                if requests.head(df['frame_name'].values[i]).status_code not in [200,301]:
+                    # df.drop(i,inplace=True)
+                    drop_list.append(i)
+            df.drop(drop_list,inplace=True)
+            return df,df['frame_name'].unique()
+    
+    print(warn_y+" Error: Unable to convert response to DataFrame")
+    # print("Response structure:")
+    # print(json.dumps(response, indent=2))
+    return None
+
+def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None): 
+
+
+    log.info(info_g+f" Querrying SDSS for reference imaging in {filt}-band ("+str(nx)+str(',')+str(ny)+f') ({ra_string:.2f},{dec_string:.2f})')
+
+    image_links=[]
+
+    links_sql = submit_sql_query(ra_string,dec_string)
+    df,links = response_to_dataframe(links_sql,filt=filt)
+    print(links)
+    if len(links)==0:
+        log.warning(warn_r+f' Exiting... Not in the SDSS footprint, no {filt}-band!')
+        return
+    for link in links:
+        image_links.append(link)
+    try:
+        for image_link in image_links:
+            if filt=='i': 
+                image_link = re.sub('irg','i',image_link)
+                image_link = re.sub('.jpg','.fits.bz2',image_link)
+                image_name = image_link.rsplit('/', 1)[-1]
+                # sys.exit(1)
+            
+            print(image_link)
+            # sys.exit(1)
+            image_name=image_link.rsplit('/', 1)[-1]
+            r=requests.get(image_link)
+            r.raise_for_status()
+            if os.path.exists(data1_path+'ref_imgs/'+image_name[:-4]):
+                # if self.termoutp!='quiet':
+                log.info(info_b+f' SDSS image already downloaded'+image_name[:-4]+str((nx,ny)))
+            if not os.path.exists(image_name[:-4]):
+                zname=image_name
+                zfile = open(data1_path+'ref_imgs/'+image_name, 'wb')
+                zfile.write(r.content)
+                zfile.close()
+                os.system('bzip2 -d '+data1_path+'ref_imgs/'+image_name )
+                # if self.termoutp!='quiet':
+                log.info(info_g+' Downloading new SDSS '+str(filt)+'-band..'+image_name[:-4]+str((nx,ny)))
+                ref_path=data1_path+'ref_imgs/'+image_name[:-4]
+                # os.system('rm '+path+'ref_imgs/'+image_name+'.bz2')
     except requests.exceptions.HTTPError as err:
-        print(warn_r+' Not in SDSS footprint! Exiting..')
+        log.warning(warn_r+' Migth not be in SDSS footprint! Exiting..')
 
         return
     # sys.exit(1)
     return(ref_path)
+
+
 
 
 
