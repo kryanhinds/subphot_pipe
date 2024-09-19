@@ -25,7 +25,7 @@ if [ $(date +%H%M) -gt 2000 ] && [ $(date +%H%M) -lt 2359 ]; then
     echo
     #download data 
     echo -e $INFO_G Downloading data | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
-    python3 -u /users/arikhind/subphot_pipe/subphot_subtract.py -qdl $(date +%Y%m%d%H%M) 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log 
+    python3 -u /users/arikhind/subphot_pipe/subphot_subtract.py -qdl $(date +%Y%m%d) 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log 
     echo -e $INFO_G Running subtraction | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
     python3 -u /users/arikhind/subphot_pipe/subphot_subtract.py -f Quicklook/$(date +%Y%m%d) -swarp -psfex -o by_obs_date -new -cut -up -pid $(date +%Y%m%d%H%M) 2>&1 | tee /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
 
@@ -79,7 +79,7 @@ if [ $(date +%H%M) -gt 0830 ] && [ ! -d /mnt/data1/users/arikhind/phot_data/morn
     echo
     #download data 
     echo -e $INFO_G Downloading any missing data | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
-    python3 -u /users/arikhind/subphot_pipe/subphot_subtract.py -qdl $(date +%Y%m%d) 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+    python3 -u /users/arikhind/subphot_pipe/subphot_subtract.py -qdl $(date -d "yesterday" +%Y%m%d) 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
     echo -e $INFO_G Running subtraction | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
     python3 -u /users/arikhind/subphot_pipe/subphot_subtract.py -f Quicklook/$(date +%Y%m%d) -mrup -swarp -psfex -o by_obs_date -cut -upf -pid $(date +%Y%m%d%H%M) 2>&1 | tee /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
 
@@ -91,7 +91,8 @@ if [ $(date +%H%M) -gt 0830 ] && [ ! -d /mnt/data1/users/arikhind/phot_data/morn
 
     #run email
     echo -e $INFO_G Sending email | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
-    python3 -u /users/arikhind/subphot_pipe/subphot_morning_email.py -p JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24A04 JL24A09 JL24B15 -e K.C.Hinds@2021.ljmu.ac.uk d.a.perly@ljmu.ac.uk j.l.wise@2022.ljmu.ac.uk a.m.bochenek@2023.ljmu.ac.uk -mlog /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+    # python3 -u /users/arikhind/subphot_pipe/subphot_morning_email.py -p JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24A04 JL24A09 JL24B15 -e K.C.Hinds@2021.ljmu.ac.uk d.a.perly@ljmu.ac.uk j.l.wise@2022.ljmu.ac.uk a.m.bochenek@2023.ljmu.ac.uk -mlog /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+    python3 -u /users/arikhind/subphot_pipe/subphot_morning_email.py -p JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24A04 JL24A09 JL24B15 -e K.C.Hinds@2021.ljmu.ac.uk -mlog /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
 
 
     

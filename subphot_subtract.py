@@ -1158,10 +1158,12 @@ elif len(args.folder)>0 and args.plc[0]!=[None]:
         for d in range(len(data_folders)):
             t_start = time.time()
             sub_folder = re.sub(str(folder_path+'/'),'',data_folders[d])
+            # print(sub_folder)
             multi_sub_obj = multi_subtract(sub_folder,folder_path)
             folder=multi_sub_obj.folder
             FOLDER=multi_sub_obj.FOLDER
             data_dict = multi_sub_obj.analyse_folder()
+            # print(data_dict)
             # sp_logger.info(data_dict.keys())
             for filt in data_dict.keys():
                 filt_dict =  {'fits':data_dict[filt],'filter':filt,'FOLDER':FOLDER,'new_only':args.new_only}

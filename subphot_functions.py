@@ -527,7 +527,7 @@ def panstarrs_query(ra_deg, dec_deg, rad_deg, mindet=1,
     returns: astropy.table object
     """
     if not os.path.exists(data1_path+'ps_catalogs'):
-      os.makedirs(data1+path+'ps_catalogs')
+      os.makedirs(data1_path+'ps_catalogs')
     
 
     if not os.path.exists(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml'):  
