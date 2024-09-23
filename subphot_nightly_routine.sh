@@ -91,8 +91,8 @@ if [ $(date +%H%M) -gt 0830 ] && [ ! -d /mnt/data1/users/arikhind/phot_data/morn
 
     #run email
     echo -e $INFO_G Sending email | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
-    # python3 -u /users/arikhind/subphot_pipe/subphot_morning_email.py -p JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24A04 JL24A09 JL24B15 -e K.C.Hinds@2021.ljmu.ac.uk d.a.perly@ljmu.ac.uk j.l.wise@2022.ljmu.ac.uk a.m.bochenek@2023.ljmu.ac.uk -mlog /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
-    python3 -u /users/arikhind/subphot_pipe/subphot_morning_email.py -p JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24A04 JL24A09 JL24B15 -e K.C.Hinds@2021.ljmu.ac.uk -mlog /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+    python3 -u /users/arikhind/subphot_pipe/subphot_morning_email.py -p JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24B14 JL24A09 JL24B15 -e K.C.Hinds@2021.ljmu.ac.uk d.a.perly@ljmu.ac.uk j.l.wise@2022.ljmu.ac.uk a.m.bochenek@2023.ljmu.ac.uk -mlog /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+    # python3 -u /users/arikhind/subphot_pipe/subphot_morning_email.py -p JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24A04 JL24A09 JL24B15 -e K.C.Hinds@2021.ljmu.ac.uk -mlog /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
 
 
     

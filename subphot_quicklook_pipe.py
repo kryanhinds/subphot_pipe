@@ -3581,27 +3581,44 @@ class subtracted_phot(subphot_data):
             self.matched_star_coords_pix = self.matched_star_coords_pix[self.uniq_inds]
             self.matched_catalog_mag = self.matched_catalog_mag[self.uniq_inds]
             self.sp_logger.info(info_g+' Number of stars after removing duplicates: '+str(len(self.matched_star_coords_pix)))
-            for i in range(0,len(self.matched_star_coords_pix)):
 
-                if self.special_case!=None:
-                    if any(phrase in self.special_case for phrase in ['SN2023ixf','bright','brightstars.cat','sn2023ixf','2023ixf','brightstars']):
-                        if self.matched_catalog_mag[i]>self.bright_cat_mag_lim+0.35:continue
-                self.cutout_sci=self.cutout_psf(data=self.sci_conv,psf_array=self.comb_psf,xpos=[self.matched_star_coords_pix[i][0]],ypos=[self.matched_star_coords_pix[i][1]])[0]
-                if np.shape(self.cutout_sci)!=np.shape(self.comb_psf):
-                    self.cutout_sci = np.pad(self.cutout_sci,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_sci)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_sci)[1])),'constant',constant_values=0)
-                    # self.sp_logger.info(info_g+' New shape',np.shape(self.cutout_sci))
-                self.sci_psf_fit = self.psf_fit(data_cutout=[self.cutout_sci],psf_array=self.comb_psf)[0]
-                self.zp_sci.append(2.5*np.log10(self.sci_psf_fit[0])+self.matched_catalog_mag[i])
-                self.rsq_sci.append(self.sci_psf_fit[2])
+            self.zp_size_check=1
+            while self.zp_size_check!=0:
+                for i in range(0,len(self.matched_star_coords_pix)):
+
+                    if self.special_case!=None:
+                        if any(phrase in self.special_case for phrase in ['SN2023ixf','bright','brightstars.cat','sn2023ixf','2023ixf','brightstars']):
+                            if self.matched_catalog_mag[i]>self.bright_cat_mag_lim+0.35:continue
+                    
+                    self.cutout_sci=self.cutout_psf(data=self.sci_conv,psf_array=self.comb_psf,xpos=[self.matched_star_coords_pix[i][0]],ypos=[self.matched_star_coords_pix[i][1]])[0]
+                    self.cutout_ref=self.cutout_psf(data=self.ref_conv,psf_array=self.comb_psf,xpos=[self.matched_star_coords_pix[i][0]],ypos=[self.matched_star_coords_pix[i][1]])[0]
+                    if np.shape(self.cutout_sci)!=np.shape(self.comb_psf) or np.shape(self.cutout_ref)!=np.shape(self.comb_psf):
+                        self.sp_logger.info(info_r+f' Cutout shape mismatch for star {i}, skipping')
+                        if np.shape(self.cutout_sci)!=np.shape(self.comb_psf):
+                            self.sp_logger.info(info_r+f' Cutout shape mismatch for science image')
+                            if self.zp_size_check==2:
+                                self.cutout_sci = np.pad(self.cutout_sci,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_sci)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_sci)[1])),'constant',constant_values=0)
+                        else:
+                            self.sp_logger.info(info_r+f' Cutout shape mismatch for reference image')
+                            if self.zp_size_check==2:
+                                self.cutout_ref = np.pad(self.cutout_ref,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_ref)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_ref)[1])),'constant',constant_values=0)
+
+                    
+                    # self.cutout_ref = np.pad(self.cutout_ref,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_ref)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_ref)[1])),'constant',constant_values=0)
+                    self.sci_psf_fit = self.psf_fit(data_cutout=[self.cutout_sci],psf_array=self.comb_psf)[0]
+                    self.zp_sci.append(2.5*np.log10(self.sci_psf_fit[0])+self.matched_catalog_mag[i])
+                    self.rsq_sci.append(self.sci_psf_fit[2])
 
 
-                self.cutout_ref=self.cutout_psf(data=self.ref_conv,psf_array=self.comb_psf,xpos=[self.matched_star_coords_pix[i][0]],ypos=[self.matched_star_coords_pix[i][1]])[0]
-                if np.shape(self.cutout_ref)!=np.shape(self.comb_psf):
-                    self.cutout_ref = np.pad(self.cutout_ref,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_ref)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_ref)[1])),'constant',constant_values=0)
-                    # self.sp_logger.info(info_g+' New shape',np.shape(self.cutout_ref))
-                self.ref_psf_fit = self.psf_fit(data_cutout=[self.cutout_ref],psf_array=self.comb_psf)[0]
-                self.zp_ref.append(2.5*np.log10(self.ref_psf_fit[0])+self.matched_catalog_mag[i]) 
-                self.rsq_ref.append(self.ref_psf_fit[2])
+                    self.ref_psf_fit = self.psf_fit(data_cutout=[self.cutout_ref],psf_array=self.comb_psf)[0]
+                    self.zp_ref.append(2.5*np.log10(self.ref_psf_fit[0])+self.matched_catalog_mag[i]) 
+                    self.rsq_ref.append(self.ref_psf_fit[2])
+            
+                if len(self.zp_sci)!=0:
+                    self.zp_size_check=0
+                    break
+                else:self.zp_size_check=2
+                
 
 
         if self.sci_filt=='u':
@@ -3774,10 +3791,10 @@ class subtracted_phot(subphot_data):
 
 
         self.sp_logger.info(info_g+' Number of stars used for zeropoint calculation: '+str(len(self.zp_sci)))
-        print(self.zp_sci)
-        print(self.rsq_sci)
-        print(self.zp_ref)
-        print(self.rsq_ref)
+        # print(self.zp_sci)
+        # print(self.rsq_sci)
+        # print(self.zp_ref)
+        # print(self.rsq_ref)
         print(np.nanmedian(self.zp_sci),np.nanstd(self.zp_sci),np.nanmedian(self.zp_ref),np.nanstd(self.zp_ref))
         if len(self.zp_sci)==1:self.zp_sys_err = ((1-self.rsq_sci[0])**0.5+(1-self.rsq_ref[0])**0.5)**2
         else:self.zp_sys_err = 0
@@ -3891,6 +3908,7 @@ class subtracted_phot(subphot_data):
         if self.forced_phot==False: 
             # self.main_sn_psf_fit = self.psf_fit_bg(data,psf_array=psf,sn_x=sn_x,sn_y=sn_y)
             self.main_sn_psf_fit = self.psf_fit([self.sn_cutout],psf_array=psf)[0]
+
         else: 
             self.sp_logger.info(info_g+f" Performing forced photometry at {self.forced_phot[0]} {self.forced_phot[1]}")
             sn_x,sn_y = self.forced_phot[0],self.forced_phot[1]
@@ -4043,6 +4061,25 @@ class subtracted_phot(subphot_data):
 
         try:self.check_nearby_resid(data,psf,sn_x,sn_y,sn_mag)
         except:pass
+
+        def find_align_err(self):
+            self.sci_wcs_rms = [i for i in self.sci_img_hdu.header['COMMENT'] if 'code error' in i][0]
+            self.xshifts,self.yshifts = np.random.normal(0,self.sci_wcs_rms,(100,2))
+
+            self.shifted_ref = []
+            for k in range(len(self.xshifts)):
+                self.shifted_ref.apend(scipy.ndimage.shift(self.ref_conv, [self.xshifts[k], self.yshifts[k]], order=3, mode='reflect', cval=0.0, prefilter=True))
+            
+            self.shifted_sub=(self.sci_conv)-(self.scale_factor*np.array(self.shifted_ref))
+            self.shifted_cutouts = self.cutout_psf(data=self.shifted_sub,psf_array=self.comb_psf,xpos=[self.coords_sn[0][0]],ypos=[self.coords_sn[0][1]])
+
+            if self.forced_phot:self.shifted_sn_psf_fit = self.psf_fit_noshift(self.shifted_cutouts,psf_array=self.comb_psf)
+            else:self.shifted_sn_psf_fit = self.psf_fit(self.shifted_cutouts,psf_array=self.comb_psf)
+
+
+            self.shifted_sn_fluxs = np.array(self.shifted_sn_psf_fit)[:,0]
+
+
         return(mag,magstd,magerr,maglim,sn_flux/np.std(flux_bkg_list),sn_flux/np.std(flux_new_sn_list),-2.5*np.log10(np.median(flux_bkg_list)+(np.std(flux_bkg_list)*1))+np.nanmedian(zp_sci),
         -2.5*np.log10(np.median(flux_bkg_list)+(np.std(flux_bkg_list)*3))+np.nanmedian(zp_sci),-2.5*np.log10(np.median(flux_bkg_list)+(np.std(flux_bkg_list)*5))+np.nanmedian(zp_sci),
         minimal_mag,SNR,sn_flux,sn_flux_err)
