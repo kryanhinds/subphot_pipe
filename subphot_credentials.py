@@ -62,6 +62,7 @@ store_lc_ims = True
 
 # PI: Georgios Dimitriadis
 # Login ID:		PL23A11
+# seeing f this works
 # Password:       3411559
 
 proposals_arc={'JL23A05':['8797590'],
