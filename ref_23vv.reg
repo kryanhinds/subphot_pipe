@@ -1,9 +1,0 @@
-global color=yellow dashlist=8 3 width=1 font="helvetica 5 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
-fk5
-circle(258.696504167,81.0527555556,3") # text={[413, 425]}
-circle(258.387491667,81.0608,3") # text={[717, 484]}
-circle(258.612420833,81.0628388889,3") # text={[877, 515]}
-circle(258.358608333,81.0750305556,3") # text={[756, 636]}
-circle(258.44865,81.0759472222,3") # text={[910, 634]}
-circle(258.346458333,81.0756694444,3") # text={[911, 647]}
-circle(258.6407875,81.0981888889,3") # text={[607, 868]}
