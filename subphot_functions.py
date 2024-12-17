@@ -514,7 +514,8 @@ NTHREADS        0               # Number of simultaneous threads for
 ##################################
 # PS1 QUERYY
 
-def panstarrs_query(ra_deg, dec_deg, rad_deg, mindet=1, 
+def panstarrs_query(ra_deg, dec_deg, rad_deg, logger=None,
+                    mindet=1, 
                     maxsources=10000,
                     server=('https://archive.stsci.edu/panstarrs/search.php')): 
     """
@@ -540,9 +541,11 @@ def panstarrs_query(ra_deg, dec_deg, rad_deg, mindet=1,
         outf = open(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml', 'w') 
         outf.write(r.text) 
         outf.close() 
-        print(info_g+f" PS1 Catalog downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+        if logger!=None:logger.info(info_g+f" PS1 Catalog downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+        else:print(info_g+f" PS1 Catalog downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
     else:
-        print(info_g+f" PS1 Catalog already downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+        if logger!=None:logger.info(info_g+f" PS1 Catalog already downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+        else:print(info_g+f" PS1 Catalog already downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
     # write query data into local file
     # parse local file into astropy.table object 
     data = parse_single_table(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
@@ -1369,7 +1372,7 @@ class subphot_data():
         response = api("get", f"api/sources/{name}/photometry")
         data = response.json().get("data", None)
         if len(data) ==0:
-            df = pd.DataFrame()
+            df = pd.DataFrame(columns=['id','mjd','mag','magerr','limitting_mag','filter','instrument_name','origin','altdata','ra','dec','UTC','instrument_id'])
         else:
             df = pd.DataFrame(data).sort_values(by=['mjd'], ascending=True)
 

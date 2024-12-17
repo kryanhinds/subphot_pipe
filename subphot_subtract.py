@@ -205,28 +205,32 @@ if args.list_fits!=None:
             # print(info_g+' Listing fits files in '+args.list_fits)
             args.list_fits[0]+='/'
         print(info_g+' Listing fits files in '+data1_path+' '.join(args.list_fits))
+        # print(args.list_fits[1].split('/'))
         for fold_ in args.list_fits:
             arr=[]
             for file_ in os.listdir(data1_path+fold_):
-                print(file_)
+                # print(file_)
                 if file_.endswith('.fits') and 'tpv' not in file_:
                     hdul = fits.open(data1_path+fold_+file_)
                     hdr = hdul[0].header
                     try:
-                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD-OBS'],hdr['SEEING'],hdr['AIRMASS'],hdr['EXPTIME']])
+                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD-OBS'],hdr['SEEING'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['DATE-OBS']])
                         continue#,hdr['RA'],hdr['DEC']])
                     except:pass
                     try:
-                        arr.append([file_,hdr['OBJECT'],hdr['FILTER1'],hdr['MJD'],hdr['L1SEESEC'],hdr['AIRMASS'],hdr['EXPTIME'],])
+                        arr.append([file_,hdr['OBJECT'],hdr['FILTER1'],hdr['MJD'],hdr['L1SEESEC'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['DATE-OBS']])
                         continue#hdr['CAT-RA'],hdr['CAT-DEC']])
                     except:pass
                     try:
-                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD_OBS'],hdr['FWHM'],hdr['AIRMASS'],hdr['EXPTIME']])
+                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD_OBS'],hdr['FWHM'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['DATE-OBS']])
                         continue#,hdr['OBJRA'],hdr['OBJDEC']])
                     except:pass
-            df = pd.DataFrame(arr,columns=['IMG','OBJ','FILT','MJD','SEE','AIRM','EXPTIME'])#,'RA','DEC'])
+            df = pd.DataFrame(arr,columns=['IMG','OBJ','FILT','MJD','SEE','AIRM','EXPTIME','DATE-OBS'])
 
             print(tabulate(df.sort_values(by=['FILT','MJD']), headers='keys', tablefmt='psql'))
+            df = df.sort_values(by=['FILT','MJD'])
+            df.to_csv(path+args.list_fits[0].split('/')[1]+'_fits_list.csv',index=False)
+            print(info_g+' Saved to '+path+args.list_fits[0].split('/')[1]+'_fits_list.csv')
 
     sys.exit(1)
 
@@ -306,7 +310,7 @@ if not os.path.exists(path+'config_files/prepsfex.sex')  or mk_new==True:
 if not os.path.exists(path+'config_files/psfex_conf.psfex')  or mk_new==True:
     psfexfile(args.termoutp)
 
-FILTERS = {'g':'SDSS-G','r':'SDSS-R','i':'SDSS-I','z':'SDSS-Z','u':'SDSS-U'}#,'B':'Bessel-B','V':'Bessel-V','R':'Bessel-R','I':'Bessel-I'}
+FILTERS = {'g':'SDSS-G','r':'SDSS-R','i':'SDSS-I','z':'SDSS-Z','u':'SDSS-U','B':'Bessell-B','V':'Bessell-V','R':'Bessell-R','I':'Bessell-I'}
 if args.bands==['All']:
     args.bands_to_process=['g','r','i','z','u']#,'B','V','R','I']
 else:
@@ -371,11 +375,11 @@ class multi_subtract():
         self.data1_path=data1_path
         self.g_fits,self.r_fits,self.i_fits,self.z_fits,self.u_fits=[],[],[],[],[]
         self.bess_V_fits,self.bess_R_fits,self.bess_I_fits,self.bess_B_fits = [],[],[],[]
-        self.fits_dict = {'SDSS-G':self.g_fits,'SDSS-R':self.r_fits,'SDSS-I':self.i_fits,'SDSS-Z':self.z_fits,'SDSS-U':self.u_fits}
-                        # 'Bessell-V':self.bess_V_fits,'Bessell-R':self.bess_R_fits,'Bessell-I':self.bess_I_fits,'Bessell-B':self.bess_B_fits}
+        self.fits_dict = {'SDSS-G':self.g_fits,'SDSS-R':self.r_fits,'SDSS-I':self.i_fits,'SDSS-Z':self.z_fits,'SDSS-U':self.u_fits,
+                        'Bessell-V':self.bess_V_fits,'Bessell-R':self.bess_R_fits,'Bessell-I':self.bess_I_fits,'Bessell-B':self.bess_B_fits}
         self.filts = {'SDSS-U':'u','SDSS-G':'g','SDSS-R':'r','SDSS-I':'i','SDSS-Z':'z',
-                    'Bessell-V':'V','Bessell-R':'R','Bessell-I':'I','Bessell-B':'B',
-                    'up_Astrondon_2018':'u','gp_Astrondon_2018':'g','rp_Astrondon_2018':'r','ip_Astrondon_2018':'i','zp_Astrondon_2018':'z',}
+                    'Bessell-V':'V','Bessell-R':'R','Bessell-I':'I','Bessell-B':'B',}
+                    # 'up_Astrondon_2018':'u','gp_Astrondon_2018':'g','rp_Astrondon_2018':'r','ip_Astrondon_2018':'i','zp_Astrondon_2018':'z',}
 
 
         self.folder = folder #specific folder
@@ -409,7 +413,7 @@ class multi_subtract():
             and not f.startswith('.')]
         elif args.telescope_facility=='SEDM' or args.telescope_facility=='sedm':
             [self.all_fits.append(self.trunc(f,instrument='SEDM')) for f in os.listdir(f"{self.data1_path}{self.FOLDER}") if (f.endswith('.fits') and self.trunc(f,instrument='SEDM') not in self.all_fits)
-            and not f.startswith('.')]
+            and not f.startswith('.') and 'tpv' not in f]
         elif args.telescope_facility=='SLT' or args.telescope_facility=='slt':
             [self.all_fits.append(self.trunc(f,instrument='SLT')) for f in os.listdir(f"{self.data1_path}{self.FOLDER}") if (f.endswith('.fits') and self.trunc(f,instrument='SLT') not in self.all_fits)
             and not f.startswith('.')]
@@ -483,7 +487,10 @@ class multi_subtract():
                 self.fits_obj = self.fits_obj.split(' ')
                 self.fits_obj,self._f  = self.fits_obj[0],self.fits_obj[-1]
 
-                self.fits_filt = {'r':'SDSS-R','g':'SDSS-G','i':'SDSS-I','u':'SDSS-U'}[self.fits_filt]
+                self.fits_filt = {'r':'SDSS-R','g':'SDSS-G','i':'SDSS-I','u':'SDSS-U',
+                                'B':'Bessell-B','V':'Bessell-V','R':'Bessell-R','I':'Bessell-I'}[self.fits_filt]
+
+                                #   }[self.fits_filt]
                 # print(self.fits_obj,self.fits_filt)
 
             if args.bands==['All'] and args.sci_names == ['All']:
@@ -529,8 +536,8 @@ date_obs_kws = ['DATE-OBS','DATE','UTC']
 def run_subtraction(data_dict):
     final_phot=[]
     '''Function takes a dictonary input of fits files and performs photometry automatically stacking based on the structure of the fits_files array e.g. length 1==single length >1 == stack'''
-    filts = {'SDSS-U':'u','SDSS-G':'g','SDSS-R':'r','SDSS-I':'i','SDSS-Z':'z',
-            'Bessel-V':'V','Bessel-R':'R','Bessel-I':'I','Bessel-B':'B'}
+    filts = {'SDSS-U':'u','SDSS-G':'g','SDSS-R':'r','SDSS-I':'i','SDSS-Z':'z',}
+            # 'Bessel-V':'V','Bessel-R':'R','Bessel-I':'I','Bessel-B':'B'}
     f_time_start = time.time()
     fits_files,filter_,FOLDER,new_only = data_dict['fits'],data_dict['filter'],data_dict['FOLDER'],data_dict['new_only']
 
@@ -630,7 +637,7 @@ def run_subtraction(data_dict):
                             if len(sub_file)>1:
                                 # sp_logger.info(sub_file)
                                 sp_logger.info(info_g+f' Checking seeing of all images is below {seeing_limit}')
-                                sub_file = check_seeing(sub_file)
+                                sub_file = check_seeing(sub_file,sp_logger=sp_logger)
                                 # sp_logger.info(sub_file)
                                 # sys.exit(1)
                                 if len(sub_file)==0: sp_logger.warning(warn_r+' No images with seeing < 5, passing on image'); continue
@@ -735,7 +742,7 @@ def run_subtraction(data_dict):
                             # sys.exit()
                             try:
                                 if len(sub_file)>1:
-                                    sub_file = check_seeing(sub_file)
+                                    sub_file = check_seeing(sub_file,sp_logger=sp_logger)
                                     if len(sub_file)==0: sp_logger.info(warn_r+' No images with seeing < 5, passing on image'); continue
                                     if len(sub_file)==1: sp_logger.info(warn_y+' Only one image with seeing < 5, continuing with single image'); args.stack=False
                                 sub_obj = subtracted_phot(ims=sub_file,args=args)
@@ -861,7 +868,7 @@ if len(args.ims)>0:
             ims_start = ims[0].split('*')[0]
             ims=[]
             sp_logger.info(info_g+' Searching for images in '+data1_path+ims_path+' starting with '+ims_start)
-            [ims.append(f) for f in os.listdir(data1_path+ims_path) if f.endswith('.fits')==True and ims_start.split('/')[-1] in f and not f.startswith('.')]
+            [ims.append(f) for f in os.listdir(data1_path+ims_path) if f.endswith('.fits')==True and ims_start.split('/')[-1] in f and not f.startswith('.') and 'tpv' not in f]
             ims = list(np.sort(ims))
             sp_logger.info(info_g+f" Found {len(ims)} images to process")
 
@@ -1035,7 +1042,7 @@ if len(args.ims)>0:
         sp_logger.info('')
 
         # sp_logger.info(ims)
-        ims = check_seeing(ims)
+        ims = check_seeing(ims,sp_logger=sp_logger)
         if len(ims)==0: sp_logger.info(warn_r+' No images with seeing < 5, continuing with single image'); sys.exit()
         if len(ims)==1: sp_logger.info(warn_y+' Only one image with seeing < 5, exiting'); args.stack=False
 
