@@ -1,5 +1,3 @@
-#!/home/arikhind/miniconda3/envs/ltsub/bin python3
-'''#!/Users/kryanhinds/opt/miniconda/envs/ltsubphot/bin python3'''
 
 import numpy as np
 #import pyfits
@@ -319,7 +317,9 @@ def sextract(sexfilename, nxpix, nypix, border=3, corner=12, minfwhm=1.5, maxfwh
     if saturation > 0: 
        sexsaturation = saturation
     else:
-       sexsaturation = 64000
+       sexsaturation = 47000
+
+    # if 'ref' in sexfilename:sexsaturation = 500
 
     if nxpix <= 0: nxpix = 10000
     if nypix <= 0: nypix = 10000
@@ -344,6 +344,9 @@ def sextract(sexfilename, nxpix, nypix, border=3, corner=12, minfwhm=1.5, maxfwh
        if not os.path.exists(path+'config_files/align_sex.config'):
            writeconfigfile(saturation)
        
+       print(info_g+' Running sextractor on image', sexfilename)
+    #    print(os.path.exists(sexfilename))
+    #    print("sex " + sexfilename + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL "+str(sexsaturation)+' -BACK_TYPE MANUAL -BACK_VALUE '+str(bkg) +f" -CATALOG_NAME "+data1_path+f"config_files/prepsfex_{rand_nums_string}.cat ")
        os.system("sex " + sexfilename + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL "+str(sexsaturation)+' -BACK_TYPE MANUAL -BACK_VALUE '+str(bkg) +f" -CATALOG_NAME "+data1_path+f"config_files/prepsfex_{rand_nums_string}.cat ")
        files_to_remove.append(data1_path+f"config_files/prepsfex_{rand_nums_string}.cat")
        #print("sex " + sexfilename + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL "+str(sexsaturation)+' -BACK_TYPE MANUAL -BACK_VALUE '+str(bkg) +f" -CATALOG_NAME "+path+f"config_files/prepsfex_{rand_nums_string}.cat ")
@@ -948,6 +951,7 @@ def main():
                             break
 
     print(info_g+" X-Y nudge complete")
+    print(info_g+" Nudging RA by "+str(raoff)+" arcsec and Dec by "+str(decoff)+" arcsec")
     print(info_g+" Removing temporary files")
     for remove_file in np.unique(files_to_remove):
         if os.path.exists(remove_file):os.remove(remove_file)

@@ -25,11 +25,12 @@ header_kw = {
     'NOT-NOTcam':         { 'filter':'NCFLTNM2','object':'TCSTGT','ra':'OBJRA','dec':'OBJDEC','airmass':'AIRMASS','utstart':'DATE','propoid':'PROPID','instrument':'INSTRUME',
                             'exptime':'EXPTIME','date':'DATE','mjd':'-', 'seeing':'-','est_seeing':'-','pixscale':0.23,'gain':'GAIN1','bkg_med':'-','bkg_mean':'-'  },
                             
-    'NOT-ALFOSC-FASU':           { 'filter':'SEQID', 'object':'TCSTGT','ra':'OBJRA','dec':'OBJDEC','airmass':'AIRMASS','utstart':'DATE','propoid':'PROPID','instrument':'INSTRUME',
+    'NOT-ALFOSC-FASU':    { 'filter':'SEQID', 'object':'TCSTGT','ra':'OBJRA','dec':'OBJDEC','airmass':'AIRMASS','utstart':'DATE','propoid':'PROPID','instrument':'INSTRUME',
                             'exptime':'EXPTIME','date':'DATE','mjd':'calc', 'seeing':'-','est_seeing':'-','pixscale':0.214028,'gain':'GAIN','bkg_med':'-','bkg_mean':'-' },
-    'NTT-EFOSC':          { 'filter':'ESO INS FILT1 NAME','object':'OBJECT','ra':'RA','dec':'DEC','airmass':'ESO TEL AIRM END','utstart':'DATE-OBS','propid':'-','instrument':'INSTRUME',
+                            
+    'ESO-NTT':          { 'filter':'ESO INS FILT1 NAME','object':'OBJECT','ra':'RA','dec':'DEC','airmass':'ESO TEL AIRM END','utstart':'DATE-OBS','propid':'-','instrument':'INSTRUME',
                             'exptime':'EXPTIME','date':'DATE-OBS','mjd':'MJD-OBS',
-                            'seeing':'ESO TEL AMBI FWHM END','est_seeing':'-','pixscale':0.12,'gain':'ESO DET OUT1 GAIN','bkg_med':'-','bkg_mean':'-' },
+                            'seeing':'ESO TEL AMBI FWHM END','est_seeing':'-','pixscale':0.12,'gain':'ESO DET OUT1 GAIN','bkg_med':'-','bkg_mean':'-','-':None},
                             
                             
                             }

@@ -12,7 +12,7 @@ import string
 import urllib
 from subphot_functions import *
 from subphot_credentials import *
-from plot_formating import *
+from subphot_plot_formating import *
 import random 
 from astropy.io import ascii
 from photutils.detection import IRAFStarFinder

@@ -381,7 +381,7 @@ SNR_WIN
     pf.write(params)
     pf.close()
 
-def prepsexfile(verbose='QUEIT',gain=1.6):
+def prepsexfile(verbose='QUIET',gain=1.6):
     verbose=verbose.upper()
     params = '''# Simple configuration file for SExtractor prior to PSFEx use
 # only non-default parameters are present.
@@ -421,7 +421,7 @@ GAIN             '''+str(gain)+'''            # <- put the detector gain in e-/A
     pf.write(params)
     pf.close()
 
-def psfexfile(verbose='QUEIT'):
+def psfexfile(verbose='QUIET'):
     verbose=verbose.upper()
     params = '''
 # Default configuration file for PSFEx 3.9.0
@@ -571,7 +571,7 @@ def sdss_query(ra_deg, dec_deg, rad_deg):
         #print(fields2)
         #cr.readlines()
         #  print(cr.readlines())
-        print(cr)
+        # print(cr)
         for ind,row in enumerate(cr):
             #  print(row)
             #  print(ind)
@@ -673,6 +673,8 @@ def response_to_dataframe(response,filt='u'):
         first_item = response[0]
         if isinstance(first_item, dict) and 'Rows' in first_item:
             df = pd.DataFrame(first_item['Rows'])
+            if len(df) == 0:return None
+            # print(df)
             df['frame_name'] = 'http://dr16.sdss.org/sas/dr16/eboss/photoObj/frames/'+df['rerun'].astype(str)+'/'+df['run'].astype(str)+'/'+df['camCol'].astype(str)+'/frame-'+filt+\
                 '-'+df['run'].astype(str).str.zfill(6)+'-'+df['camCol'].astype(str)+'-'+df['field'].astype(str).str.zfill(4)+'.fits.bz2'
             # df = df.loc[requests.head(df['frame_name'].values).status_code==200]
@@ -690,7 +692,7 @@ def response_to_dataframe(response,filt='u'):
     # print(json.dumps(response, indent=2))
     return None
 
-def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None): 
+def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None,lnks_done=[]): 
 
 
     log.info(info_g+f" Querrying SDSS for reference imaging in {filt}-band ("+str(nx)+str(',')+str(ny)+f') ({ra_string:.2f},{dec_string:.2f})')
@@ -699,44 +701,47 @@ def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None):
 
     links_sql = submit_sql_query(ra_string,dec_string)
     df,links = response_to_dataframe(links_sql,filt=filt)
-    print(links)
+    # print(links)
     if len(links)==0:
         log.warning(warn_r+f' Exiting... Not in the SDSS footprint, no {filt}-band!')
         return
+    if all([lnk in lnks_done for lnk in links]):
+        log.info(info_b+f' SDSS image already downloaded'+str((nx,ny)))
+        return
     for link in links:
         image_links.append(link)
-    try:
-        for image_link in image_links:
-            if filt=='i': 
-                image_link = re.sub('irg','i',image_link)
-                image_link = re.sub('.jpg','.fits.bz2',image_link)
-                image_name = image_link.rsplit('/', 1)[-1]
-                # sys.exit(1)
-            
-            print(image_link)
+    # try:
+    for image_link in image_links:
+        if filt=='i': 
+            image_link = re.sub('irg','i',image_link)
+            image_link = re.sub('.jpg','.fits.bz2',image_link)
+            image_name = image_link.rsplit('/', 1)[-1]
             # sys.exit(1)
-            image_name=image_link.rsplit('/', 1)[-1]
-            r=requests.get(image_link)
-            r.raise_for_status()
-            if os.path.exists(data1_path+'ref_imgs/'+image_name[:-4]):
-                # if self.termoutp!='quiet':
-                log.info(info_b+f' SDSS image already downloaded'+image_name[:-4]+str((nx,ny)))
-            if not os.path.exists(image_name[:-4]):
-                zname=image_name
-                zfile = open(data1_path+'ref_imgs/'+image_name, 'wb')
-                zfile.write(r.content)
-                zfile.close()
-                os.system('bzip2 -d '+data1_path+'ref_imgs/'+image_name )
-                # if self.termoutp!='quiet':
-                log.info(info_g+' Downloading new SDSS '+str(filt)+'-band..'+image_name[:-4]+str((nx,ny)))
-                ref_path=data1_path+'ref_imgs/'+image_name[:-4]
-                # os.system('rm '+path+'ref_imgs/'+image_name+'.bz2')
-    except requests.exceptions.HTTPError as err:
-        log.warning(warn_r+' Migth not be in SDSS footprint! Exiting..')
+        
+        print(image_link)
+        # sys.exit(1)
+        image_name=image_link.rsplit('/', 1)[-1]
+        r=requests.get(image_link)
+        r.raise_for_status()
+        if os.path.exists(data1_path+'ref_imgs/'+image_name[:-4]):
+            # if self.termoutp!='quiet':
+            log.info(info_b+f' SDSS image already downloaded'+image_name[:-4]+str((nx,ny)))
+        if not os.path.exists(image_name[:-4]):
+            zname=image_name
+            zfile = open(data1_path+'ref_imgs/'+image_name, 'wb')
+            zfile.write(r.content)
+            zfile.close()
+            os.system('bzip2 -d '+data1_path+'ref_imgs/'+image_name )
+            # if self.termoutp!='quiet':
+            log.info(info_g+' Downloading new SDSS '+str(filt)+'-band..'+image_name[:-4]+str((nx,ny)))
+            ref_path=data1_path+'ref_imgs/'+image_name[:-4]
+            # os.system('rm '+path+'ref_imgs/'+image_name+'.bz2')
+    # except requests.exceptions.HTTPError as err:
+    #     log.warning(warn_r+' Migth not be in SDSS footprint! Exiting..')
 
-        return
+    #     return
     # sys.exit(1)
-    return(ref_path)
+    return ref_path, links
 
 
 
@@ -773,6 +778,25 @@ def api(method,endpoint,data=None):
 
     return response
 
+def save_to_group(obj_id,group_id):
+    url = "https://fritz.science/api/source_groups"
+
+    payload = {
+        "objId": obj_id,
+        "inviteGroupIds": [group_id],
+            }
+    headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"token {token}"
+        }
+
+    response = requests.post(url, json=payload, headers=headers)
+    if response.status_code==200:
+        print(info_g+f" Saved to group {group_id}:",response.json())
+    else:
+        print(warn_r+f" Failed to save to group {group_id}:",response.json())
+
+    return
 
 def SN_data_phot(name):
     '''Retrieves individual events, form needs to be an array or a list, puts data into a dataframe'''

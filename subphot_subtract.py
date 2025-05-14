@@ -1,3 +1,4 @@
+            # print(tabulate(df.sort_values(by=['FILT','MJD']), headers='keys', tablefmt='psql'))
 
 '''#!/home/arikhind/miniconda3/envs/ltsub/bin python3'''
 
@@ -57,6 +58,9 @@ parser.add_argument('--multipro','-mp',default='inactive',
 
 parser.add_argument('--bands','-fb',default=['All'],nargs='+',
                     help="Filters to process, default is All e.g. g,r,i,z,u for SDSS-G, SDSS-R, SDSS-I, SDSS-Z & SDSS-U")
+
+parser.add_argument('--sdsscat','-sdsscat',default=False,action='store_true',
+                    help="Use SDSS for reference catalog, default is False. Use if you have the SDSS image but not catalogue")
 
 parser.add_argument('--sci_names','-sn',default=['All'],nargs='+',
                     help="Science Names - names of science object to process, default is all found")
@@ -143,13 +147,13 @@ parser.add_argument('--special_case','-sc',default=None,
                     help="Special case, default is None (e.g. for SN2023ixf where it is bright in a nearby galaxy, we want to use the best bright stars\
                         and they are held in brightstars.cat, so we can use --special_cases brightstars.cat)")
 
-parser.add_argument('--use_swarp','-swarp',action='store_true',default=False,
+parser.add_argument('--use_swarp','-swarp',action='store_true',default=True,
                     help="Use swarp to stack images and align science image with reference image, default is False")
 
 parser.add_argument('--position','-pos',default='header',nargs='+',
                     help="Position of object in image, default is header, if not in header then parse RA DEC, input as 'HH:MM:SS ±HH:MM:SS")
 
-parser.add_argument('--use_psfex','-psfex',action='store_true',default=False,
+parser.add_argument('--use_psfex','-psfex',action='store_true',default=True,
                     help="Use psfex to create psf, default is False")
 
 parser.add_argument('--telescope_facility','-tel',default='LT',
@@ -210,8 +214,11 @@ if args.list_fits!=None:
             arr=[]
             for file_ in os.listdir(data1_path+fold_):
                 # print(file_)
-                if file_.endswith('.fits') and 'tpv' not in file_:
+                if file_.endswith('.fits') and 'tpv' not in file_ and not file_.startswith('.'):
+                    # print(file_)
                     hdul = fits.open(data1_path+fold_+file_)
+                    # for key,val in hdul[0].header.items():
+                    #     print(key,val)
                     hdr = hdul[0].header
                     try:
                         arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD-OBS'],hdr['SEEING'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['DATE-OBS']])
@@ -222,12 +229,18 @@ if args.list_fits!=None:
                         continue#hdr['CAT-RA'],hdr['CAT-DEC']])
                     except:pass
                     try:
-                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD_OBS'],hdr['FWHM'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['DATE-OBS']])
+                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD_OBS'],hdr['FWHM'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['UTC']])
                         continue#,hdr['OBJRA'],hdr['OBJDEC']])
                     except:pass
+                    try:
+                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD_OBS'],hdr['FWHM'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['DATE-OBS']])
+                        continue#,hdr['OBJRA'],hdr['OBJDEC']])
+                    except Exception as e:
+                        pass
+
             df = pd.DataFrame(arr,columns=['IMG','OBJ','FILT','MJD','SEE','AIRM','EXPTIME','DATE-OBS'])
 
-            print(tabulate(df.sort_values(by=['FILT','MJD']), headers='keys', tablefmt='psql'))
+            print(tabulate(df.sort_values(by=['OBJ','FILT']), headers='keys', tablefmt='psql'))
             df = df.sort_values(by=['FILT','MJD'])
             df.to_csv(path+args.list_fits[0].split('/')[1]+'_fits_list.csv',index=False)
             print(info_g+' Saved to '+path+args.list_fits[0].split('/')[1]+'_fits_list.csv')
@@ -897,7 +910,11 @@ if len(args.ims)>0:
                 except:
                     sp_logger.info(warn_r+' No FILTER or OBJECT in header, skipping image')
                     try:fits_filt,fits_obj = fits_hdu['FILTERS'],fits_hdu['OBJECT']
-                    except:continue
+                    except:
+                        try:fits_filt,fits_obj = fits_hdu['ESO INS FILT1 NAME'],fits_hdu['OBJECT']
+                        except:
+                            try:fits_filt,fits_obj = fits_hdu['ESO INS FILT1 NAME'],fits_hdu['OBJECT']
+                            except:continue
 
 
             if args.bands==['All'] and args.sci_names == ['All']:

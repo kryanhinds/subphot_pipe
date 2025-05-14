@@ -49,84 +49,27 @@ import astroalign as aa
 from reproject import reproject_exact,reproject_interp
 # import progressbar
 from time import sleep
-
+from tabulate import tabulate
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
-
-
-
-def sdss_query_image_old(ra_string,dec_string,filt,nx,ny,log=None): #depreciated
-
-
-    log.info(info_g+f" Querrying SDSS for reference imaging in {filt}-band ("+str(nx)+str(',')+str(ny)+')')
-    sdss_url='https://dr12.sdss.org'
-    url=sdss_url+'/fields/raDec?ra='+str(ra_string)+'&dec='+str(dec_string)
-    # print(url)
-    # sys.exit(1)
-    #html_page = urllib2.urlopen(url) python2.7 version
-    html_page = urllib.request.urlopen(url)
-
-    image_link=[]
-    soup = BeautifulSoup(html_page)
-    for link in soup.findAll('a'):
-        if 'frame-'+str(filt) in link.get('href'):
-            image_link.append(sdss_url+link.get('href'))
-
-    try:
-        image_link=image_link[0]
-        image_name=image_link.rsplit('/', 1)[-1]
-        # sys.exit(1)
-    except IndexError:
-        log.warning(warn_r+f' Exiting... Not in the SDSS footprint, no {filt}-band!')
-        return
-
-    try:
-        if filt=='i': 
-            image_link = re.sub('irg','i',image_link)
-            image_link = re.sub('.jpg','.fits.bz2',image_link)
-            image_name = image_link.rsplit('/', 1)[-1]
-            # sys.exit(1)
-        
-        # print(image_link)
-        # sys.exit(1)
-
-        r=requests.get(image_link)
-        r.raise_for_status()
-        if os.path.exists(image_name[:-4]):
-            # if self.termoutp!='quiet':
-            log.info(info_b+f' SDSS image already downloaded'+image_name[:-4]+str((nx,ny)))
-        if not os.path.exists(image_name[:-4]):
-            zname=image_name
-            zfile = open(data1_path+'ref_imgs/'+image_name, 'wb')
-            zfile.write(r.content)
-            zfile.close()
-            os.system('bzip2 -d '+data1_path+'ref_imgs/'+image_name )
-            # if self.termoutp!='quiet':
-            log.info(info_g+' Downloading new SDSS '+str(filt)+'-band..'+image_name[:-4]+str((nx,ny)))
-            ref_path=data1_path+'ref_imgs/'+image_name[:-4]
-            # os.system('rm '+path+'ref_imgs/'+image_name+'.bz2')
-    except requests.exceptions.HTTPError as err:
-        log.warning(warn_r+' Not in SDSS footprint! Exiting..')
-
-        return
-    # sys.exit(1)
-    return(ref_path)
+import matplotlib as mpl
+mpl.rc('font', family='serif')
 
 
 
 def get_image(args):
-    nx, ny,sci_c,sci_filt,log = args
+    nx, ny,sci_c,sci_filt,log,lnks_done = args
     return sdss_query_image(sci_c.ra.deg+(nx*0.1), 
                                 sci_c.dec.deg+(ny*0.1),
-                                sci_filt, nx=nx, ny=ny,log=log)
+                                sci_filt, nx=nx, ny=ny,log=log,lnks_done=lnks_done)
                                 
 
 def estimate_seeing(filename):
     sp_logger.info(info_g+f' Estimating the seeing based on the mode of the FWHM of point sources in the field')
     sextracted = sextract(filename,0, 0, 3, 12, maxellip=0.7, saturation=-1,delete=True)
     see = mode([sex.fwhm for sex in sextracted])
-    sp_logger.info(info_g+f' Estimated seeing: ',see )
+    sp_logger.info(info_g+f' Estimated seeing: '+str(see ))
     return see
 
 def check_seeing(ims,s=5,sp_logger=None):
@@ -154,8 +97,11 @@ def check_seeing(ims,s=5,sp_logger=None):
             try:
                 seeing = im[0].header['FWHM']
             except:
-                sp_logger.warning(warn_r+f" Seeing keywords not found in "+str(ims[i])+", estimating based of FWHM mode")
-                seeing=estimate_seeing(ims[i])
+                try:
+                    seeing = im[0].header['ESO TEL AMBI FWHM END']
+                except:
+                    sp_logger.warning(warn_r+f" Seeing keywords not found in "+str(ims[i])+", estimating based of FWHM mode")
+                    seeing=estimate_seeing(ims[i])
         if seeing < s:
             good_seeing.append(ims[i][:-5])
         else:
@@ -198,6 +144,7 @@ class subtracted_phot(subphot_data):
         self.ra_dec_pos = self.args.position
         self.redo_astrometry = self.args.redo_astrometry
         self.forced_phot = self.args.forced_phot
+        self.sci_bkg_med=None
         # print(self.redo_astrometry)
         if len(self.ra_dec_pos)==1:
             self.ra_dec_pos = self.args.position[0].split(' ')
@@ -371,6 +318,14 @@ class subtracted_phot(subphot_data):
                         self.sci_filt=self.sci_img_hdu.header['FILTER1'][5].lower()
                         self.sci_inst = 'IO:O'
                         self.sci_prop = self.sci_img_hdu.header[self.PRO_kw]
+
+                    elif self.telescope in ['eso-ntt','ntt-efosc','ntt','efosc','ESO-NTT','NTT-EFOSC','NTT','EFOSC']:
+                        self.PRO_kw,self.BKGMEA_kw,self.BKGMED_kw = '-','-','-'
+                        self.ESEE_kw = self.tele_kw['seeing']
+                        self.sci_filt=self.sci_img_hdu.header['ESO INS FILT1 NAME'][0]
+                        self.sci_inst = 'EFOSC'
+                        self.sci_prop = None
+                        
                         
                     
                     elif self.telescope=='HCT':
@@ -503,6 +458,9 @@ class subtracted_phot(subphot_data):
                 self.sci_inst='SEDM-P60'
                 self.sci_prop=None
                 self.sci_obj=self.sci_img_hdu.header[self.OBJ_kw]
+                if self.sci_obj=='2024afav':
+                    self.sci_img_hdu.header[self.RA_kw] = "12:49:12.10"
+                    self.sci_img_hdu.header[self.DEC_kw] = "-18:06:13.20"
 
                 if 'rc' in self.sci_path.split("/")[-1]:
                     self.folder=self.sci_path.split('rc')[1][2:10]
@@ -578,8 +536,10 @@ class subtracted_phot(subphot_data):
 
                 if self.ESEE_kw != None:
                     self.sci_est_seeing = self.sci_img_hdu.header[self.ESEE_kw]
-                    self.sci_bkg_med,self.sci_bkg_mean = self.sci_img_hdu.header[self.BKGMED_kw],self.sci_img_hdu.header[self.BKGMEA_kw]
-                    self.sci_prop = self.sci_img_hdu.header[self.PRO_kw]
+                    try:self.sci_bkg_med,self.sci_bkg_mean = self.sci_img_hdu.header[self.BKGMED_kw],self.sci_img_hdu.header[self.BKGMEA_kw]
+                    except:self.sci_bkg_med,self.sci_bkg_mean = None,None
+                    try:self.sci_prop = self.sci_img_hdu.header[self.PRO_kw]
+                    except:self.sci_prop = None
                 else:
                     self.sci_est_seeing = None
                     self.sci_bkg_med,self.sci_bkg_mean = None,None
@@ -604,7 +564,8 @@ class subtracted_phot(subphot_data):
                         self.sci_dec = '+'+self.sci_dec
                     self.sci_c= SkyCoord(self.sci_ra,self.sci_dec, unit=(u.hourangle, u.deg),frame='fk5')
                 else:
-                    self.sci_c= SkyCoord(self.sci_ra+' '+self.sci_dec, unit=(u.deg, u.deg),frame='fk5')
+                    # print(self.sci_ra,self.sci_dec)
+                    self.sci_c= SkyCoord(str(self.sci_ra)+' '+str(self.sci_dec), unit=(u.deg, u.deg),frame='fk5')
 
                 if self.PIX_kw == 'in_comments':
                     self.scale_comments = [s for s in self.sci_img_hdu.header["COMMENT"] if 'scale:' in s]
@@ -687,6 +648,13 @@ class subtracted_phot(subphot_data):
                     self.sci_filt=self.sci_img_hdu.header['FILTER1'][5].lower()
                     self.sci_inst = 'IO:O'
 
+                elif self.telescope in ['eso-ntt','ntt-efosc','ntt','efosc','ESO-NTT','NTT-EFOSC','NTT','EFOSC']:
+                    self.PRO_kw,self.BKGMEA_kw,self.BKGMED_kw = '-','-','-'
+                    self.ESEE_kw = self.tele_kw['seeing']
+                    self.sci_filt=self.sci_img_hdu.header['ESO INS FILT1 NAME'][0]
+                    self.sci_inst = 'EFOSC'
+                    self.sci_prop = None
+
                 
                 elif self.telescope=='HCT':
                     self.sci_filt=self.sci_img_hdu.header['FILTER'].lower()
@@ -726,19 +694,22 @@ class subtracted_phot(subphot_data):
             #this code will convert the self.MJD to self.MJD if it is in JD format
             if self.MJD[0]>400000:
                 self.MJD = [self.MJD[n]-2400000.5 for n in range(len(self.MJD))]
+            
 
             try:self.see_all = [fits.open(self.name[n])[0].header[self.SEE_kw] for n in range(len(self.name))]
             except Exception as e:self.see_all = [estimate_seeing(self.name[n]) for n in range(len(self.name))]
 
             self.see_std,self.see_med = np.std(self.see_all),np.median(self.see_all)
-
+            # print(self.see_all,self.see_std,self.see_med)
             self.names_final = []
-            for n in range(len(self.see_all)):
-                if self.see_all[n]<self.see_med+5 * self.see_std:
-                    self.names_final.append(self.name[n])
+            if self.see_std>0:
+                for n in range(len(self.see_all)):
+                    if self.see_all[n]<self.see_med+5 * self.see_std:
+                        print(info_g+f' Image {self.name[n]} has seeing of {self.see_all[n]} arcsec, adding to stack')
+                        self.names_final.append(self.name[n])
             
-            self.name = self.names_final
-
+                self.name = self.names_final
+            # print(self.name)
 
             if len(self.name)>0:
                 self.no_stacked = len(self.name)
@@ -747,6 +718,10 @@ class subtracted_phot(subphot_data):
                 self.sci_img_hdu=fits.open(self.name[0])[0]
                 self.sci_obj=self.sci_img_hdu.header[self.OBJ_kw]
                 if self.sci_obj=='2023vyl':self.sci_obj='ZTF23abnprwj'
+
+                if self.sci_obj=='2024afav':
+                    self.sci_img_hdu.header[self.RA_kw] = "12:49:12.10"
+                    self.sci_img_hdu.header[self.DEC_kw] = "-18:06:13.20"
 
 
                 if self.ra_dec_pos=='header':
@@ -791,8 +766,10 @@ class subtracted_phot(subphot_data):
 
                 if self.ESEE_kw != None:
                     self.sci_est_seeing = self.sci_img_hdu.header[self.ESEE_kw]
-                    self.sci_bkg_med,self.sci_bkg_mean = self.sci_img_hdu.header[self.BKGMED_kw],self.sci_img_hdu.header[self.BKGMEA_kw]
-                    self.sci_prop = self.sci_img_hdu.header[self.PRO_kw]
+                    try:self.sci_bkg_med,self.sci_bkg_mean = self.sci_img_hdu.header[self.BKGMED_kw],self.sci_img_hdu.header[self.BKGMEA_kw]
+                    except:self.sci_bkg_med,self.sci_bkg_mean = None,None
+                    try:self.sci_prop = self.sci_img_hdu.header[self.PRO_kw]
+                    except:self.sci_prop = None
                     self.sci_airmass = self.sci_img_hdu.header[self.AIRM_kw]
 
                 else:
@@ -810,7 +787,7 @@ class subtracted_phot(subphot_data):
                         self.sci_dec = re.sub(' ','','+'+self.sci_dec)
                     self.sci_c= SkyCoord(ra=self.sci_ra,dec=self.sci_dec, frame='fk5', unit=(u.hourangle, u.deg))
                 else:
-                    self.sci_c= SkyCoord(self.sci_ra+' '+self.sci_dec, unit=(u.deg, u.deg),frame=FK5)
+                    self.sci_c= SkyCoord(str(self.sci_ra)+' '+str(self.sci_dec), unit=(u.deg, u.deg),frame=FK5)
 
                 if self.PIX_kw == 'in_comments':
                     self.scale_comments = [s for s in self.sci_img_hdu.header[self.PIX_kw] if 'scale:' in s]
@@ -867,7 +844,7 @@ class subtracted_phot(subphot_data):
                     
                     # self.status=os.system(swarp_command)
 
-                    self.sp_logger.info(info_g+' Combined'+str(len(self.ims))+' '+self.sci_filt+' images!')
+                    self.sp_logger.info(info_g+' Combined '+str(len(self.ims))+' '+self.sci_filt+' images!')
                     self.sci_img_hdu=fits.open(self.data1_path+'combined_imgs/'+self.sci_img_name)[0]
                     self.sci_img=self.sci_img_hdu.data
                     self.sci_path = self.data1_path+'combined_imgs/'+self.sci_img_name
@@ -978,8 +955,8 @@ class subtracted_phot(subphot_data):
                     os.mkdir(self.data1_path+f'{self.out_dir}cut_outs')
 
 
-        
-        self.sci_c=SkyCoord(self.sci_ra,self.sci_dec,unit=(u.hourangle, u.deg),frame='fk5')
+        if ':' in str(self.sci_ra):self.sci_c=SkyCoord(self.sci_ra,self.sci_dec,unit=(u.hourangle, u.deg),frame='fk5')
+        else:self.sci_c=SkyCoord(self.sci_ra,self.sci_dec,unit=(u.deg, u.deg),frame='fk5')
         self.ra_string="%.6f" % round(self.sci_c.ra.deg, 6)
         self.dec_string="%.6f" % round(self.sci_c.dec.deg, 6)
         self.ref_width=self.sci_img_hdu.header['NAXIS2']*self.sci_ps*1.1/60.
@@ -992,7 +969,7 @@ class subtracted_phot(subphot_data):
         self.coords_sn_sci_x,self.coords_sn_sci_y = self.coords_sn_sci
         self.sp_logger.info(info_g+' Object name:'+' \033[1m'+self.sci_obj+'\033[0m')
         if self.sci_prop!=None: self.sp_logger.info(info_g+' Object proposal ID:'+' \033[1m'+self.sci_prop+'\033[0m')
-        self.sp_logger.info(info_g+' Object position (RA,Dec) J2000:'+'\033[1m'+' ('+self.sci_ra+','+self.sci_dec+')'+ '\033[0m')
+        self.sp_logger.info(info_g+' Object position (RA,Dec) J2000:'+'\033[1m'+' ('+str(self.sci_c.to_string("hmsdms"))+')\033[0m')
         self.sp_logger.info(info_g+' Object position (RA,Dec) deg:'+'\033[1m'+' ('+self.ra_string+','+self.dec_string+')'+ '\033[0m')
         self.sp_logger.info(info_g+' Object position (x,y)'+'\033[1m'+' ('+str(int(self.coords_sn_sci_x))+','+str(int(self.coords_sn_sci_y))+')'+ '\033[0m')
         self.sp_logger.info(info_g+' Image dimensions (x,y):'+'\033[1m'+' ('+str(self.sci_img_hdu.header['NAXIS1'])+'x'+str(self.sci_img_hdu.header['NAXIS2'])+')'+ '\033[0m')
@@ -1047,8 +1024,8 @@ class subtracted_phot(subphot_data):
             self.sp_logger.info(info_b+' SDSS reference image already exists')
             return self.ref_path
     
-        self.nx_range = range(-5,5)
-        self.ny_range = range(-5,5)
+        self.nx_range = range(-2,2)
+        self.ny_range = range(-2,2)
         # sdss_args = [(nx, ny) for nx in self.nx_range for ny in self.ny_range]
 
         sdss_args = [(nx, ny,self.sci_c,self.sci_filt,self.sp_logger) for nx in self.nx_range for ny in self.ny_range]
@@ -1057,7 +1034,14 @@ class subtracted_phot(subphot_data):
         #     sdss_args.append((self.nx_range[i],self.ny_range[i],self.sci_c,self.sci_filt))
 
         for i in range(len(sdss_args)):
-            self.sdss_images.append(get_image(sdss_args[i]))
+            if i==0:
+                lnks_done=[]
+
+            image = get_image(sdss_args[i] + (lnks_done,))
+            image = image[0]
+            lnks_done.append(image[1])
+
+            self.sdss_images.append(image)
         # with concurrent.futures.ThreadPoolExecutor() as executor:
         #     futures = [executor.submit(get_image, sdss_args[i])#[0], sdss_args[i][1],sdss_args[i][2],sdss_args[i][3]) )
         #             # for nx in range(-3, 2) 
@@ -1109,7 +1093,8 @@ class subtracted_phot(subphot_data):
         self.sig_clip = SigmaClip(sigma=sigma)
         self.bkg_estimator = SExtractorBackground(self.sig_clip)
         
-        self.bkg = Background2D(self.sci_img, (150, 150), filter_size=(3, 3),sigma_clip=sigma_clip, bkg_estimator=self.bkg_estimator)
+        self.bkg = Background2D(
+            self.sci_img, (50, 50), filter_size=(3, 3),sigma_clip=sigma_clip, bkg_estimator=self.bkg_estimator)
 
         self.bkg_median = []
         for row in self.bkg.background:
@@ -1285,7 +1270,7 @@ class subtracted_phot(subphot_data):
         return {'sci_keep_pix':sci_keep_pix,'ref_keep_pix':ref_keep_pix,'sci_keep_sky':sci_keep_sky,'ref_keep_sky':ref_keep_sky}
 
     def distortion_correction(self):
-        return
+        # return
         self.sp_logger.info(info_g+' Attempting to solve distortion in science image')
         self.ref_width=self.sci_img_hdu.header['NAXIS2']*self.sci_ps/60
             
@@ -1561,12 +1546,13 @@ class subtracted_phot(subphot_data):
             self.tform_ref_sci.estimate(self.matched_ref_coords_pix,self.matched_star_coords_pix, order=1)
             self.tform_ref_sci = transform.warp(self.sci_ali_img_hdu.data, self.tform_ref_sci,
                                                 output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
-                                                order=3,)
+                                                order=3,
+                                                mode='constant', cval=0.0)
 
-            self.tform_sci_ref.estimate(self.matched_star_coords_pix,self.matched_ref_coords_pix, order=1)
-            self.tform_sci_ref = transform.warp(self.sci_ali_img_hdu.data, self.tform_sci_ref,
-                                                output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
-                                                order=3,)
+            # self.tform_sci_ref.estimate(self.matched_star_coords_pix,self.matched_ref_coords_pix, order=1)
+            # self.tform_sci_ref = transform.warp(self.sci_ali_img_hdu.data, self.tform_sci_ref,
+            #                                     output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
+            #                                     order=3,)
             self.align_success = True
             # new_sci_ali = fits.open(self.sci_ali_name)
             # new_sci_ali[0].data = self.tform_ref_sci
@@ -1580,6 +1566,7 @@ class subtracted_phot(subphot_data):
             self.align_success = True
             new_sci_ali = fits.open(self.sci_ali_name)
             new_sci_ali[0].data = self.tform_ref_sci
+            new_sci_ali[0].header = self.ref_ali_img_hdu.header
             new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}_snum{len(self.matched_star_coords_pix)}.fits'), overwrite=True)
 
             self.sci_ali_name = self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}_snum{len(self.matched_star_coords_pix)}.fits')
@@ -1591,26 +1578,47 @@ class subtracted_phot(subphot_data):
                     circle = plt.Circle((x, y), 10, color=color, fill=False)
                     ax.add_artist(circle)
 
-            fig_poly_coll,axes = plt.subplots(2,2,figsize=(12,12))
             self.vmin,self.vmax = visualization.ZScaleInterval().get_limits(self.sci_img_hdu.data)
             self.rvmin,self.rvmax = visualization.ZScaleInterval().get_limits(self.ref_ali_img_hdu.data)
-            a1,a2,a3,a4 = axes[0,0],axes[0,1],axes[1,0],axes[1,1]
+            self.rvmin,self.rvmax = np.nanpercentile(self.ref_ali_img_hdu.data,[5,95])
+            # fig_poly_coll, axes = plt.subplots(2, 2, figsize=(12, 12),)
             
+            import matplotlib.gridspec as gridspec
+            fig_poly_coll = plt.figure(figsize=(12, 12))
+            gs = gridspec.GridSpec(2, 4)
+            gs.update(wspace=0.5)
+            a1 = plt.subplot(gs[0, :2], )
+            a2 = plt.subplot(gs[0, 2:])
+            a3 = plt.subplot(gs[1, 1:3])
+            # plt.show()
+            
+
+            self.sci_ali_sn_coords = wcs_to_pixels(self.sci_ali_name,np.column_stack((self.sci_c.ra.value,self.sci_c.dec.value)))[0]
+            self.ref_ali_sn_coords = wcs_to_pixels(self.ref_ali_name,np.column_stack((self.sci_c.ra.value,self.sci_c.dec.value)))[0]
+
             a1.imshow(self.sci_ali_img_hdu.data,cmap='gray',vmin=self.vmin,vmax=self.vmax)
-            a1.set_title('Science not warped')
+            #plot the sn position
+            a1.add_artist(plt.Circle((self.sci_ali_sn_coords[0],self.sci_ali_sn_coords[1]),20,color='red',fill=False))
+            a1.set_title('Original Science')
             add_circles(a1,self.matched_ref_coords_pix)
             
             a2.imshow(self.ref_ali_img_hdu.data,cmap='gray',vmin=self.rvmin,vmax=self.rvmax)
-            a2.set_title('Reference not warped')
+            a2.add_artist(plt.Circle((self.ref_ali_sn_coords[0],self.ref_ali_sn_coords[1]),20,color='red',fill=False))
+            a2.set_title('Original Reference')
             add_circles(a2,self.matched_ref_coords_pix)
 
             a3.imshow(self.tform_ref_sci,cmap='gray',vmin=self.vmin,vmax=self.vmax)
-            a3.set_title('Ref Sci Trans ')
+            a3.add_artist(plt.Circle((self.ref_ali_sn_coords[0],self.ref_ali_sn_coords[1]),20,color='red',fill=False))
+            a3.set_title('Warped Science')
             add_circles(a3,self.matched_ref_coords_pix)
-
-            a4.imshow(self.tform_sci_ref,cmap='gray',vmin=self.vmin,vmax=self.vmax)
-            a4.set_title('Sci Ref Trans ')
-            add_circles(a4,self.matched_star_coords_pix)
+            
+            #remove axis ticks
+            a1.set_xticks([]),a1.set_yticks([])
+            a2.set_xticks([]),a2.set_yticks([])
+            a3.set_xticks([]),a3.set_yticks([])
+            # a4.imshow(self.tform_sci_ref,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+            # a4.set_title('Sci Ref Trans ')
+            # add_circles(a4,self.matched_star_coords_pix)
 
 
 
@@ -1632,7 +1640,7 @@ class subtracted_phot(subphot_data):
 
 
             if not os.path.exists(self.data1_path+'poly_comps/'):os.mkdir(self.data1_path+'poly_comps/')
-            fig_poly_coll.savefig(self.data1_path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf')
+            fig_poly_coll.savefig(self.data1_path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf',bbox_inches='tight')
             self.sp_logger.info(info_g+f" Saved image comparing polynomial orders 1 and 2 as "+self.data1_path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf') 
             # fig_sci_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_sci.pdf')
             # fig_ref_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_ref.pdf')
@@ -1640,23 +1648,24 @@ class subtracted_phot(subphot_data):
 
         else:
             self.sp_logger.info(warn_y+f" Not enough stars matched for distorion correction ")
-
+        sys.exit(1)
         return
 
 
 
     def swarp_ref_align(self,image_size=image_size):
         
-        prepsexfile(gain=self.sci_gain)
+        # prepsexfile(gain=self.sci_gain)
+        
         if self.telescope in SEDM:
-            self.image_size=1500
+            self.image_size=1000
         else:
-            self.image_size=1500
-
-        if self.sci_obj=='ZTF24abdiwwv':
             self.image_size=1000
 
-        # self.image_size=1500
+        if self.sci_obj=='ZTF24abdiwwv': #02:22:10.96 -20:23:21.01
+            # self.image_size=1500
+            self.image_size=1650
+            # self.image_size=1300
 
         self.sp_logger.info(info_g+f' Aligning science with reference image')
 
@@ -1665,6 +1674,7 @@ class subtracted_phot(subphot_data):
                 self.make_sdss_ref(sdss_filt=self.sci_filt)
                 if self.sys_exit==True:
                     return
+
                 self.image_name=self.sci_obj+f'_ref_{self.sci_filt}.fits'
                 self.ref_path=self.data1_path+'ref_imgs/'+self.image_name
                 self.ref_img_name=self.ref_path
@@ -1682,7 +1692,7 @@ class subtracted_phot(subphot_data):
                     self.sp_logger.info(info_b+' PS1 reference image already exists: '+glob.glob(self.ref_path)[0])
                     panstamps_status=0
                 if len(glob.glob(self.ref_path))==0:
-                    self.sp_logger.info(info_g+f'Running panstamps:'+str(panstamps_path+' -f --width='+str(self.ref_width)+' --filters='+self.sci_filt+' --downloadFolder='+self.data1_path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg)))
+                    self.sp_logger.info(info_g+f' Running panstamps: '+str(panstamps_path+' -f --width='+str(self.ref_width)+' --filters='+self.sci_filt+' --downloadFolder='+self.data1_path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg)))
                     self.sp_logger.info(info_g+' Downloading reference image from PS...')
                     try:
                         panstamps_status = os.system(panstamps_path+' -f --width='+str(self.ref_width)+' --filters='+self.sci_filt+' --downloadFolder='+self.data1_path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg))
@@ -1734,21 +1744,21 @@ class subtracted_phot(subphot_data):
                 return
 
             self.ref_img_name=glob.glob(self.auto_ref)[0]
-            try:
-                self.ref_img_hdu=fits.open(self.auto_ref)[0]
-                self.ref_img=self.ref_img_hdu.data[0:self.ref_img_hdu.header['NAXIS2'],0:self.ref_img_hdu.header['NAXIS1']] 
-            except:
-                # print(self.auto_ref)
-                try:
-                    self.ref_img_hdu=fits.open(self.auto_ref)[1]
-                    print(self.ref_img_hdu.header['NAXIS1'],self.ref_img_hdu.header['NAXIS2'])
-                    self.ref_img=self.ref_img_hdu.data#[0:self.ref_img_hdu.header['NAXIS2'],0:self.ref_img_hdu.header['NAXIS1']] 
-                    print(np.shape(self.ref_img))
-                except:
-                    self.ref_img_hdu=fits.open(self.auto_ref)[1]
-                    print(self.ref_img_hdu.header['NAXIS1'],self.ref_img_hdu.header['NAXIS2'])
-                    self.ref_img=fits.open(self.auto_ref)[0].data[0:self.ref_img_hdu.header['NAXIS2'],0:self.ref_img_hdu.header['NAXIS1']] 
-                    print(np.shape(self.ref_img))
+            # try:
+            self.ref_img_hdu=fits.open(self.auto_ref)[0]
+            self.ref_img=self.ref_img_hdu.data[0:self.ref_img_hdu.header['NAXIS2'],0:self.ref_img_hdu.header['NAXIS1']] 
+            # except:
+            #     # print(self.auto_ref)
+            #     try:
+            #         self.ref_img_hdu=fits.open(self.auto_ref)[1]
+            #         print(self.ref_img_hdu.header['NAXIS1'],self.ref_img_hdu.header['NAXIS2'])
+            #         self.ref_img=self.ref_img_hdu.data#[0:self.ref_img_hdu.header['NAXIS2'],0:self.ref_img_hdu.header['NAXIS1']] 
+            #         print(np.shape(self.ref_img))
+            #     except:
+            #         self.ref_img_hdu=fits.open(self.auto_ref)[1]
+            #         print(self.ref_img_hdu.header['NAXIS1'],self.ref_img_hdu.header['NAXIS2'])
+            #         self.ref_img=fits.open(self.auto_ref)[0].data[0:self.ref_img_hdu.header['NAXIS2'],0:self.ref_img_hdu.header['NAXIS1']] 
+            #         print(np.shape(self.ref_img))
 
                 # sys.exit(1)
                 # self.sp_logger.info(self.ref_img==self.sci_bkgsb)
@@ -1764,7 +1774,7 @@ class subtracted_phot(subphot_data):
 
         
         wcs_command='python3 '+self.opath+'subphot_align_quick.py'+" "+self.data1_path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+"  -m relative -r 100"
-        # wcs_command='python3 '+self.path+'subphot_align.py'+" -sci "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" -ref "+self.ref_img_name+"  -m relative -r 100"
+        # wcs_command='python3 '+self.opath+'subphot_align_quick.py'+" "+self.data1_path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+"  -m relative -r 30 -a "+self.ra_string+" "+self.dec_string
         # self.sp_logger.info(wcs_command)
 
         self.sci_img_hdu=fits.open(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name)[0]
@@ -1777,7 +1787,8 @@ class subtracted_phot(subphot_data):
         self.sp_logger.info(info_g+" Original science size: "+str(np.shape(self.sci_img_hdu.data)))
         self.sp_logger.info(info_g+" Original reference size: "+str(np.shape(self.ref_img_hdu.data)))
         # sys.exit(1)
-
+        # print('hi')
+        # sys.exit(1)
 
         while self.align_success==False:
             self.align_fail_count+=1
@@ -1819,7 +1830,7 @@ class subtracted_phot(subphot_data):
             self.image_size1,self.image_size2=np.shape(self.sci_img_hdu[0].data)[0],np.shape(self.sci_img_hdu[0].data)[1]
             # self.image_size1,self.image_size2=np.shape(self.ref_img_hdu.data)[0],np.shape(self.ref_img_hdu.data)[1]
 
-            swarp_command=swarp_path+" "+self.data1_path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+" -c "+self.opath+"config_files/config.swarp -CENTER '"+str(self.ali_center_ra)+" "+str(self.ali_center_dec)+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '"+self.data1_path+"aligned_images/' -COMBINE N -IMAGE_SIZE '"+str(self.image_size)+","+str(self.image_size)+"'" #ref centre
+            swarp_command=swarp_path+" "+self.data1_path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+" -c "+self.opath+"config_files/config.swarp -CENTER '"+str(self.ali_center_ra)+" "+str(self.ali_center_dec)+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '"+self.data1_path+"aligned_images/' -COMBINE N -IMAGE_SIZE '"+str(self.image_size)+","+str(self.image_size)+"'"
             status=os.system(swarp_command)
             self.sp_logger.info(swarp_command)
             # self.sp_logger.info(info_g+" SWarp took %2f seconds" % (time.time() - swarp_time)    )
@@ -2363,11 +2374,13 @@ class subtracted_phot(subphot_data):
 
         self.sp_logger.info(info_g+' Convolving the reference with the PSF of the science image')
 
+        prepsexfile()
+        psfexfile()
+
         # SExtractor command for the science image
         # print(self.sci_ali_name)
         # sys.exit(1)
-        if self.sci_filt=='u':MAGZP = 22.0
-        else:MAGZP = 25.0
+        MAGZP = 25.0
         sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.opath+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT"+" "+str(MAGZP)
         self.sp_logger.info(info_g+f' Running SExtractor: {sextractor_command}')
         self.sp_logger.info(info_g+' Creating PSFex catalog with SExtractor')
@@ -2389,6 +2402,7 @@ class subtracted_phot(subphot_data):
         #check the catalog output by sextractor and change the stars matched to have a flag of 0
 
 
+        self.sp_logger.info(info_g+' Running PSFex with SExtractor catalog:'+" "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
 
         psfex_status = os.system(psfex_path+" "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
         self.sp_logger.info(info_g+' PSFex status: '+str(psfex_status))
@@ -2432,7 +2446,7 @@ class subtracted_phot(subphot_data):
             self.sci_prepsfex_cat.writeto(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat",overwrite=True)
             self.sp_logger.info(info_g+' Writing high SNR stars to '+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat")
             self.sp_logger.info(info_g+' Running PSFex with only the highest signal-to-noise stars')
-            psfex_status = os.system(psfex_path+" "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+            psfex_status = os.system(psfex_path+" "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET -SAMPLE_MINSN 10")
             self.sp_logger.info(info_g+' High SNR PSFex status: '+str(psfex_status))
             
             self.hdu_psf_model_sci= fits.open(self.data1_path+f'out/sci_prepsfex_{self.rand_nums_string}_highSNR.psf')
@@ -2452,7 +2466,7 @@ class subtracted_phot(subphot_data):
             self.files_to_clean.append(self.ref_ali_name)
             self.ref_conv = scipy_convolve(self.ref_image_aligned[0].data, self.kernel_sci, mode='same', method='fft')
             self.ref_conv=np.nan_to_num(self.ref_conv)
-
+            self.sp_logger.info(info_g+' Saving convolved reference image to '+self.ref_conv_name)
             fits.writeto(self.ref_conv_name, data=self.ref_conv, header=self.ref_image_aligned[0].header,overwrite=True)
 
             self.sp_logger.info(info_g+' Convolving the science with the PSF of the reference image')
@@ -2564,6 +2578,7 @@ class subtracted_phot(subphot_data):
             self.sci_conv = scipy_convolve(self.sci_image_aligned[0].data,self.kernel_ref, mode='same', method='fft')
             self.sci_conv=np.nan_to_num(self.sci_conv)
 
+            self.sp_logger.info(info_g+' Saving convolved science image to '+self.sci_conv_name)
             fits.writeto(self.sci_conv_name, data=self.sci_conv, header=self.sci_image_aligned[0].header,overwrite=True)
             # sys.exit(1)
 
@@ -3027,7 +3042,8 @@ class subtracted_phot(subphot_data):
                 self.ref_coords_pix=wcs_to_pixels(self.ref_ali_name,self.ref_coords_wcs)
                 # self.sp_logger.info(self.ref_coords_wcs)
 
-            if self.sci_filt=='u' or self.use_sdss==True:
+            if self.sci_filt=='u' or self.use_sdss==True or self.args.sdsscat==True:
+                # if not os.path.exists(
                 self.ref_cat=sdss_query(ra_deg=round(self.sci_c.ra.deg,6),dec_deg=round(self.sci_c.dec.deg,6), rad_deg=round((self.ref_width),6))
                 # self.sp_logger.info(self.ref_cat)
                 self.stars=self.ref_cat
@@ -3179,10 +3195,12 @@ class subtracted_phot(subphot_data):
             self.sp_logger.info(info_g+' Catalog stars in PS1/SDSS found = '+str(len(self.upd_indx))+', in a '+str(round(3600*(7.5/60),6))+ 'arcsec search radius')
 
         
-
+            # print(self.upd_indx)
+            # print(self.indx)
             self.matched_ref_coords_pix=self.ref_coords_pix[self.indx[self.upd_indx]]
             self.matched_star_coords_pix=self.star_coords_pix[self.upd_indx]
-
+            # print(self.upd_indx)
+            # print(self.indx)
 
             # [print(f'physical;circle({self.matched_ref_coords_pix[i][0]},{self.matched_ref_coords_pix[i][1]},20)'+' # text={'+f'xy={int(self.matched_ref_coords_pix[i][0]),int(self.matched_ref_coords_pix[i][1])}'+'}') for i in range(len(self.matched_ref_coords_pix))]
             # print()
@@ -3193,10 +3211,11 @@ class subtracted_phot(subphot_data):
             
             # self.sp_logger.info(self.sci_filt=='r')
             # self.sp_logger.info(self.matched_ref_coords_pix,self.matched_star_coords_pix)
-            if self.auto_cat == 'auto' and self.use_sdss==False and (self.sci_filt=='g' or self.sci_filt=='r' or self.sci_filt=='i' or self.sci_filt=='z'):
+            if self.auto_cat == 'auto' and self.use_sdss==False and self.args.sdsscat==False and (self.sci_filt=='g' or self.sci_filt=='r' or self.sci_filt=='i' or self.sci_filt=='z'):
                 self.matched_catalog=self.ref_cat[self.indx[self.upd_indx]]
                 # self.sp_logger.info(self.matched_catalog)
                 # sys.exit()
+                print(1)
                 self.matched_catalog_mag=self.matched_catalog[str(self.sci_filt)+'MeanPSFMag']
 
                 # for i in range(len(self.matched_catalog_mag)):
@@ -3205,13 +3224,22 @@ class subtracted_phot(subphot_data):
                 #     self.sp_logger.info()
 
 
-            elif self.auto_cat == 'auto' and (self.sci_filt=='u' or self.use_sdss==True):
+            elif self.auto_cat == 'auto' and (self.sci_filt=='u' or self.use_sdss==True or self.args.sdsscat==True):
+                print(2)
+                self.string_band='psfMag_'+str(self.sci_filt)
+                self.matched_catalog= self.ref_cat.loc[self.indx[self.upd_indx]] 
+                self.matched_catalog_mag=np.asarray(self.matched_catalog['mag'])
+                self.matched_star_coords_pix = wcs_to_pixels(self.sci_ali_name,self.matched_catalog[['ra','dec']])
+
+            elif self.sci_filt=='u' or self.use_sdss==True or self.args.sdsscat==True:
+                print(0)
                 self.string_band='psfMag_'+str(self.sci_filt)
                 self.matched_catalog= self.ref_cat.loc[self.indx[self.upd_indx]] 
                 self.matched_catalog_mag=np.asarray(self.matched_catalog['mag'])
                 self.matched_star_coords_pix = wcs_to_pixels(self.sci_ali_name,self.matched_catalog[['ra','dec']])
 
             elif self.auto_cat !='auto':
+                print(3)
                 # self.sp_logger.info(self.ref_cat.loc[self.indx[self.upd_indx]])
                 self.matched_catalog= self.ref_cat.loc[self.indx[self.upd_indx]] 
                 self.matched_catalog_mag=np.asarray([float(m) for m in self.matched_catalog['mag']])
@@ -3297,6 +3325,7 @@ class subtracted_phot(subphot_data):
         self.comb_psf=self.comb_psf/np.sum(self.comb_psf)
         self.hdu_comb_psf_name =self.data1_path+"convolved_psf/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][0:13]+f"comb_psf_{self.rand_nums_string}.fits"
         self.hdu_comb_psf= fits.PrimaryHDU(self.comb_psf)
+        self.sp_logger.info(info_g+f" Saving combined PSF to {self.hdu_comb_psf_name}")
         self.hdu_comb_psf.writeto(self.hdu_comb_psf_name,overwrite=True)
 
 
@@ -3339,121 +3368,78 @@ class subtracted_phot(subphot_data):
     # import numpy as np
     # from astropy.stats import SigmaClip
 
-    def psf_fit_bg(self,data, psf_array,sn_x,sn_y):
+    def psf_fit_bg(self,data, psf_array,sn_x,sn_y,shift=True):
         from photutils import Background2D, MedianBackground,BkgZoomInterpolator
         from astropy.modeling import models, fitting
+        params = []
+        for d in range(len(data)):
+            sigma_clip = SigmaClip(sigma=3.)
+            bkg_estimator = SExtractorBackground(sigma_clip=sigma_clip)
+            box = int(np.ceil(np.shape(psf_array)[0]/4))
+            if float(box)%2==0:box+=1
+            # else:
+            filter_size = (5*int(box), 5*int(box))
 
-        # Estimate background using sigma-clipped statistics
-        sigma_clip = SigmaClip(sigma=3.)
-        bkg_estimator = SExtractorBackground(sigma_clip=sigma_clip)
-        box = int(np.ceil(np.shape(psf_array)[0]/4))
-        # self.sp_logger.info('box',box)
-        if float(box)%2==0:box+=1
-        # else:
-            # self.sp_logger.info('odd box size')
-        filter_size = (9*int(box), 9*int(box))
-
-        app = CircularAperture([sn_x,sn_y], r=1.5*box)
-        masks = app.to_mask(method='center') 
-        mask_arr = masks.to_image(shape=data.shape).astype(bool)
-        data_cutout = self.cutout_psf(data=data,psf_array=self.comb_psf,xpos=[sn_x],ypos=[sn_y])[o]
-        
-        self.sp_logger.info(info_g+' Estimating spatially varying background')
-        self.sp_logger.info(info_g+' Box size: '+str(box))
-        self.sp_logger.info(info_g+' Filter size: '+ste(filter_size))
-        self.sp_logger.info(info_g+' Mask size: '+str(np.shape(mask_arr)))
-
-
-        # try:
-        bkg1 = Background2D(data, box_size=box, filter_size=filter_size,
-                            sigma_clip=sigma_clip, bkg_estimator=bkg_estimator,interpolator=BkgZoomInterpolator(order=1))
-                            # mask=mask_arr,exclude_percentile=50)
-        # except:
-            # bkg1 = Background2D(data, box_size=box, filter_size=filter_size,
-            #                 sigma_clip=sigma_clip, bkg_estimator=bkg_estimator,interpolator=BkgZoomInterpolator(order=2),                   
-            #                 exclude_percentile=50,mask=mask_arr)
-            #                 # exclude_percentile=50) 
+            app = CircularAperture([sn_x,sn_y], r=1.5*box)
+            masks = app.to_mask(method='center') 
+            mask_arr = masks.to_image(shape=data[d].shape).astype(bool)
+            data_cutout = self.cutout_psf(data=data[d],psf_array=self.comb_psf,xpos=[sn_x],ypos=[sn_y])[0]
             
+            self.sp_logger.info(info_g+' Estimating spatially varying background')
+            self.sp_logger.info(info_g+' Box size: '+str(box))
+            self.sp_logger.info(info_g+' Filter size: '+str(filter_size))
+            self.sp_logger.info(info_g+' Mask size: '+str(np.shape(mask_arr)))
+
+
+            # try:
+            bkg1 = Background2D(data[d], box_size=box, filter_size=filter_size,
+                                sigma_clip=sigma_clip, bkg_estimator=bkg_estimator,interpolator=BkgZoomInterpolator(order=1))
+                
+                
+            surface_function_init = models.Polynomial2D(degree=2)
+            fitter = fitting.LevMarLSQFitter()
+            fit_x,fit_y = np.arange(0,np.shape(data[d])[1]),np.arange(0,np.shape(data[d])[0])
+            fit_xx,fit_yy = np.meshgrid(fit_x,fit_y)
+            surface_fit = fitter(surface_function_init, fit_xx, fit_yy, data[d])
+            surface= surface_fit(fit_xx, fit_yy)
+
+            # import properimage.single_image as si
+
+            # si_bkg_poly = si.SingleImage(self.sci_scale_sub_name).background
+            import sep
+
+            bkg = sep.Background(np.array(data[d]).astype(np.float64)).back()
+            bkg = self.cutout_psf(data=bkg,psf_array=self.comb_psf,xpos=[sn_x],ypos=[sn_y])[0]
+
+            data_cutout_mbkg = data_cutout - bkg
+            #save the background subtracted image
+            fits.writeto(self.data1_path+'scaled_subtracted_imgs/'+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][0:13]+f"complex_bkg_subtracted_{self.rand_nums_string}.fits", data=data_cutout_mbkg, header=self.sci_img_hdu.header,overwrite=True)
             
-            
-        surface_function_init = models.Polynomial2D(degree=2)
-        fitter = fitting.LevMarLSQFitter()
-        fit_x,fit_y = np.arange(0,np.shape(data)[1]),np.arange(0,np.shape(data)[0])
-        fit_xx,fit_yy = np.meshgrid(fit_x,fit_y)
-        surface_fit = fitter(surface_function_init, fit_xx, fit_yy, data)
-        surface= surface_fit(fit_xx, fit_yy)
+            #save the surface fit
+            data_cutout_msurf = data_cutout - self.cutout_psf(data=surface,psf_array=self.comb_psf,xpos=[sn_x],ypos=[sn_y])[0]
+            fits.writeto(self.data1_path+'scaled_subtracted_imgs/'+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][0:13]+f"surface_fit_{self.rand_nums_string}.fits", data=data_cutout_msurf, header=self.sci_img_hdu.header,overwrite=True)
 
-        # import properimage.single_image as si
+            data_cutout = data_cutout - bkg
+            xoff, yoff, exoff, eyoff = chi2_shift(psf_array, data_cutout, 10, 
+                                                    return_error=True, upsample_factor='auto')
 
-        # si_bkg_poly = si.SingleImage(self.sci_scale_sub_name).background
-        import sep
+            xoff_arc=abs(xoff)*self.sci_ps
+            yoff_arc=abs(yoff)*self.sci_ps
 
-        bkg = sep.Background(np.array(data).astype(np.float64)).back()
-        bkg = self.cutout_psf(data=bkg,psf_array=self.comb_psf,xpos=[sn_x],ypos=[sn_y])[0]
-        # self.comb_psf,zp_sci=self.zp_sci,num=10,sn_x=self.coords_sn[0][0],sn_y=self.coords_sn[0][1])
-        # si_bkg_poly_cut = self.cutout_psf(data=si_bkg_poly,psf_array=self.comb_psf,xpos=self.coords_sn[0][0],ypos=self.coords_sn[0][1])
+            if shift!=False:
+                if (xoff>5.0 or yoff>5.0) and self.telescope not in SEDM:
+                    xoff,yoff=0.0,0.0
+                data_cutout_shift=scipy.ndimage.shift(data_cutout, [-yoff, -xoff], order=3, mode='reflect', cval=0.0, prefilter=True)
+                resize_sci=np.reshape(data_cutout_shift,np.shape(data_cutout_shift)[0]*np.shape(data_cutout_shift)[1])
+                resize_psf=np.reshape(psf_array,np.shape(data_cutout_shift)[0]*np.shape(data_cutout_shift)[1]) 
+            else:
+                resize_sci=np.reshape(data_cutout,np.shape(data_cutout)[0]*np.shape(data_cutout)[1])
+                resize_psf=np.reshape(psf_array,np.shape(data_cutout)[0]*np.shape(data_cutout)[1])
 
-        
-        fig = plt.figure(figsize=(12,8))
-        vmin,vmax=visualization.ZScaleInterval().get_limits(data)
-        plt.imshow(data, origin='lower', cmap='viridis',vmin=vmin,vmax=vmax)
-        plt.title(f"data")
-        # plt.colorbar()
-        fig,axs = plt.subplots(figsize=(12,8),nrows=1,ncols=2)
-        vmin,vmax=visualization.ZScaleInterval().get_limits(bkg1.background)
-        axs[0].imshow(bkg1.background, origin='lower', cmap='viridis',vmin=vmin,vmax=vmax)
-        axs[0].set_title(f"bkg1.background")
-        # fig.colorbar()
-        vmin,vmax=visualization.ZScaleInterval().get_limits(data-bkg1.background)
-        axs[1].imshow(data-bkg1.background, origin='lower', cmap='viridis',vmin=vmin,vmax=vmax)
-        axs[1].set_title(f"data-bkg1.background")
-        # # fig.colorbar()
-        fig,axs = plt.subplots(figsize=(12,8),nrows=1,ncols=2)
-        vmin,vmax=visualization.ZScaleInterval().get_limits(bkg)
-        axs[0].imshow(bkg, origin='lower', cmap='viridis',vmin=vmin,vmax=vmax)
-        axs[0].set_title(f"bkg")
-        # fig.colorbar()
-        vmin,vmax=visualization.ZScaleInterval().get_limits(data_cutout-bkg)
-        axs[1].imshow(data_cutout-bkg, origin='lower', cmap='viridis',vmin=vmin,vmax=vmax)
-        axs[1].set_title(f"data-bkg")
-        # fig.colorbar()
-        fig,axs = plt.subplots(figsize=(12,8),nrows=1,ncols=2)
-        vmin,vmax=visualization.ZScaleInterval().get_limits(surface)
-        axs[0].imshow(surface, origin='lower', cmap='viridis',vmin=vmin,vmax=vmax)
-        axs[0].set_title(f"surface")
-        # fig.colorbar()
-        vmin,vmax=visualization.ZScaleInterval().get_limits(data-surface)
-        axs[1].imshow(data-surface, origin='lower', cmap='viridis',vmin=vmin,vmax=vmax)
-        axs[1].set_title(f"data-surface")
-        # fig.colorbar()
+            slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(resize_psf, resize_sci)
+            params.append([slope, intercept, r_value*r_value,xoff, yoff, abs(xoff_arc), abs(yoff_arc)])
 
-
-
-        plt.show()
-        
-
-
-
-
-    
-
-        data_cutout = data_cutout - bkg
-
-
-        xoff, yoff, exoff, eyoff = chi2_shift(psf_array, data_cutout, 10, 
-                                                return_error=True, upsample_factor='auto')
-
-        xoff_arc=abs(xoff)*self.sci_ps
-        yoff_arc=abs(yoff)*self.sci_ps
-        if (xoff>5.0 or yoff>5.0) and self.telescope not in SEDM:
-            xoff,yoff=0.0,0.0
-        data_cutout_shift=scipy.ndimage.shift(data_cutout, [-yoff, -xoff], order=3, mode='reflect', cval=0.0, prefilter=True)
-        resize_sci=np.reshape(data_cutout_shift,np.shape(data_cutout_shift)[0]*np.shape(data_cutout_shift)[1])
-        #resize_psf=np.reshape(psf_array,np.shape(data_cutout_shift)[0]*np.shape(data_cutout_shift)[1],1)
-        resize_psf=np.reshape(psf_array,np.shape(data_cutout_shift)[0]*np.shape(data_cutout_shift)[1]) 
-        slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(resize_psf, resize_sci)
-
-        return(slope, intercept, r_value*r_value,xoff, yoff, abs(xoff_arc), abs(yoff_arc))
+        return np.array(params)
 
     def psf_fit_noshift(self,data_cutout,psf_array):
         params = []
@@ -3518,8 +3504,12 @@ class subtracted_phot(subphot_data):
             if self.telescope not in SEDM and self.special_case==None and len(self.counts)>3:
                 self.sp_logger.info(info_g+' Number of stars before saturation check: '+str(len(self.matched_star_coords_pix)))
                 c=0
-                if self.sci_filt in ['g','r','i','z']:sat_mag,count_lim = 15.5,50000
-                else:sat_mag,count_lim = 16.5,50000
+                if self.sci_filt in ['g','r','z']:sat_mag,count_lim = 13.5,55000
+                elif self.sci_filt in ['i']:sat_mag,count_lim = 15.0,40000
+                else:sat_mag,count_lim = 16.5,45000
+
+                # count_lim=40000
+                # sat_mag=12.5
 
                 if len(self.matched_star_coords_pix)>=20: keep_min=20
                 elif len(self.matched_star_coords_pix)>=10: keep_min=10
@@ -3541,7 +3531,7 @@ class subtracted_phot(subphot_data):
                                 self.matched_new_mag.append(self.matched_catalog_mag[k])
                                 # self.sp_logger.info(info_g+f' Star {k} kept : mag:{self.matched_catalog_mag[k]:.2f} x: {int(self.matched_star_coords_pix[k][0])} y: {int(self.matched_star_coords_pix[k][1])}')
 
-                    if len(self.matched_new_pix)>=keep_min or c==3:
+                    if len(self.matched_new_pix)>=keep_min or c==3 or count_lim>=55000:
                         break
                     else:
                         if keep_min!=1:
@@ -3581,18 +3571,18 @@ class subtracted_phot(subphot_data):
                     
                     self.cutout_sci=self.cutout_psf(data=self.sci_conv,psf_array=self.comb_psf,xpos=[self.matched_star_coords_pix[i][0]],ypos=[self.matched_star_coords_pix[i][1]])[0]
                     self.cutout_ref=self.cutout_psf(data=self.ref_conv,psf_array=self.comb_psf,xpos=[self.matched_star_coords_pix[i][0]],ypos=[self.matched_star_coords_pix[i][1]])[0]
-                    if np.shape(self.cutout_sci)!=np.shape(self.comb_psf) or np.shape(self.cutout_ref)!=np.shape(self.comb_psf):
-                        self.sp_logger.info(info_g+f' Cutout shape mismatch for star {i}, padding')
-                        if np.shape(self.cutout_sci)!=np.shape(self.comb_psf):
-                            self.sp_logger.info(info_g+f' Cutout shape mismatch for science image')
-                            # print(np.shape(self.cxutout_sci),np.shape(self.comb_psf))
-                            # if self.zp_size_check==2:
-                            self.cutout_sci = np.pad(self.cutout_sci,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_sci)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_sci)[1])),'constant',constant_values=0)
-                            # print(np.shape(self.cutout_sci),np.shape(self.comb_psf))
-                        if np.shape(self.cutout_ref)!=np.shape(self.comb_psf):
-                            self.sp_logger.info(info_g+f' Cutout shape mismatch for reference image')
-                            # if self.zp_size_check==2:
-                            self.cutout_ref = np.pad(self.cutout_ref,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_ref)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_ref)[1])),'constant',constant_values=0)
+                    if np.shape(self.cutout_sci)!=np.shape(self.comb_psf) or np.shape(self.cutout_ref)!=np.shape(self.comb_psf):continue
+                        # self.sp_logger.info(info_g+f' Cutout shape mismatch for star {i}, padding')
+                        # if np.shape(self.cutout_sci)!=np.shape(self.comb_psf):
+                        #     self.sp_logger.info(info_g+f' Cutout shape mismatch for science image')
+                        #     # print(np.shape(self.cxutout_sci),np.shape(self.comb_psf))
+                        #     # if self.zp_size_check==2:
+                        #     self.cutout_sci = np.pad(self.cutout_sci,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_sci)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_sci)[1])),'constant',constant_values=0)
+                        #     # print(np.shape(self.cutout_sci),np.shape(self.comb_psf))
+                        # if np.shape(self.cutout_ref)!=np.shape(self.comb_psf):
+                        #     self.sp_logger.info(info_g+f' Cutout shape mismatch for reference image')
+                        #     # if self.zp_size_check==2:
+                        #     self.cutout_ref = np.pad(self.cutout_ref,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_ref)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_ref)[1])),'constant',constant_values=0)
 
                     
                     # self.cutout_ref = np.pad(self.cutout_ref,((0,np.shape(self.comb_psf)[0]-np.shape(self.cutout_ref)[0]),(0,np.shape(self.comb_psf)[1]-np.shape(self.cutout_ref)[1])),'constant',constant_values=0)
@@ -3614,6 +3604,7 @@ class subtracted_phot(subphot_data):
 
         self.zp_sci,self.zp_ref=np.array(self.zp_sci),np.array(self.zp_ref)
         self.rsq_ref,self.rsq_sci=np.array(self.rsq_ref),np.array(self.rsq_sci)
+        print(self.zp_sci,self.zp_ref,self.rsq_sci,self.rsq_ref)
 
         if self.sci_filt=='u':
             self.thresh=0.55
@@ -3646,17 +3637,20 @@ class subtracted_phot(subphot_data):
                 self.sp_logger.info(warn_r+' Something wrong with reference since no zero point stars detected, but detected in science')
                 self.sp_logger.info(warn_r+' Exiting..')
 
-
-        for i in range(len(self.zp_sci)):
-            print(self.zp_sci[i],self.zp_ref[i],self.rsq_sci[i],self.rsq_ref[i])
+        self.zp_df = pd.DataFrame({'zp_sci':self.zp_sci,'zp_ref':self.zp_ref,'rsq_sci':self.rsq_sci,'rsq_ref':self.rsq_ref}) #show in reverse order
+        self.sp_logger.info(tabulate(self.zp_df.loc[self.zp_df['rsq_sci']>0.5].sort_values(by=['rsq_sci','rsq_ref'],ascending=False), headers='keys', tablefmt='psql',showindex=False))
+        # print(tabulate(self.zp_df.sort_values(by=['rsq_sci','rsq_ref']), headers='keys', tablefmt='psql'))
+        # for i in range(len(self.zp_sci)):
+        #     print(self.zp_sci[i],self.zp_ref[i],self.rsq_sci[i],self.rsq_ref[i])
 
         self.rsq_cont=False
         #check how many stars have rsq values above the threshold and lower by 0.05 until there are at least 2 stars
+        # self.thresh=0.4
         if self.sci_filt=='u' and self.telescope not in SEDM:
             self.zp_sci_lim=27.5
         while self.rsq_cont==False:
             self.arr=(self.rsq_ref >=self.thresh) & (self.rsq_sci >=self.thresh) & (self.zp_sci >=0) & (self.zp_ref >=0) & (self.zp_sci<=self.zp_sci_lim)#filter out stars poorly fitted with PSF fit & weird zp measurement
-            # self.sp_logger.info(self.rsq_ref[self.arr],sum(self.arr))
+            # self.sp_logger.info(self.rsq_ref[self.arr],sum(self.arr)) 
             if (len([i for i in self.rsq_ref if i>=self.thresh])<1 or len([i for i in self.rsq_sci if i>=self.thresh])<1) and len(self.zp_sci)>=5:
                 self.sp_logger.info(warn_y+f' Lowering threshold for rsq values to {self.thresh-0.05:.2f}')
                 self.thresh-=0.05
@@ -3708,7 +3702,7 @@ class subtracted_phot(subphot_data):
         self.zp_ref_new=self.zp_ref_new[~self.zp_ref_new.mask]
         if len(self.zp_sci_new)==len(self.zp_sci) or len(self.zp_ref_new)==len(self.zp_ref):
             self.sp_logger.info(warn_y+' No stars removed after sigma clipping')
-            if len(self.zp_sci)>5 and len(self.zp_ref)>=5 and self.sci_filt!='u':
+            if len(self.zp_sci)>=5 and len(self.zp_ref)>=5 and self.sci_filt!='u':
                 self.sp_logger.info(info_g+f' Removing stars with zp values outside 5th and 95th percentiles')
                 self.zp_sci_new,self.zp_ref_new = [i for i in self.zp_sci if i>np.percentile(self.zp_sci,5) and i<np.percentile(self.zp_sci,95)],[i for i in self.zp_ref if i>np.percentile(self.zp_ref,5) and i<np.percentile(self.zp_ref,95)]
             
@@ -3900,34 +3894,45 @@ class subtracted_phot(subphot_data):
         self.sn_cutout=self.cutout_psf(data=data,psf_array=psf,xpos=[sn_x],ypos=[sn_y])[0]
         # calculate the magnitude of the object
         if self.forced_phot==False: 
-            # self.main_sn_psf_fit = self.psf_fit_bg(data,psf_array=psf,sn_x=sn_x,sn_y=sn_y)
+            # self.main_sn_psf_fit = self.psf_fit_bg([data],psf_array=psf,sn_x=sn_x,sn_y=sn_y)[0]
             self.main_sn_psf_fit = self.psf_fit([self.sn_cutout],psf_array=psf)[0]
 
         else: 
+            if len(self.forced_phot)==1:self.forced_phot=self.forced_phot[0].split(',')
             self.sp_logger.info(info_g+f" Performing forced photometry at {self.forced_phot[0]} {self.forced_phot[1]}")
             sn_x,sn_y = self.forced_phot[0],self.forced_phot[1]
             new_sci_c = SkyCoord(ra=sn_x,dec=sn_y,unit=(u.hourangle, u.deg),frame='fk5')
             sn_x,sn_y = wcs_to_pixels(self.sci_conv_name,np.column_stack((new_sci_c.ra.deg,new_sci_c.dec.deg)))[0]
 
             self.sn_cutout = self.cutout_psf(data=data,psf_array=psf,xpos=[sn_x],ypos=[sn_y])[0]
-            self.main_sn_psf_fit = self.psf_fit_noshift(self.sn_cutout,psf_array=psf)[0]
+            print(len(self.forced_phot))
+            self.main_sn_psf_fit = self.psf_fit_noshift([self.sn_cutout],psf_array=psf)[0]
 
         sn_flux= self.main_sn_psf_fit[0]
         sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
         # self.sp_logger.info the offset of the shifted fit
+        self.sp_logger.info(info_g+f' Preliminary:')
+        self.sp_logger.info(info_g+f' MJD: {self.sci_mjd}')
+        self.sp_logger.info(info_g+f' BACKGROUND: {self.main_sn_psf_fit[1]:.3f} counts')
+        self.sp_logger.info(info_g+f' SN FLUX {sn_flux:.3f} counts')
+        self.sp_logger.info(info_g+f' SN MAG {(-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)):.3f} mag')
+        self.sp_logger.info(info_g+f' SN MAG - BACKGROUND {(-2.5*np.log10(sn_flux-np.abs(self.main_sn_psf_fit[1]))+np.nanmedian(zp_sci)):.3f} mag')
+        # self.sp_logger.info('-'*20)
         if self.forced_phot==False:
             self.sp_logger.info(info_g+' Offset of shifted PSF fit (xpos,ypos)=%.3f %.3f'%(self.main_sn_psf_fit[3],self.main_sn_psf_fit[4]))
             # if the xoff_arc and yoff_arc are greater than 1.5 arcsec, then the fit is shifted too much, 
             # defaulting to the original position so will use psf_fit_noshift
             self.sp_logger.info(info_g+' xoff_arc=%.3f arcsec, yoff_arc=%.3f arcsec'%(self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]))
             self.ra_off,self.dec_off = self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]
-
+            self.max_psf_offset=1
             if (sn_mag>15 and self.forced_phot==False) or (self.forced_phot!=False) or np.isnan(sn_mag):
                 if  self.telescope not in SEDM and any(abs(offset)>self.max_psf_offset for offset in [self.main_sn_psf_fit[5], self.main_sn_psf_fit[6]]):
                     self.sp_logger.warning(warn_y+f" PSF fit is shifted too much, defaulting to original position")
                     self.sp_logger.warning(warn_y+" Magnitude before shifting to original position = %.3f"%sn_mag)
 
+                    # self.main_sn_psf_fit = self.psf_fit_bg([data],psf_array=psf,sn_x=sn_x,sn_y=sn_y,shift=False)[0]
                     self.main_sn_psf_fit = self.psf_fit_noshift([self.sn_cutout],psf_array=psf)[0]
+
                     sn_flux= self.main_sn_psf_fit[0]
                     sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
                     self.sp_logger.info(warn_y+" New magnitude = %.3f"%sn_mag)
@@ -4027,21 +4032,22 @@ class subtracted_phot(subphot_data):
                 self.sys_fact = 1.07
             else:
                 self.sys_fact = 1.03
+            flux_bkg_list = [i for i in flux_bkg_list if i !='--']
+            flux_new_sn_list = [i for i in flux_new_sn_list if i !='--']
             
             magerr=magstd*self.sys_fact
-            maglim=-2.5*np.log10(abs(np.median(flux_bkg_list))+abs(np.std(flux_bkg_list)*2))+np.nanmedian(zp_sci)
+            maglim=-2.5*np.log10(abs(np.nanmedian(flux_bkg_list))+abs(np.nanstd(flux_bkg_list)*3))+np.nanmedian(zp_sci)
+            self.sp_logger.info(info_g+f' Liminting magnitude: {maglim:.3f} mag')
             # self.sp_logger.info('maglim',maglim)
 
 
-            flux_bkg_list = [i for i in flux_bkg_list if i !='--']
-            flux_new_sn_list = [i for i in flux_new_sn_list if i !='--']
             # self.sp_logger.info(final_flux_bkg_list,np.std(final_flux_bkg_list),np.median(final_flux_bkg_list))
             # self.sp_logger.info(final_flux_new_sn_list,np.std(final_flux_new_sn_list),np.median(final_flux_new_sn_list))
 
-            self.sp_logger.info(info_g+' Mag=%.3f+/-%.3f ' %(sn_mag,magerr))
-            self.sp_logger.info(info_g+f' Flux corresponding to the (marginal) detection + 2*sigma {-2.5*np.log10(np.median(sn_flux)+(np.std(flux_bkg_list)*2))+np.nanmedian(zp_sci)}')
-            self.sp_logger.info(info_g+f' 5-sig limit = {-2.5*np.log10(abs(np.median(flux_bkg_list))+abs(np.std(flux_bkg_list)*5))+np.nanmedian(zp_sci)}')
-            self.sp_logger.info(info_g+f' 3-sig limit = {-2.5*np.log10(abs(np.median(flux_bkg_list))+abs(np.std(flux_bkg_list)*3))+np.nanmedian(zp_sci)}')
+            self.sp_logger.info(info_g+' Mag = %.3f+/-%.3f ' %(sn_mag,magerr))
+            self.sp_logger.info(info_g+f' Flux corresponding to the (marginal) detection + 2*sigma {(-2.5*np.log10(np.median(sn_flux)+(np.std(flux_bkg_list)*2))+np.nanmedian(zp_sci)):3f}')
+            self.sp_logger.info(info_g+f' 5-sig limit = {(-2.5*np.log10(abs(np.nanmedian(flux_bkg_list))+abs(np.nanstd(flux_bkg_list)*5))+np.nanmedian(zp_sci)):3f}')
+            self.sp_logger.info(info_g+f' 3-sig limit = {(-2.5*np.log10(abs(np.nanmedian(flux_bkg_list))+abs(np.nanstd(flux_bkg_list)*3))+np.nanmedian(zp_sci)):3f}')
                 # self.sp_logger.info(flux_bkg_list)
                 # self.sp_logger.info('lims',np.std(flux_bkg_list),np.median(flux_bkg_list),np.median(flux_bkg_list)+np.std(flux_bkg_list)*2)
 
@@ -4440,7 +4446,12 @@ class subtracted_phot(subphot_data):
         if self.SNR<=3 or self.mag[0]+self.mag_all_err>self.mag[3]:
             self.sp_logger.info(warn_r+f' S/N of {self.SNR:.2f} or mag+magerr of {self.mag[0]+self.mag_all_err:.2f} > maglim of {self.mag[3]:.2f}, uploading limit')
             self.mag=[99.0,90.0,99.0,self.mag[3]]
-
+        
+        # if self.sci_obj=='AT2025bcw' or self.sci_obj=='2025bcw':self.mag_all_err/=2
+        if self.sci_obj=='AT2025bcq':self.sci_obj='ZTF25aafiske'
+        # if self.sci_obj=='AT2025bbo' and self.sci_filt == 'i':self.mag[0] = self.mag[0]-1
+        
+        if self.sci_obj.startswith('AT') or self.sci_obj.startswith('SN'):self.sci_obj = self.sci_obj[2:]
         self.data = {"filter":f"sdss{self.sci_filt}","magerr": self.mag_all_err,"obj_id": self.sci_obj,
                     "mag":self.mag[0],"limiting_mag": self.mag[3],"mjd": self.sci_mjd,"magsys": "ab","group_ids":"all"}
         # return 
@@ -4462,7 +4473,9 @@ class subtracted_phot(subphot_data):
         if self.sci_prop!=None:
             self.data['altdata']['Proposal ID']=self.sci_prop
             if self.sci_prop in ['JL24A04','JL24B14']:self.data['altdata']['Proposal PI'] = 'K-Ryan Hinds'
-            elif self.sci_prop in ['JL24B15']:self.data['altdata']['Proposal PI'] = 'Jacob Wise'
+            elif self.sci_prop in ['JL24B15','JL25A01']:self.data['altdata']['Proposal PI'] = 'Jacob Wise'
+            elif self.sci_prop in ['JL24B10']:self.data['altdata']['Proposal PI'] = 'Chris Copperwheat'
+
 
 
         self.name=self.sci_obj
