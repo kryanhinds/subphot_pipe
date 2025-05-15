@@ -1,0 +1,160 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <head>
+        <title>SDSS SAS: Imaging Comingsoon</title>
+        <meta name="robots" content="noindex" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <link rel="shortcut icon" href="/static/png/favicon.ico"></link>
+        <style type="text/css">@import url("/static/css/bootstrap-3.3.5/bootstrap.min.css");</style>
+        <style type="text/css">@import url("/static/css/bootstrap-table-1.11.0/bootstrap-table.css");</style>
+        <style type="text/css">@import url("/static/css/bootstrap-toggle/bootstrap-toggle.css");</style>
+        <style type="text/css">@import url("/static/css/style.css");</style>
+        <script type="text/javascript" src="/static/js/jquery-1.11.3.min.js"></script>
+        <script type="text/javascript" src="/static/js/bootstrap-3.3.5/bootstrap.min.js"></script>
+        <script type="text/javascript" src="/static/js/bootstrap-table-1.11.0/bootstrap-table.js"></script>
+        <script type="text/javascript" src="/static/js/bootstrap-toggle/bootstrap-toggle.js"></script>
+        <script type="text/javascript" src="/static/jquery/imaging/comingsoon.js?ver=20230116"></script>
+    </head>
+    <body>
+    <div class="container">
+        <div class="container-fluid">
+            <div class="masthead">
+                <h1 id="h1masthead">SDSS Science Archive Server (SAS)</h1>
+                <!-- Navbar -->
+                <nav class="navbar navbar-default">
+                <ul class="pager" style="top:-58px; right:0px; position:absolute">
+                    <li><a target="_blank" href="/sas"><span class="glyphicon glyphicon-arrow-right"></span> SAS for experts</a></li>
+                    
+                    
+                    <li><a target="_blank" href="http://www.sdss.org/dr12/data_access"><span class="glyphicon glyphicon-arrow-right"></span> About Data Access</a></li>
+                </ul>
+                <ul class="pager" style="top:-95px; right:0px; position:absolute">
+                    <li><!--dr16 <a href="https://dr16.sdss.org/home/imaging/field/search"><span class="glyphicon glyphicon-lock"></span> SAS Login</a></li> -->
+                        <a href="https://sas.sdss.org/home/imaging/field/search"><span class="glyphicon glyphicon-lock"></span> SAS Login</a></li></li>
+                </ul>
+                    <div class="container-fluid">
+                        <div id="navbar">
+                            <ul class="nav nav-pills" style="top:4px; position:absolute;">
+                                <li ><a href="/home">Home</a></li>
+                                <li class="dropdown">
+                                    <a class="dropdown-toggle" id="drop1" data-toggle="dropdown" data-target="#" href="/imaging/">Imaging<b class="caret"></b></a>
+                                    <ul class="dropdown-menu" role="menu" aria-labelledby="drop1">
+                                        <li><a href="/imaging/field/search">Field Search</a></li>
+                                        <li><a href="/imaging/coverage">Coverage Check</a></li>
+                                        <li><a href="/imaging/mosaics">Mosaics</a></li>
+                                    </ul>
+                                </li>
+                                <li class="dropdown">
+                                    <a class="dropdown-toggle" id="drop2" data-toggle="dropdown" data-target="#" href="/optical/">Optical Spectra<b class="caret"></b></a>
+                                    <ul class="dropdown-menu" role="menu" aria-labelledby="drop2">
+                                        <li><a href="/optical/plate/search">Plate Search</a></li>
+                                        <li><a href="/optical/spectrum/search">Spectrum Search</a></li>
+                                        <li><a href="/optical/spectrum/view">Spectrum View</a></li>
+                                        <li><a href="/optical/spectrum/view/data/access">Data Access API</a></li>
+                                    </ul>
+                                </li>
+                                <li class="dropdown">
+                                    <a class="dropdown-toggle" id="drop3" data-toggle="dropdown" data-target="#" href="/infrared/">Infrared Spectra<b class="caret"></b></a>
+                                    <ul class="dropdown-menu" role="menu" aria-labelledby="drop3">
+                                        <li><a href="/infrared/plate/search">Plate Search</a></li>
+                                        <li><a href="/infrared/spectrum/search">Spectrum Search</a></li>
+                                        <li><a href="/infrared/spectrum/view/visits">Spectrum View Visits</a></li>
+                                        <li><a href="/infrared/spectrum/view/stars">Spectrum View Stars</a></li>
+                                        <li><a href="/infrared/spectrum/view/data/access">Data Access API</a></li>
+                                    </ul>
+                                </li><li>
+                                </li>
+                            </ul>
+                            <ul class="nav nav-pills " style="top:4px; right:15px; position:absolute;">
+                                <li class="dropdown active">
+                                    <a class="dropdown-toggle" id="drop3" data-toggle="dropdown" data-target="#" href="">DR12<b class="caret"></b></a>
+                                    <ul class="dropdown-menu" role="menu" aria-labelledby="drop3">
+                                    
+                                        
+                                            <li><a href="https://dr18.sdss.org/comingsoon/imaging/field/search">DR18</a></li>
+                                        
+                                            <li><a href="https://dr17.sdss.org/comingsoon/imaging/field/search">DR17</a></li>
+                                        
+                                            <li><a href="https://dr16.sdss.org/comingsoon/imaging/field/search">DR16</a></li>
+                                        
+                                            <li><a href="https://dr15.sdss.org/comingsoon/imaging/field/search">DR15</a></li>
+                                        
+                                            <li><a href="https://dr14.sdss.org/comingsoon/imaging/field/search">DR14</a></li>
+                                        
+                                            <li><a href="https://dr13.sdss.org/comingsoon/imaging/field/search">DR13</a></li>
+                                        
+                                            <li><a href="https://dr12.sdss.org/comingsoon/imaging/field/search">DR12</a></li>
+                                        
+                                            <li><a href="https://dr11.sdss.org/comingsoon/imaging/field/search">DR11</a></li>
+                                        
+                                            <li><a href="https://dr10.sdss.org/comingsoon/imaging/field/search">DR10</a></li>
+                                        
+                                            <li><a href="https://dr9.sdss.org/comingsoon/imaging/field/search">DR9</a></li>
+                                        
+                                            <li><a href="https://dr8.sdss.org/comingsoon/imaging/field/search">DR8</a></li>
+                                        
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Main included content -->
+            <div class="row hidden-phone hidden-tablet">
+        
+        
+        <div class="col-md-4">
+            <h3>SDSS Imaging</h3>
+            <a href="/imaging/field/search?run=6122&amp;camcol=4055&amp;field=13;action=search"><img src="/static/jpg/imgExample.jpg" width="100%" alt="SDSS image" /></a>
+        </div>
+        
+        <div class="col-md-4">
+            <h3>Optical Spectroscopy</h3>
+            <a href="/optical/spectrum/view?run2d=v5_7_0&amp;plateid=4055&amp;mjd=55359&amp;fiberid=596&amp;action=search"><img src="/static/png/specExample.png" width="100%" alt="Galaxy spectrum" /></a>
+        </div>
+        <div class="col-md-4">
+            <h3>Infrared Spectroscopy</h3>
+            <a href="/infrared/spectrum/view/stars?apogee_id=2M05580827+1345138&amp;location_id=4258&amp;commiss=0&amp;action=search"><img src="/static/png/irExample.png" width="100%" alt="Star spectrum" /></a>
+        </div></div>
+    <br/>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="hero-unit">
+                <h2>SDSS-III Imaging</h2>
+                <h4>The following web services have been deprecated as of August 2024:</h4>
+                <!--<h4>The following services are currently unavailable, due to unexpected maintentance.</h4>-->
+                <!--<h5 style='margin: 18px;'>Every effort is being taken to restore the features of this service.</h5>-->
+                <!--<h5 style='margin: 18px;'>However, there is currently no estimate of when the services will be restored as the requirements to maintain this tool have changed.</h5>-->
+                
+                
+                <dl style="margin-left:36px;">
+                    <dt>Single Field Search</dt><dd><a target="_blank" href="https://dr12.sdss.org/fields">https://dr12.sdss.org/fields</a></dd>
+                    <dt>Bulk Field Search</dt><dd><a target="_blank" href="https://dr12.sdss.org/bulkFields">https://dr12.sdss.org/bulkFields</a></dd>
+                    <dt>Coverage Check</dt><dd><a target="_blank" href="https://dr12.sdss.org/coverageCheck">https://dr12.sdss.org/coverageCheck</a></dd>
+                    <dt>Mosaics</dt><dd><a target="_blank" href="https://dr12.sdss.org/mosaics">https://dr12.sdss.org/mosaics</a></dd>
+                </dl>
+                <h5 style='margin: 18px;'>Please refer to <a href="https://www.sdss.org/dr18/imaging/tools/">www.sdss.org/dr18/imaging/tools</a> for documentation and imaging tutorials that you can use to replace some of these deprecated functions.</h5>
+            </div>
+        </div>
+    </div>
+
+            <!-- Footer included from an external template -->
+            <footer class="footer hidden-tablet hidden-phone">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>Copyright &copy; 2010-2021 <a target='_blank' href="http://www.sdss.org/">SDSS</a></p>
+                        Version: saw/1.1.0<br/>
+                        <a href="mailto:helpdesk@sdss.org?subject=Science Archive Server (SAS)">helpdesk@sdss.org</a></p>
+                    </div>
+                    <div class="col-md-6 text-right">
+                        <a href="https://www.python.org"><img style="vertical-align:middle; height:42px;" src="/static/png/python-logo.png" alt="Python Powered" /></a>
+                        <a href="http://flask.pocoo.org"><img style="vertical-align:middle; height:36px;" src="/static/png/flask-powered.png" alt="Flask Powered" /></a>
+                        <a href="http://www.postgresql.org"><img style="vertical-align:middle; height:36px; padding-left:5px;" src="/static/png/postgresql-powered.png" alt="PostgreSQL Powered" /></a>
+                        <a href="http://www.astropy.org"><img style="vertical-align:middle; height:36px; padding-left:5px;" src="/static/svg/astropy_powered.svg" alt="PostgreSQL Powered" /></a>
+                    </div>
+            </footer>
+        </div>
+    </body>
+</html>

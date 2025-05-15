@@ -1,0 +1,105 @@
+#!/bin/bash -l
+
+# export PYTHON_UNBUFFERRED=True
+flight env activate gridware
+# source ~/.bash_profile
+module load apps/swarp/2.41.5/gcc-8.5.0 
+module load apps/psfex/3.24.1/gcc-8.5.0 
+module load apps/sextractor/2.28.0/gcc-8.5.0
+conda activate subphot
+INFO_G="\033[0;32m[INFO]  :: \033[0m"
+# echo -e $INFO_G Logging to /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log | tee /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+
+# python3 /users/arikhind/subphot_pipe/subphot_subtract.py -f Quicklook/20250220 | tee -a /users/arikhind/subphot_pipe/scront_test_20250220.log
+
+
+echo
+if [ $(date +%H%M) -gt 2000 ] && [ $(date +%H%M) -lt 2359 ]; then
+    echo -e $INFO_G Logging to /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log | tee /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    echo -e $INFO_G "Time is before midnight" 
+    if [ ! -d /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d) ]; then
+        mkdir /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)
+        echo -e $INFO_G Created directory /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d) | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    fi
+
+    if [ ! -d /mnt/data1/users/arikhind/phot_data/Quicklook/$(date +%Y%m%d)]; then
+        mkdir /mnt/data1/users/arikhind/phot_data/Quicklook/$(date +%Y%m%d)
+        echo -e $INFO_G Created directory /mnt/data1/users/arikhind/phot_data/Quicklook/$(date +%Y%m%d) | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    fi
+    # echo Logging terminal output to /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    echo
+    #download data 
+    echo -e $INFO_G Downloading data | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    python3 -u /users/arikhind/subphot_pipe/subphot_subtract.py -qdl $(date +%Y%m%d) 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log 
+    echo -e $INFO_G Running subtraction | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    python3 -u /users/arikhind/subphot_pipe/subphot_subtract.py -f Quicklook/$(date +%Y%m%d) -o by_obs_date -new -cut -up -pid $(date +%Y%m%d%H%M) 2>&1 | tee /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+
+    #run make_LC
+    echo -e $INFO_G Making lightcurves | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+
+    #run webpage
+    echo -e $INFO_G Updating/making webpages | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+
+fi
+
+#cehck if the time is after midnight buyt before 7.01am
+if [ $(date +%H%M) -gt 0000 ] && [ $(date +%H%M) -lt 0800 ]; then
+    echo -e $INFO_G Logging to /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log #| tee /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    echo -e $INFO_G "Time is after midnight"
+    if [ ! -d /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d) ]; then
+        mkdir /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)
+        echo "-e $INFO_G Created directory /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)"
+    fi
+
+    if [ ! -d /mnt/data1/users/arikhind/phot_data/Quicklook/$(date -d "yesterday" +%Y%m%d) ]; then
+        mkdir /mnt/data1/users/arikhind/phot_data/Quicklook/$(date -d "yesterday" +%Y%m%d)
+        echo -e $INFO_G Created directory /mnt/data1/users/arikhind/phot_data/Quicklook/$(date -d "yesterday" +%Y%m%d)
+    fi
+    # echo -e $INFO_G Logging terminal output to /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date -d "yesterday" +%Y%m%d%H%M)_bash.log
+    echo 
+    echo -e $INFO_G Downloading data | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    python3 /users/arikhind/subphot_pipe/subphot_subtract.py -qdl $(date -d "yesterday" +%Y%m%d) 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    echo -e $INFO_G Running subtraction | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    python3 /users/arikhind/subphot_pipe/subphot_subtract.py -f Quicklook/$(date -d "yesterday" +%Y%m%d) -o by_obs_date -new -cut -up -pid $(date -d "yesterday" +%Y%m%d%H%M)  2>&1| tee /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    
+    #run make_LC
+    echo -e $INFO_G Making lightcurves | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+
+    #run webpage
+    echo -e $INFO_G Updating/making webpages | tee -a /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date -d "yesterday" +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+fi
+
+
+
+#see if the time is 8.01am
+#see if the time is 8.01am
+# if [ $(date +%H%M) -gt 0830 ] && [ ! -d /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d) ]; then
+# if [ $(date +%H%M) -gt 0830 ] && [ ! -d /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d) ]; then
+if [ $(date +%H%M) -gt 0903 ] && [ ! -d /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d) ]; then
+
+    echo -e $INFO_G "Running morning routine"
+    mkdir /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)
+    mkdir /mnt/data1/users/arikhind/phot_data/photometry_date/$(date -d "yesterday" +%Y%m%d)
+    echo -e $INFO_G Created directory /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d) | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+
+    # echo Logging terminal output to /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/$(date +%Y%m%d)/nightly_routine_log_$(date +%Y%m%d%H%M)_bash.log
+    echo
+    #download data 
+    echo -e $INFO_G Downloading any missing data | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+    python3 -u /users/arikhind/subphot_pipe/subphot_subtract.py -qdl $(date -d "yesterday" +%Y%m%d) 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+    echo -e $INFO_G Running subtraction | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+    python3 -u /users/arikhind/subphot_pipe/subphot_subtract.py -f Quicklook/$(date +%Y%m%d) -mrup -o by_obs_date -cut -upf -pid $(date +%Y%m%d%H%M) 2>&1 | tee /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+
+    #run make_LC
+    echo -e $INFO_G Making lightcurves | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+
+    #run webpage
+    echo -e $INFO_G Updating/making webpages | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+
+    #run email
+    echo -e $INFO_G Sending email | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+    python3 -u /users/arikhind/subphot_pipe/subphot_morning_email.py -p JZ24B01 JL24B14 JL24A09 JL24B09 JL25A01 JL25A10 JL25A04 JL25A08 JL25A09 JL25A05 -e K.C.Hinds@2021.ljmu.ac.uk d.a.perly@ljmu.ac.uk j.l.wise@2022.ljmu.ac.uk a.m.bochenek@2023.ljmu.ac.uk -mlog /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log 2>&1 | tee -a /mnt/data1/users/arikhind/phot_data/morning_rup_logs/$(date -d "yesterday" +%Y%m%d)/mrup_$(date +%Y%m%d%H%M)_bash.log
+
+
+fi
+
