@@ -1648,7 +1648,7 @@ class subtracted_phot(subphot_data):
 
         else:
             self.sp_logger.info(warn_y+f" Not enough stars matched for distorion correction ")
-        sys.exit(1)
+        # sys.exit(1)
         return
 
 
@@ -1660,7 +1660,7 @@ class subtracted_phot(subphot_data):
         if self.telescope in SEDM:
             self.image_size=1000
         else:
-            self.image_size=1000
+            self.image_size=1500
 
         if self.sci_obj=='ZTF24abdiwwv': #02:22:10.96 -20:23:21.01
             # self.image_size=1500

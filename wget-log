@@ -1,15 +1,0 @@
---2024-08-30 10:49:45--  https://dr12.sdss.org/fields/raDec?ra=142.001166
-Resolving dr12.sdss.org (dr12.sdss.org)... 155.101.19.32
-Connecting to dr12.sdss.org (dr12.sdss.org)|155.101.19.32|:443... connected.
-HTTP request sent, awaiting response... 301 Moved Permanently
-Location: https://dr12.sdss.org/comingsoon/imaging/field/search [following]
---2024-08-30 10:49:46--  https://dr12.sdss.org/comingsoon/imaging/field/search
-Reusing existing connection to dr12.sdss.org:443.
-HTTP request sent, awaiting response... 200 OK
-Length: 11898 (12K) [text/html]
-Saving to: ‘raDec?ra=142.001166’
-
-raDec?ra=142.001166                                                     0%[                                                                                                                                                                        ]       0  --.-KB/s               raDec?ra=142.001166                                                   100%[=======================================================================================================================================================================>]  11.62K  --.-KB/s    in 0s      
-
-2024-08-30 10:49:51 (578 MB/s) - ‘raDec?ra=142.001166’ saved [11898/11898]
-
