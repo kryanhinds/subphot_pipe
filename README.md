@@ -85,7 +85,7 @@ Update all config files in `subphot_pipe/config/` to reflect your current workin
 Run on a single image:
 
 ```bash
-python3 subphot_pipe.py -i h_e_20220206_1_1_1.fits
+python3 subphot_subtract.py -i h_e_20220206_1_1_1.fits
 ```
 
 Photometry, cutouts and any logs will be saved to data1_path/photometry, data1_path/photometry/cut_outs and data1_path/photometry/<name>.log, respecitvely.
@@ -93,25 +93,25 @@ Photometry, cutouts and any logs will be saved to data1_path/photometry, data1_p
 Run on all images in a folder:
 
 ```bash
-python3 subphot_pipe.py -f SNDataFolder
+python3 subphot_subtract.py -f SNDataFolder
 ```
 
 Run on specific images:
 
 ```bash
-python3 subphot_pipe.py -i image1.fits image2.fits image3.fits
+python3 subphot_subtract.py -i image1.fits image2.fits image3.fits
 ```
 
 Run on a wildcard and stack:
 
 ```bash
-python3 subphot_pipe.py -i h_e_20220206_*.fits -stk
+python3 subphot_subtract.py -i h_e_20220206_*.fits -stk
 ```
 
 Advanced example with full options:
 
 ```bash
-python3 subphot_pipe.py -f SNDataFolder -sn SNXXXX -b r i -cut -o SNDataResults -fp RAX DECX -log SNXXXX
+python3 subphot_subtract.py -f SNDataFolder -sn SNXXXX -b r i -cut -o SNDataResults -fp RAX DECX -log SNXXXX
 ```
 This will run the code on all images in the folder SNDataFolder in the data1_path folder, for SN SNXXXX, in filters r and i, produce cutouts in the output folder SNDataResults, and perform forced photometry at the position RAX DECX. However, if the DEC is negative, it should be written as RAX,-DECX; otherwise, argparse reads this as another argument. The log (with all the terminal outputs) will be saved in the data1_path folder SNXXXX (same as the output) as a text file name with SNXXXX.log
 
@@ -123,13 +123,13 @@ This will run the code on all images in the folder SNDataFolder in the data1_pat
 Download Quicklook data (within 7 days):
 
 ```bash
-python3 subphot_pipe.py -qdl 20250505
+python3 subphot_subtract.py -qdl 20250505
 ```
 
 Download RecentData (within \~30 days):
 
 ```bash
-python3 subphot_pipe.py -rdl 20250505
+python3 subphot_subtract.py -rdl 20250505
 ```
 
 ---
