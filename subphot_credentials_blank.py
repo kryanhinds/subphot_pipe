@@ -1,11 +1,11 @@
 # directory that the code will be run from
-path='/users/arikhind/subphot_pipe/'
+path='~/subphot_pipe/'
 
 #path to store photometry data in and temporary files (temporary files include ref_imgs - not deleted - background subtracted images, convolved images etc.)
 data1_path=''
 
 #Fritz Sky-Portal Token for uploading, deleting and retrieving data
-token="549e219d-b0eb-4a19-98ee-3a658af2303b"
+token=""
 
 # for sending reduced data to at the end of the day
 
