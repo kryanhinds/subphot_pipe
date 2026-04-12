@@ -4841,8 +4841,13 @@ class subtracted_phot(subphot_data):
         else:
             _valid_offsets = None  # no restriction; use the grid offsets as-is
 
-        _pool_idx = 0  # index into _valid_offsets when padding is present
+        # Hoist the SN PSF fit outside the loop — sn_cutout and psf are constant
+        # across all injection positions, so recomputing it per-iteration was wasteful.
+        _sn_fit = self.psf_fit([self.sn_cutout], psf_array=psf)[0]
 
+        # --- Build the list of valid injection positions ---
+        _positions = []
+        _pool_idx = 0  # index into _valid_offsets when padding is present
         for i in range(0, len(x)):
             if _has_padding and _valid_offsets is not None:
                 if _pool_idx >= len(_valid_offsets):
@@ -4859,26 +4864,32 @@ class subtracted_phot(subphot_data):
                 if (cx-_half_psf < 0 or cx+_half_psf >= _w or
                         cy-_half_psf < 0 or cy+_half_psf >= _h):
                     continue
+            _positions.append((x__, y__))
 
-            bkg_cutout=self.cutout_psf(data=data,psf_array=psf,xpos=[sn_x+x__],ypos=[sn_y+y__])[0]
-
-            flux_bkg=self.psf_fit_noshift(data_cutout=[bkg_cutout],psf_array=psf)[0][0]
-            #flux_bkg_list is the PSF fitted to the sky
-            flux_bkg_list.append(flux_bkg)
-
-            # [v2] Cache the source PSF fit result (psf_fit is called once, not twice).
-            _sn_fit = self.psf_fit([self.sn_cutout], psf_array=psf)[0]
+        # --- Parallel injection loop ---
+        # Each position is independent: reads only from shared immutable arrays
+        # (data, psf, _sn_fit).  psf_fit_noshift is a pure linregress so it
+        # releases the GIL.  Cap at 4 workers so this doesn't oversubscribe
+        # CPUs when called from a larger multiprocessing context in the future.
+        def _process_position(pos):
+            x__, y__ = pos
+            bkg_cutout = self.cutout_psf(data=data, psf_array=psf,
+                                         xpos=[sn_x+x__], ypos=[sn_y+y__])[0]
+            flux_bkg = self.psf_fit_noshift(data_cutout=[bkg_cutout], psf_array=psf)[0][0]
+            # [v2] Use psf_fit_noshift for artificial source recovery — injection
+            # position is exactly known so no centroid shift is needed.  Using
+            # psf_fit (shift-allowed) lets chi2_shift latch onto subtraction
+            # artefacts and inflates std(flux_new_sn_list) by 2-3x.
             new_sn = bkg_cutout + (psf * _sn_fit[0]) + _sn_fit[1]
-            # [v2] Use psf_fit_noshift for artificial source recovery, matching the
-            # background measurement method (psf_fit_noshift on line above).
-            # Reason: the injection position is exactly known, so no centroid shift
-            # is needed.  Using psf_fit (shift-allowed) with no max-shift guard for
-            # SEDM lets chi2_shift latch onto subtraction artefacts at each injection
-            # site, inflating std(flux_new_sn_list) by 2-3x above the true noise
-            # floor and producing an unrealistically large magnitude error.
-            flux_new_sn=self.psf_fit_noshift(data_cutout=[new_sn],psf_array=psf)[0][0]
-            #flux_new_sn_list is the PSF fitted to the artificial supernova
-            flux_new_sn_list.append(flux_new_sn)
+            flux_new_sn = self.psf_fit_noshift(data_cutout=[new_sn], psf_array=psf)[0][0]
+            return flux_bkg, flux_new_sn
+
+        from concurrent.futures import ThreadPoolExecutor
+        _n_workers = min(4, len(_positions)) if _positions else 1
+        with ThreadPoolExecutor(max_workers=_n_workers) as _pool:
+            for _flux_bkg, _flux_new_sn in _pool.map(_process_position, _positions):
+                flux_bkg_list.append(_flux_bkg)
+                flux_new_sn_list.append(_flux_new_sn)
 
         # Remove masked/non-finite values that sigma_clip wraps as '--' or NaN before statistics
         flux_bkg_list    = [f for f in flux_bkg_list    if np.isfinite(float(f)) if f != '--']
@@ -4893,13 +4904,24 @@ class subtracted_phot(subphot_data):
 
         self.sp_logger.info(info_g+f' Background injection positions used: {len(flux_bkg_list)}')
         self.sp_logger.info(info_g+' Sigma clipping the background flux')
-        flux_bkg_list=sigma_clip(flux_bkg_list,sigma=3,maxiters=3)
+        flux_bkg_list=sigma_clip(flux_bkg_list,sigma=2.5,maxiters=5)  # [v2] More aggressive clipping
         self.sp_logger.info(info_g+' Sigma clipping the artificial supernova flux')
-        flux_new_sn_list=sigma_clip(flux_new_sn_list,sigma=3,maxiters=3)
+        flux_new_sn_list=sigma_clip(flux_new_sn_list,sigma=2.5,maxiters=5)  # [v2] More aggressive clipping
 
-        # Scatter-based limits: use std of background directly (robust when background median ≈ 0 post-subtraction)
+        # Scatter-based limits: use median absolute deviation (MAD) for robustness
+        # MAD is much less sensitive to outliers from residuals, cosmic rays, and subtraction artifacts
+        # [v2] Use MAD to detect and mitigate residual-inflated noise estimates
         _bkg_std  = np.nanstd(flux_bkg_list)
-        _bkg_std  = _bkg_std if _bkg_std > 0 else 1e-30  # guard against zero std from contaminated lists
+        _bkg_mad  = 1.4826 * np.nanmedian(np.abs(np.asarray(flux_bkg_list) - np.nanmedian(flux_bkg_list)))
+
+        _bkg_std_original = _bkg_std
+        # If std is significantly higher than MAD (>2.5x), use MAD instead (indicates residual outliers)
+        if _bkg_mad > 0 and _bkg_std > 2.5 * _bkg_mad:
+            self.sp_logger.info(warn_y+f' [v2] Background noise inflated by residuals: std={_bkg_std_original:.1f} vs MAD={_bkg_mad:.1f}')
+            _bkg_std = _bkg_mad  # Use the robust MAD estimate
+            self.sp_logger.info(info_g+f' [v2] Using robust MAD-based noise estimate: {_bkg_std:.1f} counts')
+        else:
+            _bkg_std = _bkg_std if _bkg_std > 0 else 1e-30  # guard against zero std from contaminated lists
         _flux_1sig = 1.0 * _bkg_std
         _flux_3sig = 3.0 * _bkg_std
         _flux_5sig = 5.0 * _bkg_std

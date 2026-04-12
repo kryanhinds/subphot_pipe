@@ -526,6 +526,39 @@ class multi_subtract():
                         filter_array.append(self.fits_files[i])
                         self.fits_dict[FILT] = filter_array
 
+        # Sort files within each filter by date (MJD)
+        for filt_key in self.fits_dict.keys():
+            if len(self.fits_dict[filt_key]) > 0:
+                # Extract MJD for each file and sort
+                file_mjd_pairs = []
+                for file_entry in self.fits_dict[filt_key]:
+                    try:
+                        # Handle both single file and multi-file entries
+                        if isinstance(file_entry[0], list):
+                            fits_path = f"{self.data1_path}{self.FOLDER}/{file_entry[0][0]}"
+                        else:
+                            fits_path = f"{self.data1_path}{self.FOLDER}/{file_entry[0]}"
+                        fits_hdr = fits.open(fits_path)[0].header
+                        # Try to extract MJD from various header keywords
+                        mjd = None
+                        for mjd_kw in ['MJD', 'MJD-OBS', 'MJD_OBS']:
+                            if mjd_kw in fits_hdr:
+                                mjd = float(fits_hdr[mjd_kw])
+                                break
+                        if mjd is not None:
+                            file_mjd_pairs.append((file_entry, mjd))
+                        else:
+                            # If no MJD found, append with a placeholder (will sort to end)
+                            file_mjd_pairs.append((file_entry, float('inf')))
+                    except Exception as e:
+                        # If error reading file, append with placeholder
+                        file_mjd_pairs.append((file_entry, float('inf')))
+
+                # Sort by MJD
+                file_mjd_pairs.sort(key=lambda x: x[1])
+                # Update fits_dict with sorted files
+                self.fits_dict[filt_key] = [entry[0] for entry in file_mjd_pairs]
+
         # print(self.fits_dict)
         return self.fits_dict 
 
@@ -583,7 +616,7 @@ def run_subtraction(data_dict):
         sp_logger.info(warn_y+f' No fits files found in filter: {filter_}')
         return final_phot
 
-    for file_array in fits_files:
+    for file_idx, file_array in enumerate(fits_files, 1):
             if file_array[1]=='1' or file_array[1]==1:
                 fits_file=file_array[0][0]
                 sub_file = [re.sub('.fits','',file_array[0][0])]
@@ -600,9 +633,11 @@ def run_subtraction(data_dict):
                 sub_file[0] = data1_path + sub_file[0]
 
             if args.termoutp != 'quiet':
-                sp_logger.info(colored('---------------------------------------------------------------------------------------------','blue'))
+                sp_logger.info(colored('════════════════════════════════════════════════════════════════════════════════════════════════','magenta'))
+                sp_logger.info(colored(f'  ⭐ PROCESSING FILE {file_idx} OF {len(fits_files)} [{file_idx}/{len(fits_files)}]', 'cyan'))
                 label = sub_file[0] if len(sub_file) == 1 else ', '.join(sub_file)
                 sp_logger.info(info_g+f' Performing image subtraction on {label}')
+                sp_logger.info(colored('════════════════════════════════════════════════════════════════════════════════════════════════','magenta'))
 
             # Extract filter / object name / date from header
             sci_hdr = fits.open(f'{data1_path}{FOLDER}/{fits_file}')[0].header
@@ -677,6 +712,8 @@ def run_subtraction(data_dict):
                 result = _run_pipeline(sub_obj, sp_logger)
                 if result is not None:
                     final_phot.append(result)
+                    remaining = len(fits_files) - file_idx
+                    sp_logger.info(colored(f'✓ COMPLETED: {file_idx}/{len(fits_files)} | {remaining} remaining', 'green'))
             except Exception as e:
                 sp_logger.warning(warn_r+f' Unhandled exception on {sub_file[0]}: {e}')
 
@@ -720,10 +757,10 @@ if len(args.ims)>0:
         # sys.exit()
 
         # sp_logger.info(ims)
-        for i in range(len(ims)):
-            
-            image = re.sub('.fits','',ims[i])
-            if ims_path not in ims[i]:
+        for i, ims_file in enumerate(ims, 1):
+
+            image = re.sub('.fits','',ims_file)
+            if ims_path not in ims_file:
                 image=ims_path+'/'+re.sub('.fits','',ims[i])
 
             fits_hdu = fits.open(data1_path+image+'.fits')[0].header
@@ -756,8 +793,10 @@ if len(args.ims)>0:
                 else:
                     continue
 
-            sp_logger.info(colored(f'------------------------------  {i}  ------------------------------','blue'))
+            sp_logger.info(colored('════════════════════════════════════════════════════════════════════════════════════════════════','magenta'))
+            sp_logger.info(colored(f'  ⭐ PROCESSING FILE {i} OF {len(ims)} [{i}/{len(ims)}]', 'cyan'))
             sp_logger.info(info_g+f' Performing image subtraction on {image}, {fits_filt} filter, {fits_obj}')
+            sp_logger.info(colored('════════════════════════════════════════════════════════════════════════════════════════════════','magenta'))
             # continue
             sub_obj = subtracted_phot(ims=[image],args=args)
             sys_exit=sub_obj.sys_exit
@@ -834,11 +873,13 @@ if len(args.ims)>0:
                                                     if sys_exit==True:
                                                         pass
                                                     else:
+                                                        remaining = len(ims) - i
+                                                        sp_logger.info(colored(f'✓ COMPLETED: {i}/{len(ims)} | {remaining} remaining', 'green'))
 
                                                         if args.upfritz==True or args.upfritz_f==True:
                                                             sub_obj.upload_phot()
                                                             sys_exit=True
-                                                        
+
                     if args.cleandirs!=False:
                         sub_obj.clean_directory()
                     

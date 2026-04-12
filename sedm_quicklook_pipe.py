@@ -3883,32 +3883,43 @@ class subtracted_phot(subphot_data):
         _inj_mask = self.valid_mask if (hasattr(self,'valid_mask') and self.valid_mask is not None) else None
         _has_padding = _inj_mask is not None and not np.all(_inj_mask)
 
+        # Pre-build a pool of valid injection positions when padding is present.
+        # This avoids the old approach of rejection-sampling (30 random tries per position)
+        # which could still land on bad pixels near padding boundaries.
+        _half_psf = int(np.shape(psf)[0] / 2) + 1
+        _h, _w = np.shape(data)
+        if _has_padding:
+            from scipy.ndimage import binary_erosion
+            # Erode the valid mask by the PSF half-width so every sampled position
+            # guarantees a fully-valid PSF-sized cutout.
+            _struct = np.ones((2*_half_psf+1, 2*_half_psf+1), dtype=bool)
+            _eroded = binary_erosion(_inj_mask, structure=_struct)
+            _vy, _vx = np.where(_eroded)
+            # Express positions relative to SN position (matching the x/y offset grid)
+            _valid_offsets = list(zip((_vx - sn_x).astype(int), (_vy - sn_y).astype(int)))
+            np.random.shuffle(_valid_offsets)
+            self.sp_logger.info(info_g+f' Injection pool: {len(_valid_offsets)} valid positions in valid-data region')
+        else:
+            _valid_offsets = None
+
+        _pool_idx = 0
         all_cutouts = []
         for i in range(0,len(x)):
-            x__,y__=x[i],y[i]
-            # print(-num*psf_size,num*psf_size,(2))
-
-            def _pos_ok(x__, y__):
-                """Return True if the cutout at (sn_x+x__, sn_y+y__) is within bounds and in valid data."""
+            if _has_padding and _valid_offsets is not None:
+                if _pool_idx >= len(_valid_offsets):
+                    break  # exhausted the pool
+                x__, y__ = _valid_offsets[_pool_idx]
+                _pool_idx += 1
+                # Guard: skip if within PSF exclusion radius of SN
+                if np.sqrt(x__**2 + y__**2) <= radius:
+                    continue
+            else:
+                x__,y__=x[i],y[i]
+                # Guard: skip out-of-bounds positions
                 cx, cy = sn_x+x__, sn_y+y__
-                half = np.shape(psf)[0]/2
-                if cx-half<0 or cx+half>np.shape(data)[1] or cy-half<0 or cy+half>np.shape(data)[0]:
-                    return False
-                if _has_padding:
-                    y0 = max(0, int(cy-half)); y1 = min(_inj_mask.shape[0], int(cy+half))
-                    x0 = max(0, int(cx-half)); x1 = min(_inj_mask.shape[1], int(cx+half))
-                    if not _inj_mask[y0:y1, x0:x1].all():
-                        return False
-                return True
-
-            if not _pos_ok(x__, y__):
-                # Try up to 30 random replacements that land in valid data
-                _c = 0
-                while not _pos_ok(x__, y__) and _c < 30:
-                    x__, y__ = np.random.randint(-num*psf_size, num*psf_size, (2))
-                    _c += 1
-                if not _pos_ok(x__, y__):
-                    continue  # skip this injection position entirely
+                if (cx-_half_psf < 0 or cx+_half_psf >= _w or
+                        cy-_half_psf < 0 or cy+_half_psf >= _h):
+                    continue
 
             bkg_cutout=self.cutout_psf(data=data,psf_array=psf,xpos=[sn_x+x__],ypos=[sn_y+y__])[0]
             # all_cutouts.append(bkg_cutout)
@@ -3917,8 +3928,15 @@ class subtracted_phot(subphot_data):
             #flux_bkg_list is the PSF fitted to the sky
             flux_bkg_list.append(flux_bkg)
 
-            new_sn=bkg_cutout+((psf)*self.psf_fit([self.sn_cutout],psf_array=psf)[0][0])+self.psf_fit([self.sn_cutout],psf_array=psf)[0][1]
-            flux_new_sn=self.psf_fit(data_cutout=[new_sn],psf_array=psf)[0][0]
+            # Cache the source PSF fit result (psf_fit is called once, not twice).
+            _sn_fit = self.psf_fit([self.sn_cutout], psf_array=psf)[0]
+            new_sn = bkg_cutout + (psf * _sn_fit[0]) + _sn_fit[1]
+            # Use psf_fit_noshift for artificial source recovery, matching the
+            # background measurement method. The injection position is exactly known,
+            # so no centroid shift is needed. Using psf_fit (shift-allowed) lets
+            # chi2_shift latch onto subtraction artefacts at each injection site,
+            # inflating std(flux_new_sn_list) and producing unrealistically low S/N.
+            flux_new_sn=self.psf_fit_noshift(data_cutout=[new_sn],psf_array=psf)[0][0]
             #flux_new_sn_list is the PSF fitted to the artificial supernova
             flux_new_sn_list.append(flux_new_sn)
 
@@ -3935,13 +3953,24 @@ class subtracted_phot(subphot_data):
 
         self.sp_logger.info(info_g+f' Background injection positions used: {len(flux_bkg_list)}')
         self.sp_logger.info(info_g+' Sigma clipping the background flux')
-        flux_bkg_list=sigma_clip(flux_bkg_list,sigma=3,maxiters=3)
+        flux_bkg_list=sigma_clip(flux_bkg_list,sigma=2.5,maxiters=5)
         self.sp_logger.info(info_g+' Sigma clipping the artificial supernova flux')
-        flux_new_sn_list=sigma_clip(flux_new_sn_list,sigma=3,maxiters=3)
+        flux_new_sn_list=sigma_clip(flux_new_sn_list,sigma=2.5,maxiters=5)
 
-        # Scatter-based limits: use std of background directly (robust when background median ≈ 0 post-subtraction)
+        # Scatter-based limits: use MAD for robustness against residual-inflated noise
+        # MAD is much less sensitive to outliers from subtraction artifacts, cosmic rays,
+        # and bright star residuals that survive sigma clipping.
         _bkg_std  = np.nanstd(flux_bkg_list)
-        _bkg_std  = _bkg_std if _bkg_std > 0 else 1e-30  # guard against zero std from contaminated lists
+        _bkg_mad  = 1.4826 * np.nanmedian(np.abs(np.asarray(flux_bkg_list) - np.nanmedian(flux_bkg_list)))
+
+        _bkg_std_original = _bkg_std
+        # If std is significantly higher than MAD (>2.5x), residuals are inflating the noise
+        if _bkg_mad > 0 and _bkg_std > 2.5 * _bkg_mad:
+            self.sp_logger.info(warn_y+f' Background noise inflated by residuals: std={_bkg_std_original:.1f} vs MAD={_bkg_mad:.1f}')
+            _bkg_std = _bkg_mad  # Use the robust MAD estimate
+            self.sp_logger.info(info_g+f' Using robust MAD-based noise estimate: {_bkg_std:.1f} counts')
+        else:
+            _bkg_std = _bkg_std if _bkg_std > 0 else 1e-30  # guard against zero std
         _flux_1sig = 1.0 * _bkg_std
         _flux_3sig = 3.0 * _bkg_std
         _flux_5sig = 5.0 * _bkg_std

@@ -6,8 +6,8 @@ S/N 9.497, 9.497 sigma
 3 sigma limit: 21.876
 5 sigma limit: 21.322
 mag=20.625
-time photometry: 10.3 seconds
-memory useage: 1153.4 Mbyte
+time photometry: 48.0 seconds
+memory useage: 1157.2 Mbyte
 zeropoint reference 31.688 sd 0.033 
 zeropoint science 29.289 sd 0.024 
 (mag_err**2+std_zp**2+std_ref**2)^(0.5) 0.116 
