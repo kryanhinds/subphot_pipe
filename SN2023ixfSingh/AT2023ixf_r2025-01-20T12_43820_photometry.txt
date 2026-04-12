@@ -1,0 +1,14 @@
+AT2023ixf sdssr 60695.50718190009 19.710 0.110 21.129 210.910750 54.311694 300.0  2.621 0.280 
+TELESCOPE: SEDM-P60
+PSF SHIFT: 0.8672045898437499,0.04198486328125 
+S/N 0.003, 0.003 sigma 
+1 sigma limit: 22.319
+3 sigma limit: 21.129
+5 sigma limit: 20.575
+mag=19.710
+time photometry: 14.3 seconds
+memory useage: 930.1 Mbyte
+zeropoint reference 32.664 sd 0.000 
+zeropoint science 29.656 sd 0.000 
+(mag_err**2+std_zp**2+std_ref**2)^(0.5) 0.110 
+#object,filter,mjd,mag,mag_err,mag_lim,ra,dec,exp_t,flux,flux_err 

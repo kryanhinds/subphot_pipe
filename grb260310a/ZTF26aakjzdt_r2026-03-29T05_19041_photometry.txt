@@ -1,0 +1,14 @@
+ZTF26aakjzdt sdssr 61128.22039050004 20.325 0.319 20.339 219.317254 71.841755 180.0  0.763 0.251 
+TELESCOPE: SEDM-P60
+PSF SHIFT: 0.10858154296875,1.30153076171875 
+S/N 3.040, 3.040 sigma 
+1 sigma limit: 21.532
+3 sigma limit: 20.339
+5 sigma limit: 19.785
+mag=20.325
+time photometry: 55.3 seconds
+memory useage: 922.1 Mbyte
+zeropoint reference 31.267 sd 0.026 
+zeropoint science 28.931 sd 0.075 
+(mag_err**2+std_zp**2+std_ref**2)^(0.5) 0.319 
+#object,filter,mjd,mag,mag_err,mag_lim,ra,dec,exp_t,flux,flux_err 

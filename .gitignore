@@ -1,0 +1,34 @@
+# Data directories
+data/
+aligned_images/
+bkg_subtracted_science/
+convolved_psf/
+ref_imgs/
+photometry/
+photometry_data/
+
+# Credentials (NEVER commit this!)
+sedm_credentials.py
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Output files
+*.log
+*.csv
+*.fits
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

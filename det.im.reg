@@ -1,0 +1,16 @@
+# Region file format: DS9 version 4.0
+global color=red font="helvetica 10 normal" select=1 highlite=1 edit=1 move=1 delete=1 include=1 fixed=0 source
+image
+point(880.002,447.987) # point=boxcircle text={0}
+point(817.986,777.000) # point=boxcircle text={1}
+point(256.099,288.099) # point=boxcircle text={2}
+point(695.989,21.974) # point=boxcircle text={3}
+point(284.082,127.018) # point=boxcircle text={4}
+point(51.005,65.009) # point=boxcircle text={5}
+point(484.030,760.033) # point=boxcircle text={6}
+point(299.000,329.993) # point=boxcircle text={7}
+point(333.986,38.972) # point=boxcircle text={8}
+point(596.021,844.015) # point=boxcircle text={9}
+point(402.997,149.018) # point=boxcircle text={10}
+point(174.990,787.992) # point=boxcircle text={11}
+point(371.959,549.010) # point=boxcircle text={12}

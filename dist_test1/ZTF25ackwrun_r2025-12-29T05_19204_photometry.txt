@@ -1,0 +1,14 @@
+ZTF25ackwrun sdssr 61038.22226990014 18.740 0.528 18.702 113.912893 39.069882 30.0  0.756 0.473 
+TELESCOPE: SEDM-P60
+PSF SHIFT: 0.20992431640624998,0.04198486328125 
+S/N 0.001, 0.000 sigma 
+1 sigma limit: 19.883
+3 sigma limit: 18.702
+5 sigma limit: 18.150
+mag=18.740
+time photometry: 19.5 seconds
+memory useage: 696.2 Mbyte
+zeropoint reference 32.515 sd 0.006 
+zeropoint science 27.337 sd 0.007 
+(mag_err**2+std_zp**2+std_ref**2)^(0.5) 0.528 
+#object,filter,mjd,mag,mag_err,mag_lim,ra,dec,exp_t,flux,flux_err 
