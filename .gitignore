@@ -1,14 +1,56 @@
-# Data directories
-data/
+# Generated output directories
+SN*/
+grb*/
+dist_test*/
+ztf*/
+photometry/
+photometry_date/
+phot_fits_info/
+
+# Photometry and cutout files
+*_photometry.txt
+*_stacked_photometry.txt
+*_cutout_panel.png
+cut_outs/
+poly_comps/
+
+# Intermediate processing files
 aligned_images/
 bkg_subtracted_science/
 convolved_psf/
+scaled_subtracted_imgs/
 ref_imgs/
-photometry/
-photometry_data/
+out/
+temp_config_files/
+
+# Temporary and working files
+*.cat
+*.xml
+*.reg
+*.psf
+*.txt
+temp.cat
+sex.config
+sex.conv
+match.list
+det.*
+
+# Configuration/Cache files
+config_files/
+ps_catalogs/
+
+# Notebooks and IDE
+.ipynb_checkpoints/
+*.ipynb
+.vscode/
+.idea/
+*.swp
 
 # Credentials (NEVER commit this!)
 sedm_credentials.py
+
+# Data directories
+data/
 
 # Python
 __pycache__/
@@ -19,16 +61,15 @@ __pycache__/
 .venv/
 venv/
 
-# Output files
-*.log
-*.csv
-*.fits
-
-# IDE
-.vscode/
-.idea/
-*.swp
-
 # OS
 .DS_Store
 Thumbs.db
+
+# Archives
+*.zip
+*.tar.gz
+
+# Logs and reports
+*.log
+*.pdf
+*.fits*_fits_list.csv
