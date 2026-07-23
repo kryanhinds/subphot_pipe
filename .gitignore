@@ -61,6 +61,7 @@ ps_catalogs/
 .claude/settings.local.json
 
 # Credentials (NEVER commit this!)
+subphot_credentials.py
 sedm_credentials.py
 
 # Data directories

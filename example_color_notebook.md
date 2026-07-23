@@ -181,14 +181,14 @@ The script uses **reproject_interp** from the `reproject` package to align all i
 
 If alignment fails:
 - Check that FITS headers contain valid WCS (`CRPIX`, `CRVAL`, `CD` matrix, etc.)
-- Consider using the `sedm_subtract.py` pipeline's astrometry first if WCS is poor
+- Consider using the `subphot_subtract_v1.py` pipeline's astrometry first if WCS is poor
 - Or try the simpler command-line version without WCS alignment
 
 ## Troubleshooting
 
 **"No valid WCS in header"**
 - Your FITS files need astrometric solutions first
-- Use `sedm_subtract.py -reastrom` to solve or improve WCS
+- Use `subphot_subtract_v1.py -reastrom` to solve or improve WCS
 
 **"Images have different shapes after alignment"**
 - This is usually OK—reproject handles it by padding/cropping

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Download Legacy Survey reference images for sedm_phot
+Download Legacy Survey reference images for subphot_pipe
 
 Usage:
     python download_legacy_survey.py 219.317292 71.841750 -b g r z -o ref_imgs/
@@ -162,7 +162,7 @@ Examples:
     if result:
         print(f"✓ Successfully downloaded to: {result}")
         print(f"{'='*70}")
-        print(f"\nUse with sedm_subtract_v2.py:")
+        print(f"\nUse with subphot_subtract.py:")
         print(f"  -refimg {result}")
     else:
         print(f"✗ Download failed")

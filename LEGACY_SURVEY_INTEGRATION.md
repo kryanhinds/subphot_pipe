@@ -1,6 +1,6 @@
 # Legacy Survey Integration
 
-Legacy Survey (DECaLS) reference images are now integrated into the sedm_subtract_v2.py pipeline, alongside PS1 and SDSS.
+Legacy Survey (DECaLS) reference images are now integrated into the subphot_subtract.py pipeline, alongside PS1 and SDSS.
 
 ## Usage
 
@@ -8,10 +8,10 @@ Legacy Survey (DECaLS) reference images are now integrated into the sedm_subtrac
 
 ```bash
 # Use Legacy Survey for g-band
-cp3 sedm_subtract_v2.py -f data/ZTF26aakjzdt_LT/20260420 -cut -o ZTF26aakjzdt -tel LT -fb g -s legacy
+cp3 subphot_subtract.py -f data/ZTF26aakjzdt_LT/20260420 -cut -o ZTF26aakjzdt -tel LT -fb g -s legacy
 
 # Use Legacy Survey for multiple bands
-cp3 sedm_subtract_v2.py -f data/ZTF26aakjzdt_LT/20260420 -cut -o ZTF26aakjzdt -tel LT -fb g r -s legacy
+cp3 subphot_subtract.py -f data/ZTF26aakjzdt_LT/20260420 -cut -o ZTF26aakjzdt -tel LT -fb g r -s legacy
 ```
 
 ### Command Options
@@ -60,7 +60,7 @@ cp3 sedm_subtract_v2.py -f data/ZTF26aakjzdt_LT/20260420 -cut -o ZTF26aakjzdt -t
 
 ```bash
 # Instead of PS1 (which has artifact)
-cp3 sedm_subtract_v2.py -f data/ZTF26aakjzdt_LT -s legacy -fb g
+cp3 subphot_subtract.py -f data/ZTF26aakjzdt_LT -s legacy -fb g
 ```
 
 ### Use case 2: Target outside SDSS footprint
@@ -68,7 +68,7 @@ cp3 sedm_subtract_v2.py -f data/ZTF26aakjzdt_LT -s legacy -fb g
 ```bash
 # Your target is at Dec=+71.8°, outside SDSS southern limit
 # Use Legacy Survey instead
-cp3 sedm_subtract_v2.py -f data/targets_north/ -s legacy -fb g r
+cp3 subphot_subtract.py -f data/targets_north/ -s legacy -fb g r
 ```
 
 ### Use case 3: Default reference selection
@@ -100,7 +100,7 @@ The pipeline will choose references in this order:
 
 If you want to customize the download (size, pixscale, DR version):
 
-Edit `sedm_quicklook_pipe_v2.py` around line 2244:
+Edit `subphot_quicklook_pipe.py` around line 2244:
 
 ```python
 ref_path = download_legacy_survey_fits(
@@ -117,16 +117,16 @@ ref_path = download_legacy_survey_fits(
 
 ## Files Modified
 
-- `sedm_subtract_v2.py` — Updated survey help text
-- `sedm_quicklook_pipe_v2.py` — Added Legacy Survey reference selection logic + survey attribute
-- `sedm_functions.py` — Added `download_legacy_survey_fits()` function
+- `subphot_subtract.py` — Updated survey help text
+- `subphot_quicklook_pipe.py` — Added Legacy Survey reference selection logic + survey attribute
+- `subphot_functions.py` — Added `download_legacy_survey_fits()` function
 
 ## API Documentation
 
 ### `download_legacy_survey_fits()`
 
 ```python
-from sedm_functions import download_legacy_survey_fits
+from subphot_functions import download_legacy_survey_fits
 
 ref_path = download_legacy_survey_fits(
     ra=219.317292,          # Right ascension (degrees)

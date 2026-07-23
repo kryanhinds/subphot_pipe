@@ -19,7 +19,7 @@ past r ≈ 6 px because the truncated wings were renormalised to unit sum.
 The fix in build_psf.py (kernel_size = 10×FWHM, ≥51 px) matches PSFEx's
 59×59 default and captures the full stellar halo.
 
-Run from the sedm_phot directory:
+Run from the subphot_pipe directory:
     python compare_psf.py
 """
 

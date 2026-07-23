@@ -877,7 +877,7 @@ def make_color_composite(df: pd.DataFrame,
 
 def make_color_from_dataframe(df: pd.DataFrame,
                               center_coord: str,
-                              output_dir: str = "/Users/kryanhinds/sedm_phot",
+                              output_dir: str = "/Users/kryanhinds/subphot_pipe",
                               cutout_size: int = 1024,
                               seeing_limit: Optional[float] = None,
                               verbose: bool = True) -> Optional[Dict]:

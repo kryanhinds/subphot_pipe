@@ -44,7 +44,7 @@ from astropy.io import fits
 
 # ── optional credentials ──────────────────────────────────────────────────────
 try:
-    from sedm_credentials import path as _cred_path
+    from subphot_credentials import path as _cred_path
 except ImportError:
     _cred_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
