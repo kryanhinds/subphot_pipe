@@ -1,5 +1,5 @@
 
-#!/Users/kryanhinds/miniconda/envs/subphot/bin python3
+#!/Users/kryanhinds/miniconda/envs/sedm/bin python3
 # from drizzle import drizzle,doblot
 
 from skimage import transform
@@ -53,7 +53,8 @@ from tabulate import tabulate
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
-
+import matplotlib as mpl
+mpl.rc('font', family='serif')
 
 
 
@@ -83,8 +84,8 @@ def check_seeing(ims,s=5,sp_logger=None):
             ims[i] = ims[i]+'.fits'
         if ims[i].startswith(im_stack_path)==False:
             ims[i] = im_stack_path+'/'+ims[i]
-        if ims[i].startswith(data1_path)==False:
-            ims[i] = data1_path+ims[i]
+        if ims[i].startswith(path)==False:
+            ims[i] = path+ims[i]
 
         if i==0:
             if fits.open(ims[0])[0].header['INSTRUME'] in ['HiPERCAM','OSIRIS']:s=7
@@ -122,13 +123,531 @@ def quick_app_phot(data,stars,gain=1.62):
 
     return data_photTab
 
+def _normalise_ref_wcs(header, logger=None):
+    """Convert a PS1 panstamps-style WCS header to a clean CD-matrix form in place.
+
+    The problem
+    -----------
+    panstamps downloads PS1 sky-cell cutouts whose WCS uses the pre-FITS-WCS-Paper
+    (pre-2002) ``PC001001``/``CDELT`` notation, where each axis index is written
+    with three decimal digits (PCiiijjj).  WCSLIB — the C library that drives
+    astropy's WCS — does *not* recognise ``PC001001`` as a WCS keyword.  It treats
+    it as an unknown FITS card and silently falls back to an identity PC matrix.
+    The resulting sky-to-pixel mapping is completely wrong, so ``reproject_interp``
+    sees zero footprint overlap even when the science and reference images cover
+    the same patch of sky.
+
+    Additionally, the PS1 cutout CRPIX can be far outside the image bounds
+    (it describes the full parent sky-cell, not the cutout).  This is valid WCS
+    but can cause bounds-checking heuristics inside reproject to reject the frame.
+
+    The fix
+    -------
+    1. Detect the old-form ``PC00i00j`` keywords explicitly.
+    2. Compute the CD matrix directly: ``CD_ij = CDELT_j × PC00i00j``.
+    3. Strip *every* old PC/CDELT/CROTA keyword so no conflicts remain.
+    4. Insert the clean ``CD1_1/CD1_2/CD2_1/CD2_2`` keywords.
+
+    This is done in-place on *header* so the caller's HDU is immediately updated.
+    """
+    try:
+        _rh = header
+        # -- Read CDELT values (fallback to 1 if absent) -----------------------
+        _cdelt1 = float(_rh.get('CDELT1', 1.0))
+        _cdelt2 = float(_rh.get('CDELT2', 1.0))
+
+        # -- Read PC matrix: handle both PC001001 (old) and PC1_1 (modern) -----
+        # Old form uses 3-digit axis indices (PCiiijjj); modern uses PCi_j.
+        _pc11 = float(_rh.get('PC001001', _rh.get('PC1_1', 1.0)))
+        _pc12 = float(_rh.get('PC001002', _rh.get('PC1_2', 0.0)))
+        _pc21 = float(_rh.get('PC002001', _rh.get('PC2_1', 0.0)))
+        _pc22 = float(_rh.get('PC002002', _rh.get('PC2_2', 1.0)))
+
+        # -- Remove ALL old-form and modern PC / CDELT / CROTA keywords --------
+        _remove_kws = [
+            'PC001001', 'PC001002', 'PC002001', 'PC002002',  # old 3-digit form
+            'PC1_1', 'PC1_2', 'PC2_1', 'PC2_2',             # modern form
+            'CDELT1', 'CDELT2',                               # scale keywords
+            'CROTA1', 'CROTA2',                               # rotation keywords
+        ]
+        for _kw in _remove_kws:
+            while _kw in _rh:   # FITS headers can have duplicate keys
+                del _rh[_kw]
+
+        # -- Insert clean CD matrix --------------------------------------------
+        # CD_ij = CDELT_j × PC_ij   (note: j indexes the *column*, i the row)
+        _rh['CD1_1'] = _cdelt1 * _pc11
+        _rh['CD1_2'] = _cdelt1 * _pc12
+        _rh['CD2_1'] = _cdelt2 * _pc21
+        _rh['CD2_2'] = _cdelt2 * _pc22
+
+        if logger is not None:
+            logger.info(info_g+f' [V2] Reference WCS normalised: '
+                        f'CD=[[{_cdelt1*_pc11:.3e},{_cdelt1*_pc12:.3e}],'
+                        f'[{_cdelt2*_pc21:.3e},{_cdelt2*_pc22:.3e}]], '
+                        f'CRPIX=({_rh.get("CRPIX1","?"):.1f},{_rh.get("CRPIX2","?"):.1f}), '
+                        f'CRVAL=({_rh.get("CRVAL1","?"):.4f},{_rh.get("CRVAL2","?"):.4f})')
+    except Exception as _e:
+        if logger is not None:
+            logger.warning(warn_y+f' [V2] Could not normalise reference WCS (will try anyway): {_e}')
+
+
+def build_target_centered_wcs_header(header, target_coord, pixel_scale_arcsec,
+                                      shape=None, logger=None):
+    """Build a clean TAN-projection WCS header centred on target_coord.
+
+    Parameters
+    ----------
+    header : fits.Header
+        Source header (used only for NAXIS if shape is not given).
+    target_coord : SkyCoord
+        The target RA/DEC — placed at the image centre.
+    pixel_scale_arcsec : float
+        Pixel scale in arcseconds per pixel.
+    shape : (nrows, ncols) tuple, optional
+        Actual image data shape.  Preferred over NAXIS keywords in header
+        because those can be stale or missing for SEDM images.
+    logger : optional
+        Logger instance for debug messages.
+    """
+    hdr = header.copy()
+    ps_deg = float(pixel_scale_arcsec) / 3600.0
+
+    # Use actual data shape when available — header NAXIS can be wrong/missing
+    if shape is not None:
+        naxis2, naxis1 = int(shape[0]), int(shape[1])
+    else:
+        naxis1 = int(hdr.get('NAXIS1', 0))
+        naxis2 = int(hdr.get('NAXIS2', 0))
+    hdr['NAXIS1'] = naxis1
+    hdr['NAXIS2'] = naxis2
+
+    # Target at image centre
+    hdr['CRPIX1'] = (naxis1 + 1.0) / 2.0
+    hdr['CRPIX2'] = (naxis2 + 1.0) / 2.0
+    hdr['CRVAL1'] = float(target_coord.ra.deg)
+    hdr['CRVAL2'] = float(target_coord.dec.deg)
+    hdr['CTYPE1'] = 'RA---TAN'
+    hdr['CTYPE2'] = 'DEC--TAN'
+
+    # Always use a simple north-up CD matrix built from the known pixel scale.
+    # Do NOT try to preserve the original CD/PC matrix — if the WCS was bad
+    # enough to cause zero overlap, we don't want any of it.
+    hdr['CD1_1'] = -ps_deg   # east left
+    hdr['CD1_2'] = 0.0
+    hdr['CD2_1'] = 0.0
+    hdr['CD2_2'] = ps_deg    # north up
+
+    # Strip every distortion / alternate-WCS keyword that could confuse
+    # reproject_interp's WCS parser.
+    _strip_prefixes = ('A_', 'B_', 'AP_', 'BP_', 'PV1_', 'PV2_', 'PC1_', 'PC2_')
+    _strip_exact = ('CDELT1', 'CDELT2', 'CROTA1', 'CROTA2',
+                    'LATPOLE', 'LONPOLE', 'WCSAXES')
+    for _key in list(hdr.keys()):
+        if any(_key.startswith(pfx) for pfx in _strip_prefixes):
+            del hdr[_key]
+    for _key in _strip_exact:
+        if _key in hdr:
+            del hdr[_key]
+    if logger is not None:
+        logger.info(info_g+f' [V2] Built target-centred WCS: '
+                    f'CRVAL=({hdr["CRVAL1"]:.5f}, {hdr["CRVAL2"]:.5f}), '
+                    f'CRPIX=({hdr["CRPIX1"]:.1f}, {hdr["CRPIX2"]:.1f}), '
+                    f'ps={pixel_scale_arcsec:.4f}"/pix, shape=({naxis2},{naxis1})')
+    return hdr
+
+def _star_match_shift(sci_data, ref_data, fwhm_px=5.0, thresh_sigma=5.0,
+                       max_shift=60.0, min_stars=5, logger=None):
+    """Estimate the pixel shift between *sci_data* and *ref_data* by source matching.
+
+    Detects point sources in both images with DAOStarFinder, builds a
+    nearest-neighbour match, and returns the median (dx, dy) shift needed to
+    bring *ref_data* onto *sci_data*.  This is more robust than FFT
+    cross-correlation when the images have different noise characteristics or
+    PSF sizes, and reliably finds shifts in the 1–50 pixel range.
+
+    Parameters
+    ----------
+    sci_data, ref_data : 2-D ndarray
+        Science and (reprojected) reference pixel data.
+    fwhm_px : float
+        Approximate source FWHM in pixels passed to DAOStarFinder.
+    thresh_sigma : float
+        Detection threshold in units of background σ.
+    max_shift : float
+        Maximum shift (px) considered physical; matches wider than this are
+        rejected.
+    min_stars : int
+        Minimum matched sources required to return a result.
+    logger : optional
+        Logger instance for progress messages.
+
+    Returns
+    -------
+    (dx, dy) : tuple of float, or None
+        Shift to apply to *ref_data* to align it to *sci_data*, in pixels
+        (positive dx → shift right; positive dy → shift down).
+        Returns ``None`` if too few sources are found or an error occurs.
+    """
+    try:
+        from photutils.detection import DAOStarFinder
+        from astropy.stats import sigma_clipped_stats
+        from scipy.spatial import cKDTree
+    except ImportError as _ie:
+        if logger:
+            logger.warning(warn_y+f' [V2] star_match_shift: missing dependency ({_ie}) — skipping')
+        return None
+
+    _catalogs = []
+    for _lbl, _data in (('sci', sci_data), ('ref', ref_data)):
+        try:
+            _, _med, _std = sigma_clipped_stats(_data, sigma=3.0, maxiters=5)
+            if _std <= 0:
+                if logger:
+                    logger.warning(warn_y+f' [V2] star_match_shift: flat image in {_lbl} — skipping')
+                return None
+            _finder = DAOStarFinder(fwhm=fwhm_px, threshold=thresh_sigma * _std,
+                                    sharplo=0.2, sharphi=1.0,
+                                    roundlo=-1.0, roundhi=1.0)
+            _srcs = _finder(_data - _med)
+        except Exception as _e:
+            if logger:
+                logger.warning(warn_y+f' [V2] star_match_shift: DAOStarFinder failed on {_lbl}: {_e}')
+            return None
+        if _srcs is None or len(_srcs) < min_stars:
+            n = 0 if _srcs is None else len(_srcs)
+            if logger:
+                logger.warning(warn_y+f' [V2] star_match_shift: only {n} sources in {_lbl} '
+                               f'(need ≥{min_stars}) — skipping')
+            return None
+        _xy = np.array([_srcs['xcentroid'], _srcs['ycentroid']]).T
+        _catalogs.append(_xy)
+        if logger:
+            logger.info(info_g+f' [V2] star_match_shift: {len(_srcs)} sources in {_lbl}')
+
+    _sci_xy, _ref_xy = _catalogs
+    _tree = cKDTree(_ref_xy)
+    _dists, _idxs = _tree.query(_sci_xy, k=1, workers=1)
+
+    # Try a conservative match radius first, then relax to max_shift
+    _good = None
+    for _match_r in (max_shift * 0.3, max_shift):
+        _cand = _dists < _match_r
+        if _cand.sum() >= min_stars:
+            _good = _cand
+            break
+    if _good is None or _good.sum() < min_stars:
+        if logger:
+            logger.warning(warn_y+f' [V2] star_match_shift: only '
+                           f'{0 if _good is None else _good.sum()} matches '
+                           f'within {max_shift}px — skipping')
+        return None
+
+    _dx_vals = _sci_xy[_good, 0] - _ref_xy[_idxs[_good], 0]
+    _dy_vals = _sci_xy[_good, 1] - _ref_xy[_idxs[_good], 1]
+    dx = float(np.median(_dx_vals))
+    dy = float(np.median(_dy_vals))
+    _mad_x = float(1.4826 * np.median(np.abs(_dx_vals - dx)))
+    _mad_y = float(1.4826 * np.median(np.abs(_dy_vals - dy)))
+    if logger:
+        logger.info(info_g+f' [V2] star_match_shift: {_good.sum()} matches → '
+                    f'dx={dx:.3f}±{_mad_x:.3f} px, dy={dy:.3f}±{_mad_y:.3f} px')
+    # [V2] Sigma-clip: a handful of wide-separation false matches inflate the
+    # MAD even when the majority of pairs agree tightly.  Remove outliers that
+    # lie more than 3×(raw MAD) from the initial median and recompute
+    # tighter statistics from the surviving inliers.
+    _MAD_THRESH = 3.0  # px
+    _clip_r = max(3.0 * max(_mad_x, _mad_y), _MAD_THRESH)
+    _clip_mask = ((np.abs(_dx_vals - dx) < _clip_r) &
+                  (np.abs(_dy_vals - dy) < _clip_r))
+    if _clip_mask.sum() >= min_stars and _clip_mask.sum() < _good.sum():
+        dx = float(np.median(_dx_vals[_clip_mask]))
+        dy = float(np.median(_dy_vals[_clip_mask]))
+        _mad_x = float(1.4826 * np.median(np.abs(_dx_vals[_clip_mask] - dx)))
+        _mad_y = float(1.4826 * np.median(np.abs(_dy_vals[_clip_mask] - dy)))
+        if logger:
+            logger.info(info_g+f' [V2] star_match_shift: after sigma-clip '
+                        f'({_clip_mask.sum()} inliers) → '
+                        f'dx={dx:.3f}±{_mad_x:.3f} px, dy={dy:.3f}±{_mad_y:.3f} px')
+    # [V2] Reliability check: if scatter is much larger than the shift,
+    # the median is dominated by noise (false matches or distortion).
+    # Suppress the shift so the WCS alignment is not degraded.
+    if _mad_x > _MAD_THRESH or _mad_y > _MAD_THRESH:
+        if logger:
+            logger.warning(warn_y+f' [V2] star_match_shift: scatter too large '
+                           f'(MAD_x={_mad_x:.2f}, MAD_y={_mad_y:.2f} px > {_MAD_THRESH}px) '
+                           f'— suppressing shift, relying on WCS alignment')
+        return None
+    return dx, dy
+
+
+def _ps1_catalog_shift(sci_data, sci_wcs, ps1_sky,
+                       fwhm_px=5.0, thresh_sigma=5.0, match_radius_arcsec=3.0,
+                       min_stars=5, logger=None):
+    """Estimate pixel shift by matching science detections to PS1 catalog positions.
+
+    This is the *primary* fine-registration method for the SEDM bypass path.
+    It is more reliable than :func:`_star_match_shift` because it uses absolute
+    PS1 catalog positions rather than matching two noisy source lists.  Even
+    when the reference image has very few detectable sources (e.g. small scale
+    factor for short exposures), the PS1 catalog provides clean, absolute
+    astrometric reference points.
+
+    Parameters
+    ----------
+    sci_data : 2-D ndarray
+        Science image pixel data.
+    sci_wcs : astropy.wcs.WCS
+        WCS for the science image (possibly slightly wrong — that is what we correct).
+    ps1_sky : SkyCoord
+        PS1/SDSS catalog positions (already downloaded and quality-filtered).
+    fwhm_px : float
+        Approximate source FWHM in pixels for DAOStarFinder.
+    thresh_sigma : float
+        Detection threshold in units of background σ.
+    match_radius_arcsec : float
+        Maximum sky separation for a valid cross-match, in arcseconds.
+    min_stars : int
+        Minimum cross-matched sources required to return a result.
+    logger : optional
+        Logger instance for progress messages.
+
+    Returns
+    -------
+    (dx, dy) : tuple of float, or None
+        Pixel shift to apply to ``ref_resampled`` (via ``scipy.ndimage.shift``)
+        to bring it into alignment with the science image.
+        Positive dx → shift right (west); positive dy → shift down (south).
+        Returns ``None`` if too few matches are found or any step fails.
+    """
+    try:
+        from photutils.detection import DAOStarFinder
+        from astropy.stats import sigma_clipped_stats
+    except ImportError as _ie:
+        if logger:
+            logger.warning(warn_y + f' [V2] ps1_catalog_shift: missing dependency ({_ie}) — skipping')
+        return None
+
+    # 1. Detect point sources in science image
+    try:
+        _, _med, _std = sigma_clipped_stats(sci_data, sigma=3.0, maxiters=5)
+        if _std <= 0:
+            if logger:
+                logger.warning(warn_y + ' [V2] ps1_catalog_shift: flat science image — skipping')
+            return None
+        _finder = DAOStarFinder(fwhm=fwhm_px, threshold=thresh_sigma * _std,
+                                sharplo=0.2, sharphi=1.0,
+                                roundlo=-1.0, roundhi=1.0)
+        _srcs = _finder(sci_data - _med)
+    except Exception as _e:
+        if logger:
+            logger.warning(warn_y + f' [V2] ps1_catalog_shift: DAOStarFinder failed: {_e}')
+        return None
+
+    if _srcs is None or len(_srcs) < min_stars:
+        n = 0 if _srcs is None else len(_srcs)
+        if logger:
+            logger.warning(warn_y + f' [V2] ps1_catalog_shift: only {n} sources detected '
+                           f'(need ≥{min_stars}) — skipping')
+        return None
+    if logger:
+        logger.info(info_g + f' [V2] ps1_catalog_shift: {len(_srcs)} science sources detected')
+
+    # 2. Convert science pixel positions → sky coordinates (using possibly-wrong WCS)
+    try:
+        _sci_sky = sci_wcs.pixel_to_world(
+            np.array(_srcs['xcentroid']), np.array(_srcs['ycentroid']))
+    except Exception as _e:
+        if logger:
+            logger.warning(warn_y + f' [V2] ps1_catalog_shift: WCS pixel_to_world failed: {_e}')
+        return None
+
+    # 3. Two-pass nearest-neighbour matching — robust to large WCS absolute errors.
+    #
+    #    SEDM plate-solve sometimes leaves CRVAL off by tens of arcseconds.
+    #    A fixed small radius (e.g. 3") then finds zero true matches because
+    #    pixel_to_world maps every detected source to the wrong absolute sky
+    #    position.  The two-pass approach avoids this:
+    #
+    #    Pass A — no radius limit: find the nearest PS1 star for every science
+    #    source, compute the per-pair (ΔRA, ΔDec) offset, take the median.
+    #    Even if the WCS is 30" off, all true pairs share a common systematic
+    #    offset so the median captures it correctly.
+    #
+    #    Pass B — inlier gate: keep only pairs whose offset agrees with the
+    #    median within `match_radius_arcsec`.  These are the true matches.
+    #    Use them to compute the final pixel-space shift.
+    try:
+        _indx, _sep, _ = _sci_sky.match_to_catalog_sky(ps1_sky)
+    except Exception as _e:
+        if logger:
+            logger.warning(warn_y + f' [V2] ps1_catalog_shift: sky matching failed: {_e}')
+        return None
+
+    # Pass A: compute per-source offsets with no radius gate
+    _ps1_all = ps1_sky[_indx]
+    _cos_dec = float(np.cos(np.deg2rad(float(np.median(_sci_sky.dec.deg)))))
+    _dra_all  = (_ps1_all.ra.deg  - _sci_sky.ra.deg)  * _cos_dec * 3600.  # arcsec
+    _ddec_all = (_ps1_all.dec.deg - _sci_sky.dec.deg) * 3600.              # arcsec
+    _med_dra  = float(np.median(_dra_all))
+    _med_ddec = float(np.median(_ddec_all))
+    if logger:
+        logger.info(info_g + f' [V2] ps1_catalog_shift (pass A): '
+                    f'median offset ΔRA={_med_dra:.2f}", ΔDec={_med_ddec:.2f}" '
+                    f'from {len(_indx)} nearest-neighbour pairs')
+
+    # Pass B: inlier selection around the pass-A median.
+    #
+    # In sparse or galaxy-dominated SEDM fields most nearest-neighbour pairs
+    # are false matches (non-stellar science detections paired with an
+    # unrelated PS1 star).  The median offset is then unreliable and few or no
+    # pairs fall within match_radius_arcsec of it.  That is the correct
+    # outcome: ps1_catalog_shift returns None and the pipeline falls back to
+    # star_match_shift (which works in pixel-space without needing good
+    # absolute astrometry).
+    _resid = np.sqrt((_dra_all - _med_dra)**2 + (_ddec_all - _med_ddec)**2)
+    _inliers = _resid < match_radius_arcsec
+    if _inliers.sum() < min_stars:
+        if logger:
+            logger.warning(warn_y + f' [V2] ps1_catalog_shift: only {_inliers.sum()} inliers '
+                           f'within {match_radius_arcsec}" of median '
+                           f'(ΔRA={_med_dra:.2f}", ΔDec={_med_ddec:.2f}") — '
+                           f'likely non-stellar science detections; falling back to star_match')
+        return None
+
+    # 4. Project PS1 inlier positions into science pixel space via the science WCS
+    _ps1_inliers = ps1_sky[_indx[_inliers]]
+    try:
+        _ps1_pix_x, _ps1_pix_y = sci_wcs.world_to_pixel(_ps1_inliers)
+    except Exception as _e:
+        if logger:
+            logger.warning(warn_y + f' [V2] ps1_catalog_shift: WCS world_to_pixel failed: {_e}')
+        return None
+
+    _sci_x = np.array(_srcs['xcentroid'])[_inliers]
+    _sci_y = np.array(_srcs['ycentroid'])[_inliers]
+
+    # 5. Compute shift: (detected science position) − (where PS1 says it should be).
+    #    Includes both the absolute WCS offset and any residual alignment error —
+    #    both must be corrected to bring ref_resampled onto the science sources.
+    _dx_vals = _sci_x - np.array(_ps1_pix_x)
+    _dy_vals = _sci_y - np.array(_ps1_pix_y)
+    dx = float(np.median(_dx_vals))
+    dy = float(np.median(_dy_vals))
+    _mad_x = float(1.4826 * np.median(np.abs(_dx_vals - dx)))
+    _mad_y = float(1.4826 * np.median(np.abs(_dy_vals - dy)))
+    if logger:
+        logger.info(info_g + f' [V2] ps1_catalog_shift (pass B): {_inliers.sum()} inliers → '
+                    f'dx={dx:.3f}±{_mad_x:.3f} px, dy={dy:.3f}±{_mad_y:.3f} px')
+
+    # 6. Quality gate: large scatter means confusion or bad source detections
+    _MAD_THRESH = 2.0  # px
+    if _mad_x > _MAD_THRESH or _mad_y > _MAD_THRESH:
+        if logger:
+            logger.warning(warn_y + f' [V2] ps1_catalog_shift: scatter too large '
+                           f'(MAD_x={_mad_x:.2f}, MAD_y={_mad_y:.2f} px > {_MAD_THRESH}px) '
+                           f'— suppressing correction')
+        return None
+
+    return dx, dy
+
+
+def _trim_center_psf(psf_arr, measured_fwhm, logger=None, mult=6.0):
+    """Trim and re-centre a PSF kernel.
+
+    Two cleanup operations are applied in sequence:
+
+    1. **Trim to 6×FWHM** — removes noisy outer wings beyond the physically
+       meaningful part of the PSF.  Convolution with a large noisy kernel
+       (e.g. 81×81 for a 3 px FWHM PSF) smears background noise from every
+       pixel of the kernel across every star, creating ring-like artefacts in
+       the convolved image and dipole residuals in the subtraction.
+
+    2. **Re-centre** — shifts the stamp so the light-weighted centroid falls
+       at the exact array centre (``array_shape // 2``).  PSF stamps from
+       ``measure_psf`` are cut at the *integer* centroid of each star, so the
+       sub-pixel centroid offset is whatever the average fractional-pixel
+       position of the contributing stars happened to be.  If the centroid is
+       off by even 0.5 px the convolved image will have a corresponding
+       positional shift, which shows up as a differential shift between
+       ``sci_conv`` and ``ref_conv`` (since they use *different* kernels)
+       and appears as same-direction dipoles in the subtraction.
+
+    Parameters
+    ----------
+    psf_arr : 2-D ndarray
+        Raw PSF stamp (not modified in place — a copy is returned).
+    measured_fwhm : float
+        PSF FWHM in pixels as returned by the same ``measure_psf`` call.
+    logger : optional
+        Logger instance for info messages.
+    mult : float, optional
+        Window size multiplier in units of FWHM (default 6.0 for convolution
+        kernels; use 3.0 for comb_psf to avoid dipole-ring contamination in
+        PSF-fit photometry).
+
+    Returns
+    -------
+    psf_out : 2-D ndarray (odd × odd, sums to 1.0)
+    """
+    _arr = np.clip(psf_arr, 0, None).astype(np.float64)
+
+    # 1. Trim: mult × FWHM window (minimum 11 px, always odd)
+    _trim = max(int(np.ceil(mult * measured_fwhm)), 11)
+    if _trim % 2 == 0:
+        _trim += 1
+    _half = _trim // 2
+
+    # Crop around the brightest pixel
+    _ypeak, _xpeak = np.unravel_index(_arr.argmax(), _arr.shape)
+    _y0 = max(0, _ypeak - _half)
+    _y1 = min(_arr.shape[0], _ypeak + _half + 1)
+    _x0 = max(0, _xpeak - _half)
+    _x1 = min(_arr.shape[1], _xpeak + _half + 1)
+    _cropped = _arr[_y0:_y1, _x0:_x1].copy()
+
+    # Pad to exact (_trim × _trim) if the crop hit an image boundary
+    if _cropped.shape != (_trim, _trim):
+        _padded = np.zeros((_trim, _trim), dtype=np.float64)
+        _oy = _half - (_ypeak - _y0)
+        _ox = _half - (_xpeak - _x0)
+        _ph, _pw = _cropped.shape
+        _padded[_oy:_oy+_ph, _ox:_ox+_pw] = _cropped
+        _cropped = _padded
+
+    # 2. Re-centre: shift so the light-weighted centroid is at (_half, _half)
+    _yy, _xx = np.mgrid[0:_trim, 0:_trim]
+    _ks = _cropped.sum()
+    if _ks > 0:
+        _cen_x = float((_xx * _cropped).sum() / _ks)
+        _cen_y = float((_yy * _cropped).sum() / _ks)
+        _sx = _half - _cen_x
+        _sy = _half - _cen_y
+        if abs(_sx) > 0.01 or abs(_sy) > 0.01:
+            _cropped = scipy.ndimage.shift(_cropped, [_sy, _sx],
+                                           order=3, mode='constant', cval=0.0)
+            _cropped = np.clip(_cropped, 0, None)
+            if logger:
+                logger.info(info_g+f' [V2] PSF centroid corrected: '
+                            f'shift=({_sx:.3f}, {_sy:.3f}) px')
+
+    # Re-normalise
+    _s = _cropped.sum()
+    if _s > 0:
+        _cropped /= _s
+    if logger:
+        logger.info(info_g+f' [V2] PSF trimmed+centred: {psf_arr.shape} → '
+                    f'{_cropped.shape} (FWHM={measured_fwhm:.2f}px)')
+    return _cropped
+
+
 class subtracted_phot(subphot_data):
     def __init__(self,ims,args):
         self.bright_cat_mag_lim = 16
         self.zp_sci_lim = 30
         self.path=path
-        self.opath=path
-        self.data1_path=data1_path
+        self.path=path
+        self.path=path
         self.ims_path = '/'.join(ims[0].split('/')[:-1])
         self.args=args
         self.ims,self.cutout_tf,self.unsubtract = ims,self.args.cutout,self.args.unsubtract
@@ -161,22 +680,21 @@ class subtracted_phot(subphot_data):
 
         
 
-        if not os.path.exists(self.data1_path+'phot_fits_info'):os.mkdir(self.data1_path+'phot_fits_info')
-        if not os.path.exists(self.data1_path+'combined_imgs'):os.mkdir(self.data1_path+'combined_imgs')
-        if not os.path.exists(self.data1_path+'out'):os.mkdir(self.data1_path+'out')
-        if not os.path.exists(self.data1_path+'temp_config_files'):os.mkdir(self.data1_path+'temp_config_files')
-        if not os.path.exists(self.data1_path+'aligned_images'):os.mkdir(self.data1_path+'aligned_images')
-        if not os.path.exists(self.data1_path+'ref_imgs'):os.mkdir(self.data1_path+'ref_imgs')
-        if not os.path.exists(self.data1_path+'bkg_subtracted_science'):os.mkdir(self.data1_path+'bkg_subtracted_science')
-        if not os.path.exists(self.data1_path+'scaled_subtracted_imgs'):os.mkdir(self.data1_path+'scaled_subtracted_imgs')
-        if not os.path.exists(self.data1_path+'convolved_sci'):os.mkdir(self.data1_path+'convolved_sci')
-        if not os.path.exists(self.data1_path+'convolved_ref'):os.mkdir(self.data1_path+'convolved_ref')
-        if not os.path.exists(self.data1_path+'convolved_psf'):os.mkdir(self.data1_path+'convolved_psf')
-        if not os.path.exists(self.data1_path+'combined_imgs'):os.mkdir(self.data1_path+'combined_imgs')
-        if not os.path.exists(self.data1_path+'trimmed_sci_imgs'):os.mkdir(self.data1_path+'trimmed_sci_imgs')
-        if not os.path.exists(self.data1_path+'photometry_data'):os.mkdir(self.data1_path+'photometry_data')
-        if not os.path.exists(self.data1_path+'photometry'):os.mkdir(self.data1_path+'photometry')
-        if not os.path.exists(self.data1_path+'ps_catalogs'):os.mkdir(self.data1_path+'ps_catalogs')
+        if not os.path.exists(self.path+'phot_fits_info'):os.mkdir(self.path+'phot_fits_info')
+        if not os.path.exists(self.path+'combined_imgs'):os.mkdir(self.path+'combined_imgs')
+        if not os.path.exists(self.path+'out'):os.mkdir(self.path+'out')
+        if not os.path.exists(self.path+'temp_config_files'):os.mkdir(self.path+'temp_config_files')
+        if not os.path.exists(self.path+'aligned_images'):os.mkdir(self.path+'aligned_images')
+        if not os.path.exists(self.path+'ref_imgs'):os.mkdir(self.path+'ref_imgs')
+        if not os.path.exists(self.path+'bkg_subtracted_science'):os.mkdir(self.path+'bkg_subtracted_science')
+        if not os.path.exists(self.path+'scaled_subtracted_imgs'):os.mkdir(self.path+'scaled_subtracted_imgs')
+        if not os.path.exists(self.path+'convolved_sci'):os.mkdir(self.path+'convolved_sci')
+        if not os.path.exists(self.path+'convolved_ref'):os.mkdir(self.path+'convolved_ref')
+        if not os.path.exists(self.path+'convolved_psf'):os.mkdir(self.path+'convolved_psf')
+        if not os.path.exists(self.path+'trimmed_sci_imgs'):os.mkdir(self.path+'trimmed_sci_imgs')
+        if not os.path.exists(self.path+'photometry_data'):os.mkdir(self.path+'photometry_data')
+        if not os.path.exists(self.path+'photometry'):os.mkdir(self.path+'photometry')
+        if not os.path.exists(self.path+'ps_catalogs'):os.mkdir(self.path+'ps_catalogs')
 
 
 
@@ -256,7 +774,7 @@ class subtracted_phot(subphot_data):
                         attempts = [1,2,3,4,5,6]
                         for j in attempts:
                             fits_name = '_'.join(self.name_split[0:4])+'_'+f'{j}'+'_'+'_'.join(self.name_split[5:])
-                            try_name = self.data1_path+f"{self.single_data_path}/"+'_'.join(self.name_split[0:4])+'_'+f'{j}'+'_'+'_'.join(self.name_split[5:])+".fits"
+                            try_name = self.path+f"{self.single_data_path}/"+'_'.join(self.name_split[0:4])+'_'+f'{j}'+'_'+'_'.join(self.name_split[5:])+".fits"
                             if os.path.exists(try_name)==True and re.sub('.fits','',try_name) not in self.ims:
                                 self.ims.append(fits_name)
             except:
@@ -269,7 +787,12 @@ class subtracted_phot(subphot_data):
 
             else:
                 self.img_type=""
-                self.name=self.ims[0]+'.fits'
+                if self.ims[0].endswith('.fits')==False and self.ims[0].endswith('.fits.gz')==False:
+                    self.name=self.ims[0]+'.fits'
+                else:
+                    self.name=self.ims[0]
+                
+                # if self.name.startswith(
                 # self.sp_logger.info(info_g+' Single image to subtract:',self.name)
 
                 if self.args.telescope_facility not in SEDM:
@@ -278,12 +801,13 @@ class subtracted_phot(subphot_data):
                     else:
                         self.folder = self.DATE
 
-                if self.data1_path not in self.name:
-                    self.name=self.data1_path+self.name
+                if self.path not in self.name and self.name.startswith('/')==False:
+                    self.name=self.path+self.name
                 
                 
                 self.sci_path = self.name
-                self.sci_img_hdu=fits.open(self.name)[0]
+                print(self.name)
+                self.sci_img_hdu=fits.open(self.name.replace('.fits.fits','.fits'))[0]
                 self.telescope = self.sci_img_hdu.header['TELESCOP']
 
                 if self.telescope in SEDM:self.telescope,self.sci_int='SEDM-P60','P60'
@@ -372,13 +896,15 @@ class subtracted_phot(subphot_data):
                             vmin,vmax = visualization.ZScaleInterval().get_limits(self.sci_img_hdu.data)
                             height,width = self.sci_img_hdu.data.shape
                             trim_size=0
-                            self.sci_trimmed_img = np.zeros((height,width))*np.nan
-                            self.sci_trimmed_img[trim_size:,trim_size:] = self.sci_img_hdu.data[trim_size:,trim_size:]
-
-                            if not os.path.exists(self.data1_path+'trimmed_sci_imgs'):os.makedirs(self.data1_path+'trimmed_sci_imgs')
-                            self.sci_path = self.data1_path+'trimmed_sci_imgs/'+self.sci_path.split('/')[-1]
+                            # self.sci_trimmed_img = np.zeros((height,width))*np.nan
+                            self.sp_logger.info(info_g+f" Original image size: "+str(self.sci_img_hdu.data.shape))
+                            self.sci_trimmed_img= new_cutout(self.sci_img_hdu)
+                            # self.sci_trimmed_img.data = np.nan_to_num(self.sci_trimmed_img.data)
+                            # if not os.path.exists(self.path+'trimmed_sci_imgs'):os.makedirs(self.path+'trimmed_sci_imgs')
+                            self.sci_path = self.path+'trimmed_sci_imgs/'+self.sci_path.split('/')[-1]
                             self.sci_path_o = self.sci_path
-                            fits.writeto(self.sci_path.replace('.fits','_trimmed.fits'),self.sci_trimmed_img.data,overwrite=True,header=self.sci_img_hdu.header)
+                            fits.writeto(self.sci_path.replace('.fits','_trimmed.fits'),self.sci_trimmed_img,overwrite=True,header=self.sci_img_hdu.header)
+                            # fits.writeto(self.sci_path.replace('.fits','_trimmed.fits'),self.sci_trimmed_img.data,overwrite=True,header=self.sci_img_hdu.header)
                             self.sci_path = self.sci_path.replace('.fits','_trimmed.fits')
                             self.files_to_clean.append(self.sci_path)
                             # sys.exit()
@@ -457,6 +983,9 @@ class subtracted_phot(subphot_data):
                 self.sci_inst='SEDM-P60'
                 self.sci_prop=None
                 self.sci_obj=self.sci_img_hdu.header[self.OBJ_kw]
+                if self.sci_obj=='2024afav':
+                    self.sci_img_hdu.header[self.RA_kw] = "12:49:12.10"
+                    self.sci_img_hdu.header[self.DEC_kw] = "-18:06:13.20"
 
                 if 'rc' in self.sci_path.split("/")[-1]:
                     self.folder=self.sci_path.split('rc')[1][2:10]
@@ -543,6 +1072,8 @@ class subtracted_phot(subphot_data):
 
             
                 self.sci_obj, self.sep, self.tail = self.sci_obj.partition('_') #tail should be the request id from marshal triggering if there is one
+                if self.sci_obj=='ZTFaaqousn':self.sci_obj='ZTF25aaqousn'
+                
                 if ' ' in self.sci_obj:
                     self.sci_obj=self.sci_obj.split(' ')[0]
                 if self.sci_obj=='2023vyl':self.sci_obj='ZTF23abnprwj'
@@ -610,7 +1141,7 @@ class subtracted_phot(subphot_data):
                 self.name.append(str(self.ims[s])+".fits")
 
             for k in range(len(self.name)):
-                if not self.name[k].startswith(self.data1_path): self.name[k]=self.data1_path+self.name[k]
+                if not self.name[k].startswith(self.path): self.name[k]=self.path+self.name[k]
             self.sci_img_hdu = fits.open(self.name[0])[0]
             self.telescope = self.sci_img_hdu.header['TELESCOP']
 
@@ -714,6 +1245,12 @@ class subtracted_phot(subphot_data):
                 self.sci_img_hdu=fits.open(self.name[0])[0]
                 self.sci_obj=self.sci_img_hdu.header[self.OBJ_kw]
                 if self.sci_obj=='2023vyl':self.sci_obj='ZTF23abnprwj'
+                if self.sci_obj=='ZTFaaqousn':self.sci_obj='ZTF25aaqousn'
+
+
+                if self.sci_obj=='2024afav':
+                    self.sci_img_hdu.header[self.RA_kw] = "12:49:12.10"
+                    self.sci_img_hdu.header[self.DEC_kw] = "-18:06:13.20"
 
 
                 if self.ra_dec_pos=='header':
@@ -797,7 +1334,8 @@ class subtracted_phot(subphot_data):
                 else:
                     self.sci_jd = self.sci_mjd+2400000.5
                     self.sci_jd=np.mean([fits.open(s)[0].header[self.MJD_kw]+2400000.5 for s in self.name])
-
+                
+                if self.sci_obj=='ZTFaaqousn':self.sci_obj='ZTF25aaqousn'
                 self.sci_img_name=self.sci_obj+'_'+self.sci_filt+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]),seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'.fits'
                 
                 # plt.figure(figsize=(10,10))
@@ -807,7 +1345,7 @@ class subtracted_phot(subphot_data):
                 # sys.exit()
 
             
-                if not os.path.exists(self.data1_path+'combined_imgs/'+self.sci_img_name):
+                if not os.path.exists(self.path+'combined_imgs/'+self.sci_img_name):
 
                     self.sp_logger.info(info_g+' Combining '+str(len(self.ims))+' '+self.sci_filt+' images...')
                     self.sp_logger.info(info_g+f" Stacking {self.sci_obj} {self.sci_filt} images with Swarp")
@@ -825,7 +1363,7 @@ class subtracted_phot(subphot_data):
                     self.img_size1,self.img_size2 = self.sci_img_hdu.header['NAXIS1']*0.9999,self.sci_img_hdu.header['NAXIS2']*0.9999
                     self.comb_centre = str(self.sci_img_hdu.header['CRVAL1'])+" "+str(self.sci_img_hdu.header['CRVAL2'])
 
-                    swarp_command=swarp_path+" "+self.name_joined+" -c "+self.opath+"config_files/config_comb.swarp -COPY_KEYWORDS DATE-OBS -CENTER '"+self.comb_centre+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -IMAGEOUT_NAME "+self.data1_path+"combined_imgs"+'/'+self.sci_img_name+" -RESAMPLE Y -RESAMPLE_DIR '"+self.data1_path+"' -COMBINE Y -IMAGE_SIZE '"+str(self.img_size1)+","+str(self.img_size2)+"'"
+                    swarp_command=swarp_path+" "+self.name_joined+" -c "+self.path+"config_files/config_comb.swarp -COPY_KEYWORDS DATE-OBS -CENTER '"+self.comb_centre+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -IMAGEOUT_NAME "+self.path+"combined_imgs"+'/'+self.sci_img_name+" -RESAMPLE Y -RESAMPLE_DIR '"+self.path+"' -COMBINE Y -IMAGE_SIZE '"+str(self.img_size1)+","+str(self.img_size2)+"'"
                     # self.sp_logger.info(swarp_command)
                     # sys.exit()
                     # self.sp_logger.info(self.name)
@@ -837,17 +1375,18 @@ class subtracted_phot(subphot_data):
                     # self.status=os.system(swarp_command)
 
                     self.sp_logger.info(info_g+' Combined '+str(len(self.ims))+' '+self.sci_filt+' images!')
-                    self.sci_img_hdu=fits.open(self.data1_path+'combined_imgs/'+self.sci_img_name)[0]
+                    self.sci_img_hdu=fits.open(self.path+'combined_imgs/'+self.sci_img_name)[0]
                     self.sci_img=self.sci_img_hdu.data
-                    self.sci_path = self.data1_path+'combined_imgs/'+self.sci_img_name
+                    self.sci_path = self.path+'combined_imgs/'+self.sci_img_name
+                    self.files_to_clean.append(self.path+'combined_imgs/'+self.sci_img_name)
                     self.name=self.sci_path
         
-                elif os.path.exists(self.data1_path+'combined_imgs/'+self.sci_img_name):
+                elif os.path.exists(self.path+'combined_imgs/'+self.sci_img_name):
 
                     self.sp_logger.info(info_b+' Images: '+self.sci_filt+' already combined')
-                    self.sci_img_hdu=fits.open(self.data1_path+'combined_imgs/'+self.sci_img_name)[0]
+                    self.sci_img_hdu=fits.open(self.path+'combined_imgs/'+self.sci_img_name)[0]
                     self.sci_img=self.sci_img_hdu.data
-                    self.sci_path = self.data1_path+'combined_imgs/'+self.sci_img_name
+                    self.sci_path = self.path+'combined_imgs/'+self.sci_img_name
                     self.name=self.sci_path
 
             else:
@@ -884,67 +1423,67 @@ class subtracted_phot(subphot_data):
         if self.out_dir=='by_name' and self.morning_round_up==False:
             self.folder = self.sci_obj
             self.out_dir='photometry/'
-            if not os.path.exists(self.data1_path+self.out_dir):
-                self.sp_logger.info(info_g+' Creating photometry directory: '+self.data1_path+self.out_dir)
-                os.mkdir(self.data1_path+self.out_dir)
+            if not os.path.exists(self.path+self.out_dir):
+                self.sp_logger.info(info_g+' Creating photometry directory: '+self.path+self.out_dir)
+                os.mkdir(self.path+self.out_dir)
             
             #folder is for easy way to display photometry by date of observation
-            if os.path.exists(self.data1_path+'photometry_date')==False:
-                self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.data1_path+'photometry_date')
-                os.mkdir(self.data1_path+'photometry_date')
-            if not os.path.exists(self.data1_path+f'photometry_date/{self.folder}'):
-                self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.data1_path+f'photometry_date/{self.folder}')
-                os.mkdir(self.data1_path+f'photometry_date/{self.folder}')  
+            if os.path.exists(self.path+'photometry_date')==False:
+                self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.path+'photometry_date')
+                os.mkdir(self.path+'photometry_date')
+            if not os.path.exists(self.path+f'photometry_date/{self.folder}'):
+                self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}')
+                os.mkdir(self.path+f'photometry_date/{self.folder}')  
 
             if self.morning_round_up!=False:
-                if not os.path.exists(self.data1_path+f'photometry_date/{self.folder}/morning_rup'):
-                    self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.data1_path+f'photometry_date/{self.folder}/morning_rup')
-                    os.mkdir(self.data1_path+f'photometry_date/{self.folder}/morning_rup')
+                if not os.path.exists(self.path+f'photometry_date/{self.folder}/morning_rup'):
+                    self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}/morning_rup')
+                    os.mkdir(self.path+f'photometry_date/{self.folder}/morning_rup')
 
             if self.cutout_tf!=False:
-                if not os.path.exists(self.data1_path+f'photometry_date/{self.folder}/cut_outs'):
-                    self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.data1_path+f'photometry_date/{self.folder}/cut_outs')
-                    os.mkdir(self.data1_path+f'photometry_date/{self.folder}/cut_outs')
+                if not os.path.exists(self.path+f'photometry_date/{self.folder}/cut_outs'):
+                    self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}/cut_outs')
+                    os.mkdir(self.path+f'photometry_date/{self.folder}/cut_outs')
 
         if self.out_dir=='by_obs_date' or self.morning_round_up!=False:
             self.out_dir='photometry/'
             # self.folder = self.sci_obj
-            if not os.path.exists(self.data1_path+self.out_dir):
-                self.sp_logger.info(info_g+' Creating photometry directory: '+self.data1_path+self.out_dir)
-                os.mkdir(self.data1_path+self.out_dir)
+            if not os.path.exists(self.path+self.out_dir):
+                self.sp_logger.info(info_g+' Creating photometry directory: '+self.path+self.out_dir)
+                os.mkdir(self.path+self.out_dir)
             
             #folder is for easy way to display photometry by date of observation
-            if os.path.exists(self.data1_path+'photometry_date')==False:
-                self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.data1_path+'photometry_date')
-                os.mkdir(self.data1_path+'photometry_date')
-            if not os.path.exists(self.data1_path+f'photometry_date/{self.folder}'):
-                self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.data1_path+f'photometry_date/{self.folder}')
-                os.mkdir(self.data1_path+f'photometry_date/{self.folder}')  
+            if os.path.exists(self.path+'photometry_date')==False:
+                self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.path+'photometry_date')
+                os.mkdir(self.path+'photometry_date')
+            if not os.path.exists(self.path+f'photometry_date/{self.folder}'):
+                self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}')
+                os.mkdir(self.path+f'photometry_date/{self.folder}')  
 
             if self.morning_round_up!=False:
-                if not os.path.exists(self.data1_path+f'photometry_date/{self.folder}/morning_rup'):
-                    self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.data1_path+f'photometry_date/{self.folder}/morning_rup')
-                    os.mkdir(self.data1_path+f'photometry_date/{self.folder}/morning_rup')
+                if not os.path.exists(self.path+f'photometry_date/{self.folder}/morning_rup'):
+                    self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}/morning_rup')
+                    os.mkdir(self.path+f'photometry_date/{self.folder}/morning_rup')
 
             if self.cutout_tf!=False:
-                if not os.path.exists(self.data1_path+f'photometry_date/{self.folder}/cut_outs'):
-                    self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.data1_path+f'photometry_date/{self.folder}/cut_outs')
-                    os.mkdir(self.data1_path+f'photometry_date/{self.folder}/cut_outs')
+                if not os.path.exists(self.path+f'photometry_date/{self.folder}/cut_outs'):
+                    self.sp_logger.info(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}/cut_outs')
+                    os.mkdir(self.path+f'photometry_date/{self.folder}/cut_outs')
         else:
             self.out_dir=str(self.out_dir)+'/'
-            if not os.path.exists(self.data1_path+self.out_dir):
-                self.sp_logger.info(info_g+' Creating photometry directory: '+self.data1_path+self.out_dir)
-                os.mkdir(self.data1_path+self.out_dir)
+            if not os.path.exists(self.path+self.out_dir):
+                self.sp_logger.info(info_g+' Creating photometry directory: '+self.path+self.out_dir)
+                os.mkdir(self.path+self.out_dir)
 
             if self.morning_round_up!=False:
-                if not os.path.exists(self.data1_path+self.out_dir+'morning_rup'):
-                    self.sp_logger.info(info_g+' Creating photometry directory: '+self.data1_path+self.out_dir+'morning_rup')
-                    os.mkdir(self.data1_path+self.out_dir+'morning_rup')
+                if not os.path.exists(self.path+self.out_dir+'morning_rup'):
+                    self.sp_logger.info(info_g+' Creating photometry directory: '+self.path+self.out_dir+'morning_rup')
+                    os.mkdir(self.path+self.out_dir+'morning_rup')
             
             if self.cutout_tf!=False:
-                if not os.path.exists(self.data1_path+f'{self.out_dir}cut_outs'):
-                    self.sp_logger.info(info_g+' Creating photometry directory: '+self.data1_path+f'{self.out_dir}cut_outs')
-                    os.mkdir(self.data1_path+f'{self.out_dir}cut_outs')
+                if not os.path.exists(self.path+f'{self.out_dir}cut_outs'):
+                    self.sp_logger.info(info_g+' Creating photometry directory: '+self.path+f'{self.out_dir}cut_outs')
+                    os.mkdir(self.path+f'{self.out_dir}cut_outs')
 
 
         if ':' in str(self.sci_ra):self.sci_c=SkyCoord(self.sci_ra,self.sci_dec,unit=(u.hourangle, u.deg),frame='fk5')
@@ -983,14 +1522,14 @@ class subtracted_phot(subphot_data):
 
 
         if self.if_stacked==False:
-            self.phot_path = self.data1_path+'phot_fits_info/'+self.sci_img_name[:-5]+"_phot_info.txt"
+            self.phot_path = self.path+'phot_fits_info/'+self.sci_img_name[:-5]+"_phot_info.txt"
             self.fits_info = [str(self.sci_mjd),self.sci_utstart,self.sci_ra, self.sci_dec,self.sci_prop,self.sci_inst,self.sci_exp_time,self.sci_airmass, self.sci_seeing, self.sci_est_seeing,0]
             self.fits_info_txt =open(self.phot_path,"w")
             self.fits_info_txt.write(f'{self.fits_info[0]},{self.fits_info[1]},{self.fits_info[2]},{self.fits_info[3]},{self.fits_info[4]},{self.fits_info[5]},{self.fits_info[6]},{self.fits_info[7]},{self.fits_info[8]},{self.fits_info[9]},1')
             self.fits_info_txt.close()
 
         else:
-            self.phot_path = self.data1_path+'phot_fits_info/'+self.sci_img_name[:-5]+"_stacked_phot_info.txt"
+            self.phot_path = self.path+'phot_fits_info/'+self.sci_img_name[:-5]+"_stacked_phot_info.txt"
             self.fits_info = [str(self.sci_mjd),self.sci_utstart,self.sci_ra,self.sci_dec,self.sci_prop,self.sci_inst,self.sci_exp_time, self.sci_airmass,self.sci_seeing,self.sci_est_seeing,self.no_stacked]
             self.fits_info_txt=open(self.phot_path,"w")
             self.fits_info_txt.write(f'{self.fits_info[0]},{self.fits_info[1]},{self.fits_info[2]},{self.fits_info[3]},{self.fits_info[4]},{self.fits_info[5]},{self.fits_info[6]},{self.fits_info[7]},{self.fits_info[8]},{self.fits_info[9]},{self.no_stacked}')
@@ -1011,7 +1550,7 @@ class subtracted_phot(subphot_data):
         self.sdss_images=[]
         self.grid_size=3
         self.image_name=self.sci_obj+f'_ref_{sdss_filt}.fits'
-        self.ref_path=self.data1_path+'ref_imgs/'+self.image_name
+        self.ref_path=self.path+'ref_imgs/'+self.image_name
         if os.path.exists(self.ref_path):
             self.sp_logger.info(info_b+' SDSS reference image already exists')
             return self.ref_path
@@ -1048,20 +1587,20 @@ class subtracted_phot(subphot_data):
         self.sdss_images=np.array(sdss_unique)
         # sys.exit(1)
         # self.image_name=self.sci_obj+f'_ref.fits'
-        # self.ref_path=self.data1_path+'ref_imgs/'+self.image_name
+        # self.ref_path=self.path+'ref_imgs/'+self.image_name
         if not os.path.exists(self.ref_path):
             self.sdss_images = list(dict.fromkeys(self.sdss_images))
-            with open(self.data1_path+f'ref_imgs/{self.sci_obj}_sdss_list_{sdss_filt}.txt', 'w') as f:
+            with open(self.path+f'ref_imgs/{self.sci_obj}_sdss_list_{sdss_filt}.txt', 'w') as f:
                 for item in self.sdss_images:
                     f.write("%s[0]\n" %(item))
                     self.sp_logger.info(info_b+" %s\n" %(item))
             f.close()
     
         # self.image_name=self.sci_obj+f'_ref_{sdss_filt}.fits'
-        # self.ref_path=self.data1_path+'ref_imgs/'+self.image_name
+        # self.ref_path=self.path+'ref_imgs/'+self.image_name
         if not os.path.exists(self.ref_path):
             self.sp_logger.info(info_g+' Combining SDSS images with swarp centering on the object at '+self.ra_string+' '+self.dec_string)
-            self.swarp_sdss_command=swarp_path+" @"+self.data1_path+f'ref_imgs/{self.sci_obj}_sdss_list_{sdss_filt}.txt'+" -c "+self.opath+"config_files/swarp_sdss.conf -CENTER '"+self.ra_string+" "+self.dec_string+"'"+" -IMAGE_SIZE '"+'4000'+","+'4000'+"'"+" -IMAGEOUT_NAME "+self.data1_path+'ref_imgs/'+self.sci_obj+f'_ref_{sdss_filt}.fits -VERBOSE_TYPE QUIET'
+            self.swarp_sdss_command=swarp_path+" @"+self.path+f'ref_imgs/{self.sci_obj}_sdss_list_{sdss_filt}.txt'+" -c "+self.path+"config_files/swarp_sdss.conf -CENTER '"+self.ra_string+" "+self.dec_string+"'"+" -IMAGE_SIZE '"+'4000'+","+'4000'+"'"+" -IMAGEOUT_NAME "+self.path+'ref_imgs/'+self.sci_obj+f'_ref_{sdss_filt}.fits -VERBOSE_TYPE QUIET'
             self.sp_logger.info(self.swarp_sdss_command)
             # sys.exit(1)
             os.system(self.swarp_sdss_command)
@@ -1079,13 +1618,14 @@ class subtracted_phot(subphot_data):
         ##############################################
             #  Background subtraction
         #################################
-        if not os.path.exists(self.data1_path+'bkg_subtracted_science'):
-            os.makedirs(self.data1_path+'bkg_subtracted_science')
+        if not os.path.exists(self.path+'bkg_subtracted_science'):
+            os.makedirs(self.path+'bkg_subtracted_science')
 
         self.sig_clip = SigmaClip(sigma=sigma)
         self.bkg_estimator = SExtractorBackground(self.sig_clip)
-        
-        self.bkg = Background2D(self.sci_img, (50, 50), filter_size=(3, 3),sigma_clip=sigma_clip, bkg_estimator=self.bkg_estimator)
+        self.sci_img = np.nan_to_num(self.sci_img)
+        self.bkg = Background2D(
+            self.sci_img, (50, 50), filter_size=(3, 3),sigma_clip=sigma_clip, bkg_estimator=self.bkg_estimator)
 
         self.bkg_median = []
         for row in self.bkg.background:
@@ -1181,9 +1721,9 @@ class subtracted_phot(subphot_data):
                 
 
         self.sci_img_name=self.sci_img_name[:-5]+"bkgsub.fits"
-        fits.writeto(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name, self.sci_bkgsb, self.sci_img_hdu.header,overwrite=True)
+        fits.writeto(self.path+'bkg_subtracted_science/'+self.sci_img_name, self.sci_bkgsb, self.sci_img_hdu.header,overwrite=True)
 
-        self.files_to_clean.append(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name)
+        self.files_to_clean.append(self.path+'bkg_subtracted_science/'+self.sci_img_name)
 
         self.t_cosmic_end = time.time()
         self.cosmic_removal_time = self.t_cosmic_end - self.t_cosmic_start
@@ -1261,7 +1801,7 @@ class subtracted_phot(subphot_data):
         return {'sci_keep_pix':sci_keep_pix,'ref_keep_pix':ref_keep_pix,'sci_keep_sky':sci_keep_sky,'ref_keep_sky':ref_keep_sky}
 
     def distortion_correction(self):
-        return
+        # return
         self.sp_logger.info(info_g+' Attempting to solve distortion in science image')
         self.ref_width=self.sci_img_hdu.header['NAXIS2']*self.sci_ps/60
             
@@ -1297,8 +1837,8 @@ class subtracted_phot(subphot_data):
                 self.ref_coords_pix=wcs_to_pixels(self.ref_ali_name,self.ref_coords_wcs)
         else:
             #If a reference catalogue is passed in with it's full path as self.auto_cat
-            if self.auto_cat.startswith(self.data1_path):
-                self.auto_cat = self.data1_path+self.auto_cat
+            if self.auto_cat.startswith(self.path):
+                self.auto_cat = self.path+self.auto_cat
 
             if not os.path.exists(self.auto_cat):
                 self.sp_logger.info(warn_r+f' Reference catalogue {self.auto_ref} not found')
@@ -1335,8 +1875,9 @@ class subtracted_phot(subphot_data):
         self.sources2 = self.iraffind2(self.sci_ali_img_hdu.data[OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE,OUTEDGE:len(self.sci_ali_img_hdu.data)-OUTEDGE] - self.median)
 
         self.sp_logger.info(info_g+f" Running SExtractor to detect stars in science image")
-        os.system(sex_path + " " + self.sci_ali_name + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL 50000 -BACK_TYPE MANUAL -BACK_VALUE "+str(self.median_bkg) +f" -CATALOG_NAME "+data1_path+f"config_files/sci_dist_{self.rand_nums_string}.cat")
-        self.sources3 = ascii.read(data1_path+f"config_files/sci_dist_{self.rand_nums_string}.cat")#,
+        print(sex_path + " " + self.sci_ali_name + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL 50000 -BACK_TYPE MANUAL -BACK_VALUE "+str(self.median_bkg) +f" -CATALOG_NAME "+path+f"config_files/sci_dist_{self.rand_nums_string}.cat")
+        os.system(sex_path + " " + self.sci_ali_name + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL 50000 -BACK_TYPE MANUAL -BACK_VALUE "+str(self.median_bkg) +f" -CATALOG_NAME "+path+f"config_files/sci_dist_{self.rand_nums_string}.cat")
+        self.sources3 = ascii.read(path+f"config_files/sci_dist_{self.rand_nums_string}.cat")#,
         
         self.sources=Table()
         self.sources['xcentroid'] = np.concatenate([self.sources3['X_IMAGE'].data,self.sources1['xcentroid'].data,self.sources2['xcentroid'].data],dtype=np.float64)
@@ -1406,17 +1947,17 @@ class subtracted_phot(subphot_data):
         # sys.exit()
         # save_to_reg=False
         # if save_to_reg:
-        #     if not os.path.exists(self.data1_path+'region_files'):os.makedirs(self.data1_path+'region_files')
-        #     self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_sci_all_sky.reg')
-        #     self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_ref_all_sky.reg')
-        #     with open(self.data1_path+'region_files/'+self.sci_obj+'_sci_all_sky.reg','w') as f:
+        #     if not os.path.exists(self.path+'region_files'):os.makedirs(self.path+'region_files')
+        #     self.files_to_clean.append(self.path+'region_files/'+self.sci_obj+'_sci_all_sky.reg')
+        #     self.files_to_clean.append(self.path+'region_files/'+self.sci_obj+'_ref_all_sky.reg')
+        #     with open(self.path+'region_files/'+self.sci_obj+'_sci_all_sky.reg','w') as f:
         #         f.write('global color=yellow dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
         #         f.write('fk5'+'\n')
         #         for i in range(len(self.matched_star_coords_pix)):
         #             f.write(f'circle({self.star_coords_wcs_sky[i].ra.deg},{self.star_coords_wcs_sky[i].dec.deg},3")'+' # text={'+f'xy={int(self.matched_star_coords_pix[i][0]),int(self.matched_star_coords_pix[i][1])}'+'}'+'\n')
         #             # f.write(f'physical;circle({self.matched_star_coords_pix[i][0]},{self.matched_star_coords_pix[i][1]},10)'+' # text={'+f'xy={int(self.matched_star_coords_pix[i][0]),int(self.matched_star_coords_pix[i][1])}'+'}'+'\n')
         #         f.close()
-        #     with open(self.data1_path+'region_files/'+self.sci_obj+'_ref_all_sky.reg','w') as f:
+        #     with open(self.path+'region_files/'+self.sci_obj+'_ref_all_sky.reg','w') as f:
         #         f.write('global color=red dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
         #         f.write('fk5'+'\n')
         #         for i in range(len(self.matched_ref_coords_pix)):
@@ -1495,10 +2036,10 @@ class subtracted_phot(subphot_data):
 
         save_to_reg = False
         if save_to_reg: 
-            if not os.path.exists(self.data1_path+'region_files'):os.makedirs(self.data1_path+'region_files')
-            self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_sci.reg')
-            self.files_to_clean.append(self.data1_path+'region_files/'+self.sci_obj+'_ref.reg')
-            with open(self.data1_path+'region_files/'+self.sci_obj+'_sci.reg','w') as f:
+            if not os.path.exists(self.path+'region_files'):os.makedirs(self.path+'region_files')
+            self.files_to_clean.append(self.path+'region_files/'+self.sci_obj+'_sci.reg')
+            self.files_to_clean.append(self.path+'region_files/'+self.sci_obj+'_ref.reg')
+            with open(self.path+'region_files/'+self.sci_obj+'_sci.reg','w') as f:
                 f.write('global color=yellow dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
                 f.write('fk5'+'\n')
                 for i in range(len(self.matched_star_coords_pix)):
@@ -1506,7 +2047,7 @@ class subtracted_phot(subphot_data):
                     f.write(f'physical;circle({self.matched_star_coords_pix[i][0]},{self.matched_star_coords_pix[i][1]},20)'+' # text={'+f'xy={self.matched_star_coords_pix[i]}'+'}'+'\n')
                 f.close()
 
-            with open(self.data1_path+'region_files/'+self.sci_obj+'_ref.reg','w') as f:
+            with open(self.path+'region_files/'+self.sci_obj+'_ref.reg','w') as f:
                 f.write('global color=red dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1'+'\n')
                 f.write('fk5'+'\n')
                 for i in range(len(self.matched_ref_coords_pix)):
@@ -1537,12 +2078,13 @@ class subtracted_phot(subphot_data):
             self.tform_ref_sci.estimate(self.matched_ref_coords_pix,self.matched_star_coords_pix, order=1)
             self.tform_ref_sci = transform.warp(self.sci_ali_img_hdu.data, self.tform_ref_sci,
                                                 output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
-                                                order=3,)
+                                                order=3,
+                                                mode='constant', cval=0.0)
 
-            self.tform_sci_ref.estimate(self.matched_star_coords_pix,self.matched_ref_coords_pix, order=1)
-            self.tform_sci_ref = transform.warp(self.sci_ali_img_hdu.data, self.tform_sci_ref,
-                                                output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
-                                                order=3,)
+            # self.tform_sci_ref.estimate(self.matched_star_coords_pix,self.matched_ref_coords_pix, order=1)
+            # self.tform_sci_ref = transform.warp(self.sci_ali_img_hdu.data, self.tform_sci_ref,
+            #                                     output_shape=(self.sci_ali_img_hdu.data.shape[1],self.sci_ali_img_hdu.data.shape[0]),
+            #                                     order=3,)
             self.align_success = True
             # new_sci_ali = fits.open(self.sci_ali_name)
             # new_sci_ali[0].data = self.tform_ref_sci
@@ -1556,6 +2098,7 @@ class subtracted_phot(subphot_data):
             self.align_success = True
             new_sci_ali = fits.open(self.sci_ali_name)
             new_sci_ali[0].data = self.tform_ref_sci
+            new_sci_ali[0].header = self.ref_ali_img_hdu.header
             new_sci_ali.writeto(self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}_snum{len(self.matched_star_coords_pix)}.fits'), overwrite=True)
 
             self.sci_ali_name = self.sci_ali_name.replace('.fits',f'_ref_sci_warped_order{1}_snum{len(self.matched_star_coords_pix)}.fits')
@@ -1567,26 +2110,47 @@ class subtracted_phot(subphot_data):
                     circle = plt.Circle((x, y), 10, color=color, fill=False)
                     ax.add_artist(circle)
 
-            fig_poly_coll,axes = plt.subplots(2,2,figsize=(12,12))
             self.vmin,self.vmax = visualization.ZScaleInterval().get_limits(self.sci_img_hdu.data)
             self.rvmin,self.rvmax = visualization.ZScaleInterval().get_limits(self.ref_ali_img_hdu.data)
-            a1,a2,a3,a4 = axes[0,0],axes[0,1],axes[1,0],axes[1,1]
+            self.rvmin,self.rvmax = np.nanpercentile(self.ref_ali_img_hdu.data,[5,95])
+            # fig_poly_coll, axes = plt.subplots(2, 2, figsize=(12, 12),)
             
+            import matplotlib.gridspec as gridspec
+            fig_poly_coll = plt.figure(figsize=(12, 12))
+            gs = gridspec.GridSpec(2, 4)
+            gs.update(wspace=0.5)
+            a1 = plt.subplot(gs[0, :2], )
+            a2 = plt.subplot(gs[0, 2:])
+            a3 = plt.subplot(gs[1, 1:3])
+            # plt.show()
+            
+
+            self.sci_ali_sn_coords = wcs_to_pixels(self.sci_ali_name,np.column_stack((self.sci_c.ra.value,self.sci_c.dec.value)))[0]
+            self.ref_ali_sn_coords = wcs_to_pixels(self.ref_ali_name,np.column_stack((self.sci_c.ra.value,self.sci_c.dec.value)))[0]
+
             a1.imshow(self.sci_ali_img_hdu.data,cmap='gray',vmin=self.vmin,vmax=self.vmax)
-            a1.set_title('Science not warped')
+            #plot the sn position
+            a1.add_artist(plt.Circle((self.sci_ali_sn_coords[0],self.sci_ali_sn_coords[1]),20,color='red',fill=False))
+            a1.set_title('Original Science')
             add_circles(a1,self.matched_ref_coords_pix)
             
             a2.imshow(self.ref_ali_img_hdu.data,cmap='gray',vmin=self.rvmin,vmax=self.rvmax)
-            a2.set_title('Reference not warped')
+            a2.add_artist(plt.Circle((self.ref_ali_sn_coords[0],self.ref_ali_sn_coords[1]),20,color='red',fill=False))
+            a2.set_title('Original Reference')
             add_circles(a2,self.matched_ref_coords_pix)
 
             a3.imshow(self.tform_ref_sci,cmap='gray',vmin=self.vmin,vmax=self.vmax)
-            a3.set_title('Ref Sci Trans ')
+            a3.add_artist(plt.Circle((self.ref_ali_sn_coords[0],self.ref_ali_sn_coords[1]),20,color='red',fill=False))
+            a3.set_title('Warped Science')
             add_circles(a3,self.matched_ref_coords_pix)
-
-            a4.imshow(self.tform_sci_ref,cmap='gray',vmin=self.vmin,vmax=self.vmax)
-            a4.set_title('Sci Ref Trans ')
-            add_circles(a4,self.matched_star_coords_pix)
+            
+            #remove axis ticks
+            a1.set_xticks([]),a1.set_yticks([])
+            a2.set_xticks([]),a2.set_yticks([])
+            a3.set_xticks([]),a3.set_yticks([])
+            # a4.imshow(self.tform_sci_ref,cmap='gray',vmin=self.vmin,vmax=self.vmax)
+            # a4.set_title('Sci Ref Trans ')
+            # add_circles(a4,self.matched_star_coords_pix)
 
 
 
@@ -1607,16 +2171,16 @@ class subtracted_phot(subphot_data):
             
 
 
-            if not os.path.exists(self.data1_path+'poly_comps/'):os.mkdir(self.data1_path+'poly_comps/')
-            fig_poly_coll.savefig(self.data1_path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf')
-            self.sp_logger.info(info_g+f" Saved image comparing polynomial orders 1 and 2 as "+self.data1_path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf') 
-            # fig_sci_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_sci.pdf')
-            # fig_ref_ali.savefig(self.data1_path+'sedm_comps2/'+self.sci_img_name[:-11]+'_ref.pdf')
+            if not os.path.exists(self.path+'poly_comps/'):os.mkdir(self.path+'poly_comps/')
+            fig_poly_coll.savefig(self.path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf',bbox_inches='tight')
+            self.sp_logger.info(info_g+f" Saved image comparing polynomial orders 1 and 2 as "+self.path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf') 
+            # fig_sci_ali.savefig(self.path+'subphot_comps2/'+self.sci_img_name[:-11]+'_sci.pdf')
+            # fig_ref_ali.savefig(self.path+'subphot_comps2/'+self.sci_img_name[:-11]+'_ref.pdf')
 
 
         else:
             self.sp_logger.info(warn_y+f" Not enough stars matched for distorion correction ")
-
+        # sys.exit(1)
         return
 
 
@@ -1624,11 +2188,14 @@ class subtracted_phot(subphot_data):
     def swarp_ref_align(self,image_size=image_size):
         
         # prepsexfile(gain=self.sci_gain)
+        
         if self.telescope in SEDM:
-            self.image_size=1500
+            self.image_size=1000
         else:
             self.image_size=1500
 
+        if self.sci_obj=='ZTF25aasjeza':# and self.sci_filt=='z':
+            self.image_size=900
         if self.sci_obj=='ZTF24abdiwwv': #02:22:10.96 -20:23:21.01
             # self.image_size=1500
             self.image_size=1650
@@ -1643,7 +2210,7 @@ class subtracted_phot(subphot_data):
                     return
 
                 self.image_name=self.sci_obj+f'_ref_{self.sci_filt}.fits'
-                self.ref_path=self.data1_path+'ref_imgs/'+self.image_name
+                self.ref_path=self.path+'ref_imgs/'+self.image_name
                 self.ref_img_name=self.ref_path
                 self.sp_logger.info(info_g+f' Using SDSS reference image for alignment: '+self.ref_img_name)
                 # self.sp_logger.info(self.ref_path)
@@ -1652,17 +2219,17 @@ class subtracted_phot(subphot_data):
 
 
             elif self.sci_filt=='g' or self.sci_filt=='r' or self.sci_filt=='i' or self.sci_filt=='z':
-                self.ref_folder = self.data1_path+'ref_imgs/stack_'+str(self.sci_filt)
-                self.ref_path = self.data1_path+'ref_imgs/stack_'+str(self.sci_filt)+'_ra'+self.ra_string+'_dec'+self.dec_string+'_arcsec*'
+                self.ref_folder = self.path+'ref_imgs/stack_'+str(self.sci_filt)
+                self.ref_path = self.path+'ref_imgs/stack_'+str(self.sci_filt)+'_ra'+self.ra_string+'_dec'+self.dec_string+'_arcsec*'
                 # sys.exit()
                 if len(glob.glob(self.ref_path))>0:
                     self.sp_logger.info(info_b+' PS1 reference image already exists: '+glob.glob(self.ref_path)[0])
                     panstamps_status=0
                 if len(glob.glob(self.ref_path))==0:
-                    self.sp_logger.info(info_g+f' Running panstamps: '+str(panstamps_path+' -f --width='+str(self.ref_width)+' --filters='+self.sci_filt+' --downloadFolder='+self.data1_path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg)))
+                    self.sp_logger.info(info_g+f' Running panstamps: '+str(panstamps_path+' -f --width='+str(self.ref_width)+' --filters='+self.sci_filt+' --downloadFolder='+self.path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg)))
                     self.sp_logger.info(info_g+' Downloading reference image from PS...')
                     try:
-                        panstamps_status = os.system(panstamps_path+' -f --width='+str(self.ref_width)+' --filters='+self.sci_filt+' --downloadFolder='+self.data1_path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg))
+                        panstamps_status = os.system(panstamps_path+' -f --width='+str(self.ref_width*3)+' --filters='+self.sci_filt+' --downloadFolder='+self.path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg))
 
 
                         self.sp_logger.info(info_g+' Reference image download status '+str(panstamps_status))
@@ -1700,8 +2267,8 @@ class subtracted_phot(subphot_data):
         
         else:
             #If a reference image is passed in with it's full path as self.auto_ref
-            if not self.auto_ref.startswith(self.data1_path):
-                self.auto_ref = self.data1_path+self.auto_ref
+            if not self.auto_ref.startswith(self.path):
+                self.auto_ref = self.path+self.auto_ref
 
             if not os.path.exists(self.auto_ref):
                 self.sp_logger.warning(warn_r+f' Reference image {self.auto_ref} not found')
@@ -1736,26 +2303,216 @@ class subtracted_phot(subphot_data):
 
 
 
-        if not os.path.exists(self.data1_path+'aligned_images'):
-            os.makedirs(self.data1_path+'aligned_images')
+        if not os.path.exists(self.path+'aligned_images'):
+            os.makedirs(self.path+'aligned_images')
 
         
-        wcs_command='python3 '+self.opath+'subphot_align_quick.py'+" "+self.data1_path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+"  -m relative -r 100"
-        # wcs_command='python3 '+self.opath+'subphot_align_quick.py'+" "+self.data1_path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+"  -m relative -r 30 -a "+self.ra_string+" "+self.dec_string
+        wcs_command='python3 '+self.path+'subphot_align_quick.py'+" "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+"  -m relative -r 100"
+        # wcs_command='python3 '+self.path+'subphot_align_quick.py'+" "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+"  -m relative -r 30 -a "+self.ra_string+" "+self.dec_string
         # self.sp_logger.info(wcs_command)
 
-        self.sci_img_hdu=fits.open(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name)[0]
+        self.sci_img_hdu=fits.open(self.path+'bkg_subtracted_science/'+self.sci_img_name)[0]
         self.ref_img_hdu=fits.open(self.ref_img_name)[0]
         self.align_success=False
         self.align_fail_count=0
+        self.valid_mask=None      # True where science aligned image has real data (not padding)
+        self.ref_valid_mask=None  # True where reference aligned image has real data
 
-        
-        os.system(wcs_command)
+        # [v2] Run subphot_align_quick to update science WCS via star matching before SWarp.
+        # Log the return status so failures are visible in the log.
+        _wcs_status = os.system(wcs_command)
+        if _wcs_status != 0:
+            self.sp_logger.warning(
+                warn_y + f' [V2] subphot_align_quick returned non-zero status {_wcs_status} '
+                f'— WCS may not have been updated. SWarp will use original header WCS; '
+                f'this commonly causes image shrinkage. Reproject fallback will handle it.')
+        else:
+            self.sp_logger.info(info_g+' [V2] subphot_align_quick WCS update completed successfully')
         self.sp_logger.info(info_g+" Original science size: "+str(np.shape(self.sci_img_hdu.data)))
         self.sp_logger.info(info_g+" Original reference size: "+str(np.shape(self.ref_img_hdu.data)))
-        # sys.exit(1)
-        # print('hi')
-        # sys.exit(1)
+
+        # [v2] For SEDM: bypass SWarp entirely. SEDM WCS is frequently unreliable,
+        # causing SWarp to shrink the output image and requiring zero-padding that
+        # corrupts downstream photometry. Reproject reference → science native grid
+        # directly; the science pixel frame is preserved and no padding is needed.
+        if self.telescope in SEDM:
+            self.sp_logger.info(info_g+' [V2] SEDM detected: bypassing SWarp, reprojecying reference directly onto science grid')
+            self.sci_img_hdu = fits.open(self.path+'bkg_subtracted_science/'+self.sci_img_name)[0]
+            self.ref_img_hdu = fits.open(self.ref_img_name)[0]
+            ref_mask = np.where(np.isnan(self.ref_img_hdu.data), False, True)
+            self.ref_img_hdu.data = self.ref_img_hdu.data * ref_mask
+
+            # [V2] Normalise the reference WCS to a clean CD-matrix form before
+            # reprojection.  PS1 panstamps cutouts use the pre-2002 PC001001/CDELT
+            # convention (three-digit axis indices), which astropy's WCSLIB back-end
+            # does NOT recognise as a WCS keyword — it treats PC001001 as an unknown
+            # card and falls back to an identity PC matrix.  That produces a completely
+            # wrong sky-to-pixel mapping, causing reproject_interp to see zero overlap
+            # even when the images clearly share the same sky area.
+            #
+            # Fix: detect the old-form keywords explicitly, compute the CD matrix
+            # by hand (CD_ij = CDELT_j × PC00i00j), strip every conflicting keyword,
+            # then insert the clean CD matrix.  This is done in-place on the HDU
+            # header so the same normalised header is used for all subsequent
+            # reprojection attempts (including the fallback).
+            _normalise_ref_wcs(self.ref_img_hdu.header, self.sp_logger)
+
+            self.ref_resampled_o, self.footprint_proj = reproject_interp(
+                self.ref_img_hdu, self.sci_img_hdu.header, order=1)
+            footprint_bool = self.footprint_proj.astype(bool)
+            if not footprint_bool.any():
+                self.sp_logger.warning(
+                    warn_y+' [V2] Reprojection found zero WCS overlap — science WCS likely bad. '
+                    'Rebuilding clean target-centred WCS and retrying.')
+                _fallback_header = build_target_centered_wcs_header(
+                    self.sci_img_hdu.header, self.sci_c, self.sci_ps,
+                    shape=self.sci_img_hdu.data.shape, logger=self.sp_logger)
+                self.ref_resampled_o, self.footprint_proj = reproject_interp(
+                    self.ref_img_hdu, _fallback_header, order=1)
+                footprint_bool = self.footprint_proj.astype(bool)
+                if footprint_bool.any():
+                    # Update the science HDU header so everything downstream uses
+                    # the corrected WCS (photometry, zeropoint matching, etc.)
+                    self.sci_img_hdu.header = _fallback_header
+                    self.sci_img_hdu.writeto(
+                        self.path+'bkg_subtracted_science/'+self.sci_img_name, overwrite=True)
+                    self.sp_logger.info(info_g+' [V2] Target-centred WCS fallback restored reference overlap '
+                                        f'({100*footprint_bool.mean():.1f}% coverage)')
+                else:
+                    self.sp_logger.warning(warn_y+' [V2] Target-centred WCS fallback still found zero overlap — '
+                                           'check that reference image covers the target position')
+            self.ref_resampled = self.ref_resampled_o
+            ref_median = np.nanmedian(self.ref_resampled[footprint_bool]) if footprint_bool.any() else 0.0
+            self.ref_resampled[~footprint_bool] = ref_median
+            self.ref_resampled[np.isnan(self.ref_resampled)] = ref_median
+            # --- [v2] Fine registration: PS1-catalog (primary) → star-match → FFT ---
+            # The hierarchy from most to least reliable:
+            #  0) PS1 catalog matching: uses absolute astrometric reference positions.
+            #     Most robust for poor-seeing/short-exposure epochs where the reference
+            #     image has few detectable sources (small scale factor).
+            #  1) DAOStarFinder pixel-space source matching: reliable when both images
+            #     have well-detected sources but does not use absolute positions.
+            #  2) FFT phase cross-correlation: last resort when few sources are detected.
+            dx, dy = 0.0, 0.0
+            _freg_method = 'none'
+
+            # 0) Primary: PS1 catalog-based WCS refinement.
+            # ref_coords_wcs_sky is not set until gen_ref_cat() which runs after
+            # alignment, so we load the catalog directly here.  panstarrs_query
+            # caches results in ps_catalogs/ so this is disk-only for fields
+            # that have already been observed (network only on the very first run).
+            _align_cat_sky = None
+            if self.use_sdss == False and self.sci_filt in ('g', 'r', 'i', 'z'):
+                try:
+                    _align_rad_deg = round(
+                        self.sci_img_hdu.header['NAXIS2'] * self.sci_ps / 3600., 6)
+                    _align_cat_raw = panstarrs_query(
+                        ra_deg=round(self.sci_c.ra.deg, 6),
+                        dec_deg=round(self.sci_c.dec.deg, 6),
+                        rad_deg=_align_rad_deg,
+                        logger=self.sp_logger)
+                    # Light quality filter: point-source and not missing photometry
+                    _star_mask = (
+                        (np.abs(_align_cat_raw['iMeanPSFMag']
+                                - _align_cat_raw['iMeanKronMag']) < 0.05) &
+                        (_align_cat_raw['gMeanPSFMag'] != -999.) &
+                        (_align_cat_raw['gMeanPSFMag'] < 23.5))
+                    _align_cat_filt = np.array(_align_cat_raw[_star_mask])
+                    if len(_align_cat_filt) >= 5:
+                        _align_cat_sky = SkyCoord(
+                            ra=_align_cat_filt['raMean'] * u.deg,
+                            dec=_align_cat_filt['decMean'] * u.deg,
+                            frame='fk5')
+                        self.sp_logger.info(
+                            info_g + f' [V2] PS1 alignment catalog: {len(_align_cat_filt)} stars')
+                    else:
+                        self.sp_logger.warning(
+                            warn_y + f' [V2] PS1 alignment catalog too sparse '
+                            f'({len(_align_cat_filt)} stars after filter) — skipping')
+                except Exception as _cat_e:
+                    self.sp_logger.warning(
+                        warn_y + f' [V2] PS1 alignment catalog load failed: {_cat_e}')
+
+            if _align_cat_sky is not None:
+                _fwhm_for_dao = max(3.0, (self.sci_seeing / self.sci_ps
+                                          if self.sci_seeing is not None else 5.0))
+                _ps1_result = _ps1_catalog_shift(
+                    self.sci_img_hdu.data.astype(np.float64),
+                    WCS(self.sci_img_hdu.header),
+                    _align_cat_sky,
+                    fwhm_px=_fwhm_for_dao,
+                    match_radius_arcsec=3.0,
+                    logger=self.sp_logger)
+                if _ps1_result is not None:
+                    dx, dy = _ps1_result
+                    _freg_method = 'ps1_catalog'
+
+            # 1) Fallback: DAOStarFinder pixel-space source matching
+            if _freg_method == 'none':
+                _sm_result = _star_match_shift(
+                    self.sci_img_hdu.data.astype(np.float64),
+                    self.ref_resampled.astype(np.float64),
+                    fwhm_px=5.0, thresh_sigma=5.0, max_shift=60.0,
+                    logger=self.sp_logger)
+                if _sm_result is not None:
+                    dx, dy = _sm_result
+                    _freg_method = 'star_match'
+
+            # 2) Fallback: non-masked FFT phase cross-correlation on high-pass
+            #    filtered images.  Removing the masks uses the much simpler and
+            #    more reliable standard cross-correlation algorithm.
+            if _freg_method == 'none':
+                try:
+                    _sci_hp = np.nan_to_num(
+                        self.sci_img_hdu.data.astype(np.float64)
+                        - np.nanmedian(self.sci_img_hdu.data), nan=0.0)
+                    _ref_hp = np.nan_to_num(
+                        self.ref_resampled.astype(np.float64)
+                        - np.nanmedian(self.ref_resampled), nan=0.0)
+                    _sci_hp -= scipy.ndimage.gaussian_filter(_sci_hp, sigma=6.0)
+                    _ref_hp -= scipy.ndimage.gaussian_filter(_ref_hp, sigma=6.0)
+                    from skimage.registration import phase_cross_correlation
+                    _shift, _pcc_err, _ = phase_cross_correlation(
+                        _sci_hp, _ref_hp, upsample_factor=10)
+                    dy, dx = float(_shift[0]), float(_shift[1])
+                    _freg_method = 'pcc'
+                    self.sp_logger.info(info_g+f' [V2] FFT phase_cross_correlation fine reg: '
+                                        f'dx={dx:.3f} px, dy={dy:.3f} px')
+                except Exception as _pcc_e:
+                    self.sp_logger.warning(warn_y+f' [V2] FFT phase_cross_correlation failed: {_pcc_e}')
+
+            # Apply shift if physically plausible (< 50 px, > 0.05 px)
+            if _freg_method != 'none' and (abs(dx) > 0.05 or abs(dy) > 0.05):
+                if abs(dx) < 50 and abs(dy) < 50:
+                    self.ref_resampled = scipy.ndimage.shift(
+                        self.ref_resampled, [dy, dx],
+                        order=3, mode='constant', cval=ref_median)
+                    self.sp_logger.info(info_g+f' [V2] [{_freg_method}] Applied fine shift '
+                                        f'({dx:.3f}, {dy:.3f}) px to reprojected reference')
+                else:
+                    self.sp_logger.warning(warn_y+f' [V2] Fine shift ({dx:.3f}, {dy:.3f}) px '
+                                           f'exceeds 50-pixel safety limit — skipping')
+            self.ref_masked = self.ref_resampled.copy()
+            self.ref_masked[np.isnan(self.ref_masked)] = ref_median
+            self.ref_ali_hdu = fits.PrimaryHDU(self.ref_masked, header=self.sci_img_hdu.header)
+            if not os.path.exists(self.path+'aligned_images/'):
+                os.makedirs(self.path+'aligned_images/')
+            self.sci_ali_name = self.path+'aligned_images/'+self.sci_img_name[:-5]+'.aa.fits'
+            self.ref_ali_name = self.path+'aligned_images/'+self.ref_img_name[:-5].split('/')[-1]+'.aa.fits'
+            self.ref_ali_hdu.writeto(self.ref_ali_name, overwrite=True)
+            self.sci_img_hdu.writeto(self.sci_ali_name, overwrite=True)
+            self.valid_mask = np.ones(self.sci_img_hdu.data.shape, dtype=bool)
+            self.ref_valid_mask = footprint_bool
+            self.align_success = True
+            self.sp_logger.info(info_g+f' [V2] SEDM reproject alignment complete: '
+                                f'{100*footprint_bool.mean():.1f}% of reference frame has real data')
+
+            # [v2] Post-alignment quality check: normalised cross-correlation (NCC)
+            # between aligned science and reference over the valid overlap region.
+            # NCC near 1 → good alignment; near 0 or negative → poor/failed alignment.
+            self.alignment_ncc = self._check_alignment_quality(
+                self.sci_img_hdu.data, self.ref_masked, footprint_bool)
+            return
 
         while self.align_success==False:
             self.align_fail_count+=1
@@ -1764,18 +2521,15 @@ class subtracted_phot(subphot_data):
 
             self.sp_logger.info(info_g+" Aligning images with SWarp making a resampled image of size "+str(self.image_size)+"x"+str(self.image_size)+" pixels")
 
-            self.ali_center_ra,self.ali_center_dec = self.ra_string,self.dec_string
+            # self.ali_center_ra,self.ali_center_dec = self.ra_string,self.dec_string
             #convert the center of the image to degrees
             # self.sci_shape= np.shape(self.sci_img_hdu.data)
             # self.ra_center,self.dec_center = self.sci_shape[0]/2,self.sci_shape[1]/2
-            if float(self.dec_string)>0:self.ali_center_dec='+'+self.dec_string
-            elif self.dec_string[0]=='-': self.ali_center_dec=self.dec_string 
-            else:self.ali_center_dec='-'+self.dec_string
-            
-            # self.sp_logger.info(self.ali_center_ra,self.ali_center_dec)
-            self.sp_logger.info(info_g+" Aligning images to a centre of "+self.ali_center_ra+","+self.ali_center_dec)
+            # if float(self.dec_string)>0:self.ali_center_dec='+'+self.dec_string
+            # elif self.dec_string[0]=='-': self.ali_center_dec=self.dec_string
+            # else:self.ali_center_dec='-'+self.dec_string
 
-            self.sci_img_hdu=fits.open(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name)[0]
+            self.sci_img_hdu=fits.open(self.path+'bkg_subtracted_science/'+self.sci_img_name)[0]
             self.ref_img_hdu=fits.open(self.ref_img_name)[0]
 
             #find centre of original reference image
@@ -1786,18 +2540,23 @@ class subtracted_phot(subphot_data):
             self.ref_cnt = self.ref_wcs.all_pix2world(self.ref_img_center[0],self.ref_img_center[1],1)
             self.ref_img_center_ra,self.ref_img_center_dec = self.ref_cnt[0],self.ref_cnt[1]
 
-            self.sci_img_hdu=fits.open(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name)
+            self.sci_img_hdu=fits.open(self.path+'bkg_subtracted_science/'+self.sci_img_name)
             self.sci_img_size = np.shape(self.sci_img_hdu[0].data)
             self.sci_img=self.sci_img_hdu[0].data
             self.sci_img_center = np.shape(self.sci_img)[0]/2,np.shape(self.sci_img)[1]/2
             self.sci_wcs = WCS(self.sci_img_hdu[0].header)
             self.sci_cnt = self.sci_wcs.all_pix2world(self.sci_img_center[0],self.sci_img_center[1],1)
             self.sci_img_center_ra,self.sci_img_center_dec = self.sci_cnt[0],self.sci_cnt[1]
+            self.ali_center_ra = str(self.sci_img_center_ra)
+            self.ali_center_dec = str(self.sci_img_center_dec)
+            if float(self.ali_center_dec) > 0: self.ali_center_dec = '+' + self.ali_center_dec
+            self.sp_logger.info(info_g+" Aligning images to a centre of "+self.ali_center_ra+","+self.ali_center_dec)
+
 
             self.image_size1,self.image_size2=np.shape(self.sci_img_hdu[0].data)[0],np.shape(self.sci_img_hdu[0].data)[1]
             # self.image_size1,self.image_size2=np.shape(self.ref_img_hdu.data)[0],np.shape(self.ref_img_hdu.data)[1]
 
-            swarp_command=swarp_path+" "+self.data1_path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+" -c "+self.opath+"config_files/config.swarp -CENTER '"+str(self.ali_center_ra)+" "+str(self.ali_center_dec)+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '"+self.data1_path+"aligned_images/' -COMBINE N -IMAGE_SIZE '"+str(self.image_size)+","+str(self.image_size)+"'"
+            swarp_command=swarp_path+" "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+" -c "+self.path+"config_files/config.swarp -CENTER '"+str(self.ali_center_ra)+" "+str(self.ali_center_dec)+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -RESAMPLE Y -RESAMPLE_DIR '"+self.path+"aligned_images/' -COMBINE N -IMAGE_SIZE '"+str(self.image_size)+","+str(self.image_size)+"'"
             status=os.system(swarp_command)
             self.sp_logger.info(swarp_command)
             # self.sp_logger.info(info_g+" SWarp took %2f seconds" % (time.time() - swarp_time)    )
@@ -1808,11 +2567,11 @@ class subtracted_phot(subphot_data):
 
 
             
-            self.sci_ali_name=glob.glob(self.data1_path+'aligned_images/'+self.sci_img_name[:-5]+'.resamp.fits')[0]
+            self.sci_ali_name=glob.glob(self.path+'aligned_images/'+self.sci_img_name[:-5]+'.resamp.fits')[0]
             
 
             if self.auto_ref=="auto" and self.sci_filt in ['g','r','i','z'] and self.use_sdss==False:
-                self.ref_ali_name=self.data1_path+'aligned_images/stack_'+str(self.sci_filt)+'_ra'+self.ra_string+'_dec'+self.dec_string+'_arcsec*.resamp.fits'
+                self.ref_ali_name=self.path+'aligned_images/stack_'+str(self.sci_filt)+'_ra'+self.ra_string+'_dec'+self.dec_string+'_arcsec*.resamp.fits'
                 try:
                     self.ref_ali_name=glob.glob(self.ref_ali_name)[0]
                 except:
@@ -1820,13 +2579,13 @@ class subtracted_phot(subphot_data):
                     self.ref_ali_name=self.ref_ali_name.replace('ref_imgs','aligned_images')
 
             elif self.auto_ref=="auto" and (self.sci_filt=='u' or self.use_sdss==True):
-                # self.ref_ali_name=glob.glob(self.data1_path+'aligned_images/'+self.sci_img_name[:-5]+'.resamp.fits')[0]
+                # self.ref_ali_name=glob.glob(self.path+'aligned_images/'+self.sci_img_name[:-5]+'.resamp.fits')[0]
                 self.ref_ali_name=self.ref_img_name.replace('.fits','.resamp.fits')
                 self.ref_ali_name=self.ref_ali_name.replace('ref_imgs','aligned_images')
 
             elif self.auto_ref!="auto":
-                self.ref_ali_name = re.sub(self.data1_path,'',self.auto_ref[:-5])
-                self.ref_ali_name = self.data1_path+'aligned_images/'+re.sub('ref_imgs/','',self.ref_ali_name)+'.resamp.fits'
+                self.ref_ali_name = re.sub(self.path,'',self.auto_ref[:-5])
+                self.ref_ali_name = self.path+'aligned_images/'+re.sub('ref_imgs/','',self.ref_ali_name)+'.resamp.fits'
 
             if self.align_fail_count==1:
                 self.sp_logger.info(info_g+' Alignment attempt 1')
@@ -1847,12 +2606,25 @@ class subtracted_phot(subphot_data):
 
             # sys.exit()
             
-
+            try_aa_instead = False
             if self.align_fail_count>15:
                 self.sp_logger.warning(warn_y+' Alignment failed 15 times')
                 break
 
-            if np.shape(fits.open(self.sci_ali_name)[0].data)!=np.shape(fits.open(self.ref_ali_name)[0].data) and ((self.image_size,self.image_size)!=np.shape(fits.open(self.sci_ali_name)[0].data) or (self.image_size,self.image_size)!=np.shape(fits.open(self.ref_ali_name)[0].data)):
+            # [v2] Early fallback: if the SWarp science image is significantly smaller
+            # than the requested size, the science WCS doesn't cover the full field.
+            # Zero-padding in that case creates misalignment artifacts and noisy photometry.
+            # Switch directly to reproject alignment which reprojects the reference onto
+            # the science native pixel grid — no padding needed.
+            _sci_ali_shape_v2 = np.shape(fits.open(self.sci_ali_name)[0].data)
+            if any(s < 0.85 * self.image_size for s in _sci_ali_shape_v2):
+                self.sp_logger.warning(
+                    warn_y + f' [V2] SWarp science output {_sci_ali_shape_v2} is <85% of'
+                    f' requested {self.image_size}x{self.image_size}. '
+                    f'Skipping zero-padding; switching to reproject alignment.')
+                try_aa_instead = True
+
+            if (not try_aa_instead) and np.shape(fits.open(self.sci_ali_name)[0].data)!=np.shape(fits.open(self.ref_ali_name)[0].data) and ((self.image_size,self.image_size)!=np.shape(fits.open(self.sci_ali_name)[0].data) or (self.image_size,self.image_size)!=np.shape(fits.open(self.ref_ali_name)[0].data)):
                 self.sp_logger.warning(warn_y+' Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image')
                 self.min_align_size = np.min([np.shape(fits.open(self.sci_ali_name)[0].data),np.shape(fits.open(self.ref_ali_name)[0].data)])
                 self.sp_logger.warning(warn_y+' Trying image size of '+str(self.min_align_size)+'x'+str(self.min_align_size)+' pixels')
@@ -1870,7 +2642,7 @@ class subtracted_phot(subphot_data):
                     # self.ref_cnt = self.ref_wcs.all_pix2world(self.ref_img_center[0],self.ref_img_center[1],1)
                     # self.ref_img_center_ra,self.ref_img_center_dec = self.ref_cnt[0],self.ref_cnt[1]
 
-                    self.sci_img_hdu=fits.open(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name)[0]
+                    self.sci_img_hdu=fits.open(self.path+'bkg_subtracted_science/'+self.sci_img_name)[0]
                     self.sci_img_size = np.shape(self.sci_img_hdu.data)
                     self.sci_img=self.sci_img_hdu.data
                     # self.sci_img_center = np.shape(self.sci_img)[0]/2,np.shape(self.sci_img)[1]/2
@@ -1889,7 +2661,7 @@ class subtracted_phot(subphot_data):
                     self.sp_logger.info(info_g+' Padding science image to match reference image size of '+str(requested_size[0])+'x'+str(requested_size[1])+' pixels')
                     cominx,cominy = int(self.sci_ali_img_hdu.header['COMIN1']),int(self.sci_ali_img_hdu.header['COMIN2'])
                     try:
-                        self.sp_logger.info(info_g+' Science COMIN1,COMIN2 : '+cominx+' '+cominy)
+                        self.sp_logger.info(info_g+' Science COMIN1,COMIN2 : '+str(cominx)+' '+str(cominy))
                         pad_sci = np.zeros((requested_size[0],requested_size[1]))#*np.nan
                         pad_sci[cominy:cominy+self.sci_ali_img_size[0],cominx:cominx+self.sci_ali_img_size[1]] = self.sci_ali_img_hdu.data
                         # pad_ref[cominy:cominy+self.ref_ali_img_size[0],cominx:cominx+self.ref_ali_img_size[1]] = self.ref_ali_img_hdu.data
@@ -1926,13 +2698,18 @@ class subtracted_phot(subphot_data):
 
                     # self.sp_logger.info(self.sci_ali_img_hdu.data)
                     self.sci_ali_dupe = self.sci_ali_img_hdu.data
+                    # Track which pixels are real data vs padding before converting NaN/zeros
+                    self.valid_mask = np.zeros(pad_sci.shape, dtype=bool)
+                    self.valid_mask[cominy:cominy+self.sci_ali_img_size[0], cominx:cominx+self.sci_ali_img_size[1]] = True
+                    self.ref_valid_mask = np.ones(self.ref_ali_img_hdu.data.shape, dtype=bool)
+                    self.sp_logger.info(info_g+f' Valid pixel mask created: {self.valid_mask.sum()} / {self.valid_mask.size} pixels are real data ({100*self.valid_mask.mean():.1f}%)')
                     self.sci_ali_img_hdu.data = np.nan_to_num(self.sci_ali_img_hdu.data)#np.nanmedian(self.sci_ali_img_hdu.data))
-                    fits.writeto(self.data1_path+'aligned_images/'+self.sci_img_name.split('/')[-1].replace('.fits','_padded.fits'),self.sci_ali_img_hdu.data,overwrite=True,header=self.sci_ali_img_hdu.header)
-                    # self.sci_ali_name,_ = self.update_astrometry(self.data1_path+'aligned_images/'+self.sci_img_name.split('/')[-1].replace('.fits','_padded.fits'),ra=self.sci_img_hdu.header[self.RA_kw],dec=self.sci_img_hdu.header[self.DEC_kw])
+                    fits.writeto(self.path+'aligned_images/'+self.sci_img_name.split('/')[-1].replace('.fits','_padded.fits'),self.sci_ali_img_hdu.data,overwrite=True,header=self.sci_ali_img_hdu.header)
+                    # self.sci_ali_name,_ = self.update_astrometry(self.path+'aligned_images/'+self.sci_img_name.split('/')[-1].replace('.fits','_padded.fits'),ra=self.sci_img_hdu.header[self.RA_kw],dec=self.sci_img_hdu.header[self.DEC_kw])
                     # self.sp_logger.info('new sci ali name',self.sci_ali_name)
                     # sys.exit()
 
-                    self.sci_ali_name = self.data1_path+'aligned_images/'+self.sci_img_name.split('/')[-1].replace('.fits','_padded.fits')
+                    self.sci_ali_name = self.path+'aligned_images/'+self.sci_img_name.split('/')[-1].replace('.fits','_padded.fits')
                     self.align_success=True
                     # print(np.shape(self.sci_ali_img_hdu.data))
                     # print(np.shape(self.ref_ali_img_hdu.data))
@@ -1943,7 +2720,12 @@ class subtracted_phot(subphot_data):
                     self.sp_logger.info(info_g+' Alignment with padding successful')
                     self.sp_logger.info(info_g+' Aligned Science image: '+self.sci_ali_name+' '+str(sci_ali_x)+'x'+str(sci_ali_y))
                     self.sp_logger.info(info_g+' Aligned Reference image: '+self.ref_ali_name+' '+str(ref_ali_x)+'x'+str(ref_ali_y))
+                    # sys.exit()
                     # self.align_fail_count=+1
+                    # [v2] Lower threshold: reproject if padded image is < 80% of requested size
+                    if any(s < 0.80 * self.image_size for s in self.sci_ali_img_hdu.data.shape):
+                        self.sp_logger.warning(warn_r+' [V2] Padded science image < 80% of requested size — falling back to reproject alignment')
+                        try_aa_instead=True
                 except Exception as e:
                     self.sp_logger.warning(warn_r+' Alignment failed '+e)
                     self.align_success=False
@@ -1951,18 +2733,139 @@ class subtracted_phot(subphot_data):
                     # sys.exit()
                     # self.align_fail_count=+1
 
+            if try_aa_instead:
+                # [v2] Improved reproject alignment path:
+                # - Use order=3 (bicubic) interpolation instead of order=1 (bilinear)
+                # - Apply chi2_shift for sub-pixel fine registration after reprojection
+                # - Remove the dead astroalign code (result was always thrown away)
+                # - Track reference footprint mask for downstream use
+                self.sp_logger.info(info_g+' [V2] Aligning via reproject (order=1) + chi2_shift fine registration')
+                self.ref_img_hdu = fits.open(self.ref_img_name)[0]
+                ref_mask = np.where(np.isnan(self.ref_img_hdu.data), False, True)
+                self.ref_img_hdu.data = self.ref_img_hdu.data * ref_mask
 
-            # else:
-            # sys.exit()
+                # Normalise reference WCS (handles PC001001/CDELT panstamps convention)
+                _normalise_ref_wcs(self.ref_img_hdu.header, self.sp_logger)
+
+                self.sp_logger.info(info_g+f" Reprojecting reference onto science WCS frame (bicubic, order=1)")
+                self.sci_img_hdu = fits.open(self.path+'bkg_subtracted_science/'+self.sci_img_name)[0]
+
+                # order=1 (bilinear) — order=3 (bicubic) silently returns zero footprint for some WCS combinations
+                self.ref_resampled_o, self.footprint_proj = reproject_interp(
+                    self.ref_img_hdu, self.sci_img_hdu.header, order=1)
+                self.ref_resampled = self.ref_resampled_o
+                # footprint_proj: 1 where reference data exists, 0 where it doesn't
+                footprint_bool = self.footprint_proj.astype(bool)
+
+                ref_median = np.nanmedian(self.ref_resampled[footprint_bool]) if footprint_bool.any() else 0.0
+                self.ref_resampled[~footprint_bool] = ref_median
+                self.ref_resampled[np.isnan(self.ref_resampled)] = ref_median
+
+                # --- [v2] Fine registration: star-matching (primary) → FFT fallback ---
+                dx, dy = 0.0, 0.0
+                _freg_method = 'none'
+
+                # 1) Primary: DAOStarFinder source matching
+                _sm_result = _star_match_shift(
+                    self.sci_img_hdu.data.astype(np.float64),
+                    self.ref_resampled.astype(np.float64),
+                    fwhm_px=5.0, thresh_sigma=5.0, max_shift=60.0,
+                    logger=self.sp_logger)
+                if _sm_result is not None:
+                    dx, dy = _sm_result
+                    _freg_method = 'star_match'
+
+                # 2) Fallback: non-masked FFT phase cross-correlation
+                if _freg_method == 'none':
+                    try:
+                        _sci_hp = np.nan_to_num(
+                            self.sci_img_hdu.data.astype(np.float64)
+                            - np.nanmedian(self.sci_img_hdu.data), nan=0.0)
+                        _ref_hp = np.nan_to_num(
+                            self.ref_resampled.astype(np.float64)
+                            - np.nanmedian(self.ref_resampled), nan=0.0)
+                        _sci_hp -= scipy.ndimage.gaussian_filter(_sci_hp, sigma=6.0)
+                        _ref_hp -= scipy.ndimage.gaussian_filter(_ref_hp, sigma=6.0)
+                        from skimage.registration import phase_cross_correlation
+                        _shift, _pcc_err, _ = phase_cross_correlation(
+                            _sci_hp, _ref_hp, upsample_factor=10)
+                        dy, dx = float(_shift[0]), float(_shift[1])
+                        _freg_method = 'pcc'
+                        self.sp_logger.info(info_g+f' [V2] FFT phase_cross_correlation fine reg: '
+                                            f'dx={dx:.3f} px, dy={dy:.3f} px')
+                    except Exception as _pcc_e:
+                        self.sp_logger.warning(warn_y+f' [V2] FFT phase_cross_correlation failed: {_pcc_e}')
+
+                # Apply shift if physically plausible (< 50 px, > 0.05 px)
+                if _freg_method != 'none' and (abs(dx) > 0.05 or abs(dy) > 0.05):
+                    if abs(dx) < 50 and abs(dy) < 50:
+                        self.ref_resampled = scipy.ndimage.shift(
+                            self.ref_resampled, [dy, dx],
+                            order=3, mode='constant', cval=ref_median)
+                        self.sp_logger.info(info_g+f' [V2] [{_freg_method}] Applied fine shift '
+                                            f'({dx:.3f}, {dy:.3f}) px to reprojected reference')
+                    else:
+                        self.sp_logger.warning(warn_y+f' [V2] Fine shift ({dx:.3f}, {dy:.3f}) px '
+                                               f'exceeds 50-pixel safety limit — skipping')
+
+                self.ref_masked = self.ref_resampled.copy()
+                self.ref_masked[np.isnan(self.ref_masked)] = ref_median
+
+                self.ref_ali_hdu = fits.PrimaryHDU(self.ref_masked, header=self.sci_img_hdu.header)
+
+                self.sp_logger.info(info_g+" [V2] Saving reproject-aligned images to "+self.path+'aligned_images/')
+                self.sci_ali_name = self.path+'aligned_images/'+self.sci_img_name[:-5]+'.aa.fits'
+                self.ref_ali_name = self.path+'aligned_images/'+self.ref_img_name[:-5].split('/')[-1]+'.aa.fits'
+
+                self.ref_ali_hdu.writeto(self.ref_ali_name, overwrite=True)
+                self.sci_img_hdu.writeto(self.sci_ali_name, overwrite=True)
+
+                # Science image is unchanged; reference was reprojected & fine-registered
+                # Valid mask: science is fully valid; reference footprint tracks which
+                # pixels came from real reference data vs filled-with-sky regions.
+                self.valid_mask = np.ones(self.sci_img_hdu.data.shape, dtype=bool)
+                self.ref_valid_mask = footprint_bool
+                self.sp_logger.info(
+                    info_g+f' [V2] Reproject alignment complete: '
+                    f'{100*footprint_bool.mean():.1f}% of reference frame has real data')
+
+                # print(self.sci_ali_name,self.ref_ali_name)
+                # sys.exit()
+
             self.align_success=True
             self.sp_logger.info(info_g+' Alignment successful')
 
+            # For normal SWarp path (no padding, no aa), derive valid masks from the actual outputs
+            if self.valid_mask is None:
+                _sci_data = fits.open(self.sci_ali_name)[0].data
+                self.valid_mask = np.isfinite(_sci_data) & (_sci_data != 0)
+                self.sp_logger.info(info_g+f' Normal SWarp path: valid mask covers {100*self.valid_mask.mean():.1f}% of science image')
+            if self.ref_valid_mask is None:
+                _ref_data = fits.open(self.ref_ali_name)[0].data
+                self.ref_valid_mask = np.isfinite(_ref_data) & (_ref_data != 0)
 
+            # [v2] Post-alignment quality check
+            _sci_ali = fits.open(self.sci_ali_name)[0].data
+            _ref_ali = fits.open(self.ref_ali_name)[0].data
+            _qa_mask = self.valid_mask & self.ref_valid_mask
+            self.alignment_ncc = self._check_alignment_quality(_sci_ali, _ref_ali, _qa_mask)
 
+            self.sp_logger.info(info_g+' Attempting distortion correction if needed')
+            # try:
+            #     x,_= correct_distrotion(self.sci_ali_name,self.ref_ali_name)
+            #     self.sci_ali_img_hdu.data = x
+            #     fits.writeto(self.sci_ali_name.replace('.fits','_distortion_corrected.fits'),self.sci_ali_img_hdu.data,overwrite=True,header=self.sci_ali_img_hdu.header)
+            #     self.sci_ali_name = self.sci_ali_name.replace('.fits','_distortion_corrected.fits')
+            #     self.sp_logger.info(info_g+f" Distortion correction applied, saved to {self.sci_ali_name}")
 
-
-            if self.telescope in SEDM:
-                self.distortion_correction()
+            # except Exception as e:
+            #     self.sp_logger.warning(warn_y+f" Distortion correction failed, error encountered: {e}")
+            #     pass
+            # try:
+            #     if self.telescope in SEDM:
+            #         self.distortion_correction()
+            # except Exception as e:
+            #     pass
             # sys.exit()
             # self.align_fail_count=+1
                 
@@ -2011,9 +2914,9 @@ class subtracted_phot(subphot_data):
             self.ax[2].axis('off') 
             self.ax[0].set_title('New')
             if self.out_dir=="photometry/":       
-                self.cutout_name = self.data1_path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
+                self.cutout_name = self.path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
             else:
-                self.cutout_name = self.data1_path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
+                self.cutout_name = self.path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
 
             self.fig.savefig(self.cutout_name)
 
@@ -2059,19 +2962,19 @@ class subtracted_phot(subphot_data):
                 if self.sys_exit==True:
                     return
                 self.image_name=self.sci_obj+'_ref.fits'
-                self.ref_path=self.data1_path+'ref_imgs/'+self.image_name
+                self.ref_path=self.path+'ref_imgs/'+self.image_name
 
 
             if self.sci_filt=='g' or self.sci_filt=='r' or self.sci_filt=='i' or self.sci_filt=='z':
-                self.ref_folder = self.data1_path+'ref_imgs/stack_'+str(self.sci_filt)
-                self.ref_path = self.data1_path+'ref_imgs/stack_'+str(self.sci_filt)+'_ra'+self.ra_string+'_dec'+self.dec_string+'_arcsec*'
+                self.ref_folder = self.path+'ref_imgs/stack_'+str(self.sci_filt)
+                self.ref_path = self.path+'ref_imgs/stack_'+str(self.sci_filt)+'_ra'+self.ra_string+'_dec'+self.dec_string+'_arcsec*'
                 if len(glob.glob(self.ref_path))>0:
                     self.sp_logger.info(info_b+' PS1 reference image already exists')
                 if len(glob.glob(self.ref_path))==0:
                     self.sp_logger.info(info_g+' Downloading reference image from PS...')
                     try:
-                        # self.sp_logger.info(panstamps_path+' -f --width='+str(self.ref_width)+' --filters='+self.sci_filt+' --downloadFolder='+self.data1_path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg))
-                        os.system(panstamps_path+' -f --width='+str(self.ref_width)+' --filters='+self.sci_filt+' --downloadFolder='+self.data1_path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg))
+                        # self.sp_logger.info(panstamps_path+' -f --width='+str(self.ref_width)+' --filters='+self.sci_filt+' --downloadFolder='+self.path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg))
+                        os.system(panstamps_path+' -f --width='+str(self.ref_width)+' --filters='+self.sci_filt+' --downloadFolder='+self.path+'ref_imgs stack '+str(self.sci_c.ra.deg)+' '+str(self.sci_c.dec.deg))
                         
                         self.sp_logger.info(info_g+' Reference image downloaded')
                     except Exception as e:
@@ -2094,8 +2997,8 @@ class subtracted_phot(subphot_data):
         
         else:
             #If a reference image is passed in with it's full path as self.auto_ref
-            if self.auto_ref.startswith(self.data1_path):
-                self.auto_ref = self.data1_path+self.auto_ref
+            if self.auto_ref.startswith(self.path):
+                self.auto_ref = self.path+self.auto_ref
 
             # self.sp_logger.info(self.auto_ref)
             # self.sp_logger.info(self.sci_path)
@@ -2115,10 +3018,10 @@ class subtracted_phot(subphot_data):
 
 
 
-        if not os.path.exists(self.data1_path+'aligned_images'):
-            os.makedirs(self.data1_path+'aligned_images')
+        if not os.path.exists(self.path+'aligned_images'):
+            os.makedirs(self.path+'aligned_images')
 
-        wcs_command='python3 '+self.opath+'subphot_align.py'+" -sci "+self.data1_path+'bkg_subtracted_science/'+self.sci_img_name+" -ref "+self.ref_img_name+"  -m relative -r 100"
+        wcs_command='python3 '+self.path+'subphot_align.py'+" -sci "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" -ref "+self.ref_img_name+"  -m relative -r 100"
 
 
         self.align_success=False
@@ -2135,7 +3038,7 @@ class subtracted_phot(subphot_data):
 
             
 
-            self.sci_img_hdu = fits.open(self.data1_path+'bkg_subtracted_science/'+self.sci_img_name)[0]
+            self.sci_img_hdu = fits.open(self.path+'bkg_subtracted_science/'+self.sci_img_name)[0]
             self.sci_img_header = self.sci_img_hdu.header
 
             #detect the edges of the reference image
@@ -2172,16 +3075,16 @@ class subtracted_phot(subphot_data):
             # plt.show()
 
             self.sp_logger.info(info_g+f" Reprojecting the reference onto the science image")
-            self.ref_resampled_o, self.footself.sp_logger.info = reproject_interp(self.ref_img_hdu, self.sci_img_header,order=1)
+            self.ref_resampled_o, self.footprint= reproject_interp(self.ref_img_hdu, self.sci_img_header,order=1)
             self.ref_resampled = self.ref_resampled_o
-            self.footself.sp_logger.info = self.footself.sp_logger.info.astype(bool)==False
+            self.footprint= self.footself.sp_logger.info.astype(bool)==False
 
             self.ref_resampled[np.isnan(self.ref_resampled)] = np.nanmedian(self.ref_resampled)
 
             try:
-                # self.registered, self.footself.sp_logger.info = aa.register(self.ref_resampled*self.footself.sp_logger.info, self.sci_img.data)
+                # self.registered, self.footprint= aa.register(self.ref_resampled*self.footself.sp_logger.info, self.sci_img.data)
                 self.sp_logger.info(info_g+" Aligning images with astroalign")
-                self.registered, self.footself.sp_logger.info = aa.register(self.ref_resampled, self.sci_img.data)
+                self.registered, self.footprint= aa.register(self.ref_resampled, self.sci_img.data)
             except Exception as e:
                 self.sp_logger.info(warn_y+" Extra alignment with astroalign failed, using reprojected image instead")
                 self.sp_logger.info(e)
@@ -2194,9 +3097,9 @@ class subtracted_phot(subphot_data):
 
             self.ref_ali_hdu = fits.PrimaryHDU(self.ref_masked,header=self.sci_img_header)
 
-            self.sp_logger.info(info_g+" Saving aligned images to "+self.data1_path+'aligned_images/')
-            self.sci_ali_name=self.data1_path+'aligned_images/'+self.sci_img_name[:-5]+'.resamp.fits'
-            self.ref_ali_name=self.data1_path+'aligned_images/'+self.ref_img_name[:-5].split('/')[-1]+'.resamp.fits'
+            self.sp_logger.info(info_g+" Saving aligned images to "+self.path+'aligned_images/')
+            self.sci_ali_name=self.path+'aligned_images/'+self.sci_img_name[:-5]+'.resamp.fits'
+            self.ref_ali_name=self.path+'aligned_images/'+self.ref_img_name[:-5].split('/')[-1]+'.resamp.fits'
 
             self.ref_ali_hdu.writeto(self.ref_ali_name,overwrite=True)
             self.sci_img_hdu.writeto(self.sci_ali_name,overwrite=True)
@@ -2251,8 +3154,8 @@ class subtracted_phot(subphot_data):
             self.align_success=True
             self.sp_logger.info(info_g+' Alignment successful')
 
-            if self.telescope in SEDM:
-                self.distortion_correction()
+            # if self.telescope in SEDM:
+            #     self.distortion_correction()
 
                 
         
@@ -2275,9 +3178,9 @@ class subtracted_phot(subphot_data):
                 self.ax[2].axis('off') 
                 self.ax[0].set_title('New')
                 if self.out_dir=="photometry/":       
-                    self.cutout_name = self.data1_path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
+                    self.cutout_name = self.path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
                 else:
-                    self.cutout_name = self.data1_path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
+                    self.cutout_name = self.path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
 
                 self.fig.savefig(self.cutout_name)
 
@@ -2313,21 +3216,21 @@ class subtracted_phot(subphot_data):
     def psfex_convolve_images(self):
         self.sp_logger.info(info_g+' Beginning to convolve images with SeXtractor and PSFEx')
 
-        if not os.path.exists(self.data1_path+'convolved_sci'):
-            os.makedirs(self.data1_path+'convolved_sci')
+        if not os.path.exists(self.path+'convolved_sci'):
+            os.makedirs(self.path+'convolved_sci')
 
-        if not os.path.exists(self.data1_path+'convolved_ref'):
-            os.makedirs(self.data1_path+'convolved_ref')
+        if not os.path.exists(self.path+'convolved_ref'):
+            os.makedirs(self.path+'convolved_ref')
 
-        if not os.path.exists(self.data1_path+'out'):
-            os.makedirs(self.data1_path+'out')
+        if not os.path.exists(self.path+'out'):
+            os.makedirs(self.path+'out')
 
         try:
-            self.sci_conv_name=self.data1_path+"convolved_sci/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'sci_convolved.fits'
+            self.sci_conv_name=self.path+"convolved_sci/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'sci_convolved.fits'
         except:
             self.sci_img_hdu=self.sci_img_hdu[0]
-            self.sci_conv_name=self.data1_path+"convolved_sci/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'sci_convolved.fits'
-        self.ref_conv_name=self.data1_path+"convolved_ref/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'ref_convolved.fits'
+            self.sci_conv_name=self.path+"convolved_sci/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'sci_convolved.fits'
+        self.ref_conv_name=self.path+"convolved_ref/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'ref_convolved.fits'
 
         
         self.files_to_clean.append(self.sci_conv_name)
@@ -2335,8 +3238,8 @@ class subtracted_phot(subphot_data):
          #################################################
         # CONVOLVE REFERENCE WITH PSF OF SCIENCE IMAGE
 
-        if os.path.exists(self.data1_path+f"config_files/sci_prepsfex_{self.rand_nums_string}.cat"):
-            os.system("rm "+self.data1_path+f"config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+        if os.path.exists(self.path+f"config_files/sci_prepsfex_{self.rand_nums_string}.cat"):
+            os.system("rm "+self.path+f"config_files/sci_prepsfex_{self.rand_nums_string}.cat")
 
 
         self.sp_logger.info(info_g+' Convolving the reference with the PSF of the science image')
@@ -2348,7 +3251,7 @@ class subtracted_phot(subphot_data):
         # print(self.sci_ali_name)
         # sys.exit(1)
         MAGZP = 25.0
-        sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.opath+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT"+" "+str(MAGZP)
+        sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.path+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT"+" "+str(MAGZP)
         self.sp_logger.info(info_g+f' Running SExtractor: {sextractor_command}')
         self.sp_logger.info(info_g+' Creating PSFex catalog with SExtractor')
 
@@ -2357,31 +3260,31 @@ class subtracted_phot(subphot_data):
 
         
 
-        if os.path.exists(self.data1_path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits'):
-            os.system('rm '+self.data1_path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits')
-        self.files_to_clean.append(self.data1_path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits')
-        self.files_to_clean.append(self.data1_path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
-        self.files_to_clean.append(self.data1_path+f'out/sci_resi_{self.rand_nums_string}.fits')
-        self.files_to_clean.append(self.data1_path+f'out/sci_subsym_{self.rand_nums_string}.fits')
-        self.files_to_clean.append(self.data1_path+f'out/sci_moffat_{self.rand_nums_string}.fits')
+        if os.path.exists(self.path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits'):
+            os.system('rm '+self.path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits')
+        self.files_to_clean.append(self.path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits')
+        self.files_to_clean.append(self.path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
+        self.files_to_clean.append(self.path+f'out/sci_resi_{self.rand_nums_string}.fits')
+        self.files_to_clean.append(self.path+f'out/sci_subsym_{self.rand_nums_string}.fits')
+        self.files_to_clean.append(self.path+f'out/sci_moffat_{self.rand_nums_string}.fits')
 
-        self.sp_logger.info(info_g+' Running PSFex with SExtractor catalog: '+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+        self.sp_logger.info(info_g+' Running PSFex with SExtractor catalog: '+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
         #check the catalog output by sextractor and change the stars matched to have a flag of 0
 
 
-        self.sp_logger.info(info_g+' Running PSFex with SExtractor catalog:'+" "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+        self.sp_logger.info(info_g+' Running PSFex with SExtractor catalog:'+" "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
 
-        psfex_status = os.system(psfex_path+" "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+        psfex_status = os.system(psfex_path+" "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
         self.sp_logger.info(info_g+' PSFex status: '+str(psfex_status))
 
-        self.files_to_clean.append(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+        self.files_to_clean.append(self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
         # self.sp_logger.info(psfex.PSFEx(path+f'config_files/prepsfex_{self.rand_nums_string}.cat'))
         # sys.exit(1)
 
 
-        self.psf_sci_image_name=self.data1_path+f'out/proto_sci_prepsfex_{self.rand_nums_string}.fits'
+        self.psf_sci_image_name=self.path+f'out/proto_sci_prepsfex_{self.rand_nums_string}.fits'
         self.sp_logger.info(info_g+ ' PSFEx science image created: '+self.psf_sci_image_name)
-        self.files_to_clean.append(self.data1_path+f'out/proto_sci_prepsfex_{self.rand_nums_string}.fits')
+        self.files_to_clean.append(self.path+f'out/proto_sci_prepsfex_{self.rand_nums_string}.fits')
         self.psf_sci_image = fits.open(self.psf_sci_image_name)
 
         # self.sp_logger.info(self.psf_sci_image[0].data)
@@ -2390,42 +3293,97 @@ class subtracted_phot(subphot_data):
         # fig.savefig('ZTF21aceqrju_g_psf.png')
         # plt.show()
 
-        self.hdu_psf_model_sci= fits.open(self.data1_path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
-        self.files_to_clean.append(self.data1_path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
+        self.hdu_psf_model_sci= fits.open(self.path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
+        self.files_to_clean.append(self.path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
         self.chi_sq_psf=self.hdu_psf_model_sci[1].header['CHI2']
 
 
         self.sp_logger.info(info_g+' Reduced Chi^2 of science image PSF fit: '+"%.1f" % self.chi_sq_psf)
+        # ── ePSF fallback when PSFEx chi² is poor ────────────────────────────
+        # chi² > 3 indicates PSFEx struggled (no bright isolated stars, bad
+        # seeing, crowded field, etc.).  Build an EPSFBuilder kernel and store
+        # it; it gets used below in place of the PSFEx proto kernel.
+        self._epsf_sci_kernel = None
         if self.chi_sq_psf>3:
             # print(colored('Warning: PSF model may not be accurate','green'))
             self.sp_logger.warning(warn_y+' Warning: PSF model may not be accurate')
+            self.sp_logger.info(info_g+' Attempting ePSF fallback (build_psf) for science image …')
+            try:
+                from build_psf import build_psf_from_fits as _build_epsf
+                _fwhm_guess = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+                _epsf_res = _build_epsf(
+                    self.sci_ali_name,
+                    fwhm_guess      = max(1.5, _fwhm_guess),
+                    threshold_sigma = 4.0,
+                    min_snr         = 10,
+                    max_stars       = 40,
+                    min_stars       = 3,
+                    epsf_iters      = 3,
+                )
+                _epsf_fwhm_limit_sci = max(15.0, 3.0 * _fwhm_guess)
+                _epsf_sci_ok = (
+                    _epsf_res['elongation'] <= 1.5 and
+                    _epsf_res['fwhm'] <= _epsf_fwhm_limit_sci and
+                    _epsf_res['fwhm'] >= 1.0
+                )
+                if _epsf_sci_ok:
+                    self._epsf_sci_kernel = _epsf_res['kernel']
+                    self.sp_logger.info(
+                        info_g +
+                        f' ePSF science fallback OK: FWHM={_epsf_res["fwhm"]:.2f} px'
+                        f'  elong={_epsf_res["elongation"]:.2f}'
+                        f'  n_stars={_epsf_res["n_stars"]}'
+                        f'  scatter={_epsf_res["fwhm_scatter"]:.3f} px'
+                    )
+                else:
+                    self.sp_logger.warning(
+                        warn_y +
+                        f' ePSF science fallback rejected (unphysical):'
+                        f' FWHM={_epsf_res["fwhm"]:.2f} px (limit {_epsf_fwhm_limit_sci:.1f})'
+                        f'  elong={_epsf_res["elongation"]:.2f} (limit 1.5)'
+                        f' — using PSFEx kernel instead'
+                    )
+            except Exception as _epsf_e:
+                self.sp_logger.warning(warn_y + f' ePSF science fallback failed: {_epsf_e}')
         if self.chi_sq_psf<1e-10:
             self.sp_logger.warning(warn_r+' Warning: PSF model is a perfect fit, may be overfitting')
             self.sp_logger.warning(warn_y+' Trying again with only the highest signal-to-noise stars')
             # try:
-            self.sci_prepsfex_cat = fits.open(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+            self.sci_prepsfex_cat = fits.open(self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
             self.sci_prepsfex_cat_tab = Table(self.sci_prepsfex_cat[2].data)
             self.sci_prepsfex_cat_snr_min = 37#np.percentile(self.sci_prepsfex_cat_tab['SNR_WIN'],10)
             # print(self.sci_prepsfex_cat_snr_min)
             # print(np.min(self.sci_prepsfex_cat_tab['SNR_WIN']))
             self.sci_prepsfex_cat[2].data = self.sci_prepsfex_cat[2].data[(self.sci_prepsfex_cat_tab['SNR_WIN']>self.sci_prepsfex_cat_snr_min)]#&(self.sci_prepsfex_cat_tab['ELONGATION']<1.2)]
             # print(Table(self.sci_prepsfex_cat[2].data))
-            self.sci_prepsfex_cat.writeto(self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat",overwrite=True)
-            self.sp_logger.info(info_g+' Writing high SNR stars to '+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat")
+            self.sci_prepsfex_cat.writeto(self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat",overwrite=True)
+            self.sp_logger.info(info_g+' Writing high SNR stars to '+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat")
             self.sp_logger.info(info_g+' Running PSFex with only the highest signal-to-noise stars')
-            psfex_status = os.system(psfex_path+" "+self.data1_path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET -SAMPLE_MINSN 10")
+            psfex_status = os.system(psfex_path+" "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET -SAMPLE_MINSN 10")
             self.sp_logger.info(info_g+' High SNR PSFex status: '+str(psfex_status))
             
-            self.hdu_psf_model_sci= fits.open(self.data1_path+f'out/sci_prepsfex_{self.rand_nums_string}_highSNR.psf')
-            self.files_to_clean.append(self.data1_path+f'out/sci_prepsfex_{self.rand_nums_string}_highSNR.psf')
+            self.hdu_psf_model_sci= fits.open(self.path+f'out/sci_prepsfex_{self.rand_nums_string}_highSNR.psf')
+            self.files_to_clean.append(self.path+f'out/sci_prepsfex_{self.rand_nums_string}_highSNR.psf')
             self.chi_sq_psf=self.hdu_psf_model_sci[1].header['CHI2']
             self.sp_logger.info(info_g+' Reduced Chi^2 of science image PSF fit with high SNR stars: '+"%.1f" % self.chi_sq_psf)
             # sys.exit(1)
             self.sys_exit=True
             return
         # sys.exit(1)
-        #Convolve the reference image with a Gaussian kernel
-        self.kernel_sci = self.psf_sci_image[0].data[0]
+        # Use ePSF fallback kernel if PSFEx chi² was bad, otherwise use the
+        # PSFEx proto kernel (trimmed and re-centred by _trim_center_psf).
+        if getattr(self, '_epsf_sci_kernel', None) is not None:
+            self.kernel_sci = self._epsf_sci_kernel
+            self.sp_logger.info(info_g+' Using ePSF kernel for science convolution (PSFEx chi² too high)')
+        else:
+            self.kernel_sci = self.psf_sci_image[0].data[0]
+            # [v2] Trim and re-centre the PSFEx kernel to remove noisy outer wings
+            # and correct sub-pixel centroid offsets that cause dipole residuals.
+            try:
+                _psfex_fwhm_sci = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+                self.kernel_sci = _trim_center_psf(self.kernel_sci, _psfex_fwhm_sci, self.sp_logger)
+            except Exception as _trim_e:
+                self.sp_logger.warning(warn_y+f' [V2] PSF kernel trim skipped (sci): {_trim_e}')
 
         if self.to_subtract!=False:
         # Read the REFERENCE image and convolve it with the  kernel science
@@ -2433,22 +3391,22 @@ class subtracted_phot(subphot_data):
             self.files_to_clean.append(self.ref_ali_name)
             self.ref_conv = scipy_convolve(self.ref_image_aligned[0].data, self.kernel_sci, mode='same', method='fft')
             self.ref_conv=np.nan_to_num(self.ref_conv)
-
+            self.sp_logger.info(info_g+' Saving convolved reference image to '+self.ref_conv_name)
             fits.writeto(self.ref_conv_name, data=self.ref_conv, header=self.ref_image_aligned[0].header,overwrite=True)
 
             self.sp_logger.info(info_g+' Convolving the science with the PSF of the reference image')
 
-            sextractor_command=sex_path+" "+self.ref_ali_name+" -c "+self.opath+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.data1_path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
+            sextractor_command=sex_path+" "+self.ref_ali_name+" -c "+self.path+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
             os.system(sextractor_command)
 
             if self.sci_obj in ['2023ixf','SN2023ixf']:
                 #open the sextractor catalog and keep only the point sources that are in calstars4e.cat
-                self.good_ps1_ixf_stars = ascii.read(self.opath+'calstars4e.cat',names=['ra','dec','u','g','r','i','z','PS1g','PS1r','PS1i','PS1z'],format='no_header',delimiter=' ')
+                self.good_ps1_ixf_stars = ascii.read(self.path+'calstars4e.cat',names=['ra','dec','u','g','r','i','z','PS1g','PS1r','PS1i','PS1z'],format='no_header',delimiter=' ')
                 self.sp_logger.info(info_g+' Using calstars4e.cat to select point sources for PSFEx for SN2023ixf')
                 self.good_ps1_ixf_stars['ra'].unit = u.deg
                 self.good_ps1_ixf_stars['dec'].unit = u.deg
 
-                self.sex_ref_orig = fits.open(self.data1_path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat" ) #read in the original sextractor catalog
+                self.sex_ref_orig = fits.open(self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat" ) #read in the original sextractor catalog
                 self.sex_ref = Table(self.sex_ref_orig[2].data)
                 self.ref_ali_wcs = WCS(self.ref_ali_name)   
                 self.sex_ref_wcs = self.ref_ali_wcs.all_pix2world(np.column_stack((self.sex_ref['X_IMAGE'],self.sex_ref['Y_IMAGE'])),1) #find the RA and DEC coordinates of the sextractor catalog in wcs
@@ -2497,46 +3455,97 @@ class subtracted_phot(subphot_data):
 
 
 
-                self.sex_ref_orig.writeto(self.data1_path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat",overwrite=True)
+                self.sex_ref_orig.writeto(self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat",overwrite=True)
 
 
-            if os.path.exists(self.data1_path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits'):
-                os.system('rm '+self.data1_path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits')
+            if os.path.exists(self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits'):
+                os.system('rm '+self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits')
 
             
 
-            # os.system(psfex_path+" "+self.data1_path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.data1_path+"config_files/psfex_conf.psfex")
+            # os.system(psfex_path+" "+self.path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex")
 
 
-            # sextractor_command=sex_path+" "+self.ref_ali_name+" -c "+self.data1_path+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.data1_path+f"config_files/pooprepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
+            # sextractor_command=sex_path+" "+self.ref_ali_name+" -c "+self.path+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.path+f"config_files/pooprepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
             # self.sp_logger.info(sextractor_command)
 
-            # self.sp_logger.info(psfex_path+" "+self.data1_path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.data1_path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+            # self.sp_logger.info(psfex_path+" "+self.path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
             # sys.exit(1)
-            # self.sp_logger.info(psfex_path+" "+self.data1_path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.data1_path+"config_files/psfex_conf.psfex -VERBOSE_TYPE FULL")
-            # print(psfex_path+" "+self.data1_path+f"config_files/ref_prepsfex_{self.rand_nums_string}.cat -c "+self.data1_path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
-            os.system(psfex_path+" "+self.data1_path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat -c "+self.opath+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+            # self.sp_logger.info(psfex_path+" "+self.path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE FULL")
+            # print(psfex_path+" "+self.path+f"config_files/ref_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+            os.system(psfex_path+" "+self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
             # sys.exit(1)
-            self.files_to_clean.append(self.data1_path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat")
+            self.files_to_clean.append(self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat")
 
-            self.psf_ref_image_name=self.data1_path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits'
+            self.psf_ref_image_name=self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits'
             self.sp_logger.info(info_g+' PSFEx reference image created '+self.psf_ref_image_name)
-            self.files_to_clean.append(self.data1_path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits')
+            self.files_to_clean.append(self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits')
             self.psf_ref_image = fits.open(self.psf_ref_image_name)
 
-            self.hdu_psf_model_ref= fits.open(self.data1_path+f'out/ref_prepsfex_{self.rand_nums_string}.psf')
-            self.files_to_clean.append(self.data1_path+f'out/ref_prepsfex_{self.rand_nums_string}.psf')
+            self.hdu_psf_model_ref= fits.open(self.path+f'out/ref_prepsfex_{self.rand_nums_string}.psf')
+            self.files_to_clean.append(self.path+f'out/ref_prepsfex_{self.rand_nums_string}.psf')
             self.chi_sq_psf_ref=self.hdu_psf_model_ref[1].header['CHI2']
 
 
             # self.sp_logger.info(colored('Reduced Chi^2 of science image PSF fit:','green'),"%.1f" % self.chi_sq_psf_ref)
             self.sp_logger.info(info_g+' Reduced Chi^2 of reference image PSF fit: '+str(self.chi_sq_psf_ref))
+            # ── ePSF fallback for reference image ─────────────────────────────
+            self._epsf_ref_kernel = None
             if self.chi_sq_psf_ref>3:
                 # self.sp_logger.warning(colored('Warning: PSF ref model may not be accurate','green'))
                 self.sp_logger.warning(warn_y+' Warning: PSF ref model may not be accurate')
+                self.sp_logger.info(info_g+' Attempting ePSF fallback (build_psf) for reference image …')
+                try:
+                    from build_psf import build_psf_from_fits as _build_epsf
+                    _fwhm_guess = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+                    _epsf_ref_res = _build_epsf(
+                        self.ref_ali_name,
+                        fwhm_guess      = max(1.5, _fwhm_guess),
+                        threshold_sigma = 4.0,
+                        min_snr         = 10,
+                        max_stars       = 40,
+                        min_stars       = 3,
+                        epsf_iters      = 3,
+                    )
+                    _epsf_fwhm_limit_ref = max(15.0, 3.0 * _fwhm_guess)
+                    _epsf_ref_ok = (
+                        _epsf_ref_res['elongation'] <= 1.5 and
+                        _epsf_ref_res['fwhm'] <= _epsf_fwhm_limit_ref and
+                        _epsf_ref_res['fwhm'] >= 1.0
+                    )
+                    if _epsf_ref_ok:
+                        self._epsf_ref_kernel = _epsf_ref_res['kernel']
+                        self.sp_logger.info(
+                            info_g +
+                            f' ePSF reference fallback OK: FWHM={_epsf_ref_res["fwhm"]:.2f} px'
+                            f'  elong={_epsf_ref_res["elongation"]:.2f}'
+                            f'  n_stars={_epsf_ref_res["n_stars"]}'
+                            f'  scatter={_epsf_ref_res["fwhm_scatter"]:.3f} px'
+                        )
+                    else:
+                        self.sp_logger.warning(
+                            warn_y +
+                            f' ePSF reference fallback rejected (unphysical):'
+                            f' FWHM={_epsf_ref_res["fwhm"]:.2f} px (limit {_epsf_fwhm_limit_ref:.1f})'
+                            f'  elong={_epsf_ref_res["elongation"]:.2f} (limit 1.5)'
+                            f' — using PSFEx kernel instead'
+                        )
+                except Exception as _epsf_ref_e:
+                    self.sp_logger.warning(warn_y + f' ePSF reference fallback failed: {_epsf_ref_e}')
 
-            #Convolve the reference image with a Gaussian kernel
-            self.kernel_ref = self.psf_ref_image[0].data[0]
+            # Use ePSF fallback kernel if PSFEx chi² was bad, otherwise use the
+            # PSFEx proto kernel (trimmed and re-centred by _trim_center_psf).
+            if getattr(self, '_epsf_ref_kernel', None) is not None:
+                self.kernel_ref = self._epsf_ref_kernel
+                self.sp_logger.info(info_g+' Using ePSF kernel for reference convolution (PSFEx chi² too high)')
+            else:
+                self.kernel_ref = self.psf_ref_image[0].data[0]
+                # [v2] Trim and re-centre the reference PSFEx kernel
+                try:
+                    _psfex_fwhm_ref = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+                    self.kernel_ref = _trim_center_psf(self.kernel_ref, _psfex_fwhm_ref, self.sp_logger)
+                except Exception as _trim_e:
+                    self.sp_logger.warning(warn_y+f' [V2] PSF kernel trim skipped (ref): {_trim_e}')
 
             # Read the Science image and convolve it with the Gaussian kernel
             # print(self.sci_ali_name)
@@ -2545,6 +3554,7 @@ class subtracted_phot(subphot_data):
             self.sci_conv = scipy_convolve(self.sci_image_aligned[0].data,self.kernel_ref, mode='same', method='fft')
             self.sci_conv=np.nan_to_num(self.sci_conv)
 
+            self.sp_logger.info(info_g+' Saving convolved science image to '+self.sci_conv_name)
             fits.writeto(self.sci_conv_name, data=self.sci_conv, header=self.sci_image_aligned[0].header,overwrite=True)
             # sys.exit(1)
 
@@ -2591,128 +3601,67 @@ class subtracted_phot(subphot_data):
     def py_convolve_images(self,plot_psfs=False,progress_bar=False):
         # bar.start()
         self.sp_logger.info(info_g+f" Beginning cross convolutions of PSFs and images")
-        
-        sys.exit(1)
-        self.sci_conv_name=self.data1_path+"convolved_sci/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'sci_convolved.fits'
-        self.ref_conv_name=self.data1_path+"convolved_ref/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'ref_convolved.fits'
+
+        if not os.path.exists(self.path+'convolved_sci'):
+            os.makedirs(self.path+'convolved_sci')
+        if not os.path.exists(self.path+'convolved_ref'):
+            os.makedirs(self.path+'convolved_ref')
+
+        try:
+            self.sci_conv_name=self.path+"convolved_sci/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'sci_convolved.fits'
+        except:
+            self.sci_img_hdu=self.sci_img_hdu[0]
+            self.sci_conv_name=self.path+"convolved_sci/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'sci_convolved.fits'
+        self.ref_conv_name=self.path+"convolved_ref/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'ref_convolved.fits'
         
         #########################################
         #BUILDING SCIENCE PSF
         self.sci_ali_hdu = fits.open(self.sci_ali_name)[0]
-        self.sci_ali_mean,self.sci_ali_median, self.sci_ali_std = sigma_clipped_stats(self.sci_ali_hdu.data, sigma=5.0)
-        self.sci_ali_iraffind= IRAFStarFinder(threshold=abs(starscale*self.sci_ali_std)*3,fwhm=3,roundhi=0.3,minsep_fwhm=1.5,peakmax=45000)
-        self.sci_ali_co = self.sci_ali_iraffind(self.sci_ali_hdu.data)
         self.sp_logger.info(info_g+' Measuring PSF of science image...')
-        self.sp_logger.info(info_g+f" {len(self.sci_ali_co)} stars detected in aligned science image")
-        self.sci_ali_cox,self.sci_ali_coy = self.sci_ali_co['xcentroid'],self.sci_ali_co['ycentroid']
-
-
-        self.sci_ali_sig_clip = SigmaClip(sigma=3.)
-        self.sci_ali_bkg_estimator = SExtractorBackground(self.sci_ali_sig_clip)        
-        self.sci_ali_bkg = Background2D(self.sci_ali_hdu.data, (150, 150), filter_size=(3, 3),sigma_clip=sigma_clip, bkg_estimator=self.sci_ali_bkg_estimator)
-        self.sci_ali_bkg_error = self.sci_ali_bkg.background_rms
-
-        self.sci_ali_err = calc_total_error(self.sci_ali_hdu.data,self.sci_ali_bkg_error,self.sci_gain)
-        self.ali_pos = [(self.sci_ali_cox[i],self.sci_ali_coy[i]) for i in range(len(self.sci_ali_coy))]
-        self.sci_ali_photaps = photutils.CircularAperture(self.ali_pos, r=20)
-        self.sci_ali_photTab = photutils.aperture_photometry(self.sci_ali_hdu.data, self.sci_ali_photaps, error=self.sci_ali_err)
-        self.sci_ali_photTab['SNR'] = self.sci_ali_photTab['aperture_sum']/self.sci_ali_photTab['aperture_sum_err']
-        #remove any where aperture_sum is nan,negative, or 0 and where SNR is negative or 0
-        # self.ref_ali_photTab = self.ref_ali_photTab[(self.ref_ali_photTab['SNR']<1000)&(self.ref_ali_photTab['SNR']>0)&(self.ref_ali_photTab['aperture_sum']>0)&(self.ref_ali_photTab['aperture_sum_err']>0)]
-        # self.ref_ali_cox,self.ref_ali_coy = self.ref_ali_photTab['xcenter'],self.ref_ali_photTab['ycenter']
-        self.sci_ali_photTab = self.sci_ali_photTab[(self.sci_ali_photTab['aperture_sum']>0)&(self.sci_ali_photTab['aperture_sum_err']>0)&(self.sci_ali_photTab['SNR']>0)&(self.sci_ali_photTab['SNR']<4000)&(self.sci_ali_photTab['aperture_sum']<45000)]
-        self.sci_ali_cox,self.sci_ali_coy = self.sci_ali_photTab['xcenter'],self.sci_ali_photTab['ycenter']
-        self.sci_ali_goodStars = (np.isnan(self.sci_ali_photTab['aperture_sum'])==False) & (self.sci_ali_photTab['aperture_sum']>0) & (self.sci_ali_photTab['aperture_sum_err']>0)
-        self.sci_ali_goodStars = (self.sci_ali_photTab['aperture_sum']>80*self.sci_ali_photTab['aperture_sum_err'])
-        self.sci_ali_seq_SNR = 40 #intial SNR threshold
-        
-        #lowering SNR if intital threshold leaves less than 10 stars
-        # self.sp_logger.info(self.sci_ali_photTab['aperture_sum','aperture_sum_err','xcenter','ycenter'][self.sci_ali_goodStars])
-        if len(self.sci_ali_goodStars[self.sci_ali_goodStars]) < self.sci_ali_seq_SNR:
-            self.sp_logger.info(info_g+' Less than 20 stars with SNR >='+str(self.sci_ali_seq_SNR)+'Lowering SNR threshold to'+str(self.sci_ali_seq_SNR/2))
-            self.sci_ali_goodStars = (self.sci_ali_photTab['aperture_sum']>self.sci_ali_seq_SNR*self.sci_ali_photTab['aperture_sum_err'])
-            self.sci_ali_seq_SNR/=2
-            if len(self.sci_ali_goodStars[self.sci_ali_goodStars]) < self.sci_ali_seq_SNR:
-                self.sp_logger.info(info_g+' Less than 20 stars with SNR >='+str(self.sci_ali_seq_SNR)+'Lowering SNR threshold to'+str(self.sci_ali_seq_SNR/2))
-                self.sci_ali_goodStars = (self.sci_ali_photTab['aperture_sum']>self.sci_ali_seq_SNR*self.sci_ali_photTab['aperture_sum_err'])
-                self.sci_ali_seq_SNR/=2
-
-
-        self.sp_logger.info(info_g+f" Found {len(self.sci_ali_goodStars)} stars in science with SNR>{self.sci_ali_seq_SNR}")
         self.sci_ali_psf_built = False
-        self.sci_ali_nddata = astropy.nddata.NDData(data=self.sci_ali_hdu.data)
-        self.sci_ali_psfinput = astropy.table.Table()
-        self.sci_ali_psfinput['x'],self.sci_ali_psfinput['y'] = self.sci_ali_cox,self.sci_ali_coy
-
-        self.sci_ali_psfthresh=5 #number of stars needed for fit
-        if self.sci_filt=='u':
-            self.sci_ali_psfthresh=2
-
-        # psf quality tests
-        self.sci_ali_sumpsf,self.sci_ali_minpsf,self.sci_ali_x_peak,self.sci_ali_y_peak,self.sci_ali_psf_iter,self.sci_ali_stamprad = -1,-1,0,0,0,15
-        
-        while (self.sci_ali_sumpsf < 0) or (self.sci_ali_minpsf < -0.01) or ((self.sci_ali_x_peak/len(self.sci_ali_psf) < 0.4) or (self.sci_ali_x_peak/len(self.sci_ali_psf) > 0.6)) or ((self.sci_ali_y_peak/len(self.sci_ali_psf) < 0.4) or (self.sci_ali_y_peak/len(self.sci_ali_psf) > 0.6)) and (self.sci_ali_psf_iter < 5):
-            if self.sci_ali_psf_iter > 0:
-                self.sp_logger.info(warn_y+f' #{self.sci_ali_psf_iter}: PSF failed quality checked, randomly varying parameters and trying again')
-                self.sci_ali_stamprad += np.random.randint(11)-5
-                self.sci_ali_stamprad = max([self.sci_ali_stamprad,10])
-                self.sci_ali_psfthresh += np.random.randint(10)
-
-            #extract stars from image
-            self.sci_ali_psfstars = photutils.psf.extract_stars(self.sci_ali_nddata, self.sci_ali_psfinput[self.sci_ali_photTab['aperture_sum']>self.sci_ali_psfthresh*self.sci_ali_photTab['aperture_sum_err']], size=2*self.sci_ali_stamprad+5)
-
-            while(len(self.sci_ali_psfstars))<5 and self.sci_ali_psfthresh>0:
-                self.sp_logger.info(warn_y+f' #{self.sci_ali_psf_iter}: Warning: too few PSF stars with threshold '+str(self.sci_ali_psfthresh)+' sigma, trying lower sigma')
-                self.sci_ali_psfthresh -= 1
-                self.sci_ali_psfstars = photutils.psf.extract_stars(self.sci_ali_nddata, self.sci_ali_psfinput[self.sci_ali_photTab['aperture_sum']>self.sci_ali_psfthresh*self.sci_ali_photTab['aperture_sum_err']], size=2*self.sci_ali_stamprad+5)
-            if len(self.sci_ali_psfstars)<5:
-                self.sci_ali_psfthresh = 5
-                self.sp_logger.info(warn_y+f' #{self.sci_ali_psf_iter}: Could not find 5 PSF stars, trying for 3...')
-                while(len(self.sci_ali_psfstars))<3 and self.sci_ali_psfthresh>0:
-                    self.sci_ali_psfthresh -= 1
-                    self.sci_ali_psfstars = photutils.psf.extract_stars(self.sci_ali_nddata, self.sci_ali_psfinput[self.sci_ali_photTab['aperture_sum']>self.sci_ali_psfthresh*self.sci_ali_photTab['aperture_sum_err']], size=2*self.sci_ali_stamprad+5)
-                if self.sci_ali_psfthresh < 3:
-                    self.sci_ali_empirical = False
-                    break
-
-
-            try:
-                self.sci_ali_epsf_builder = photutils.EPSFBuilder(maxiters=10,recentering_maxiters=10,oversampling=1,smoothing_kernel='quadratic',progress_bar=progress_bar,shape=2*self.sci_ali_stamprad-1)
-                self.sci_ali_psf_iter+=1
-                self.sci_ali_epsf, self.sci_ali_fitted_stars = self.sci_ali_epsf_builder(self.sci_ali_psfstars) #science PSF
-                self.sci_ali_psf = self.sci_ali_epsf.data
-                self.sci_ali_x_peak,self.sci_ali_y_peak = np.where(self.sci_ali_psf==self.sci_ali_psf.max())[1][0],np.where(self.sci_ali_psf==self.sci_ali_psf.max())[0][0]
-                self.sci_ali_minpsf,self.sci_ali_sumpsf = np.min(self.sci_ali_psf),np.sum(self.sci_ali_psf)
-                self.sci_ali_psf_built=True
-
-                
-
-                if self.sci_ali_psf_iter>20:
-                    self.sp_logger.info(warn_r+f" #{self.sci_ali_psf_iter}: Error building PSF from science image, error encountered iteration{self.sci_ali_psf_iter}>=max iterations:{e}")
-                    self.sp_logger.info(warn_r+f" Exiting...")
-                    self.sys_exit=True
-                    return
-
-
-            except Exception as e:
-                self.sp_logger.info(warn_y+f" Building PSF failed, error encountered {e}")
+        try:
+            from psf_measure import measure_psf as _measure_psf
+            _fwhm_guess = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+            _sci_data = self.sci_ali_hdu.data.astype(float)
+            if self.valid_mask is not None and not np.all(self.valid_mask):
+                _sci_data = _sci_data.copy()
+                _sci_data[~self.valid_mask] = np.nan
+            _sci_res = _measure_psf(_sci_data, fwhm_guess=_fwhm_guess, min_stars=1, threshold_sigma=4.0)
+            self.sci_ali_psf = _sci_res['psf']
+            self.sp_logger.info(info_g+f" Science PSF: FWHM={_sci_res['fwhm']:.2f}px, n_stars={_sci_res['n_stars']}")
+            # [v2] Trim to 6×FWHM and re-centre before use as convolution kernel
+            if self.sci_ali_psf is not None:
+                self.sci_ali_psf = _trim_center_psf(
+                    self.sci_ali_psf, _sci_res['fwhm'], self.sp_logger)
+            self.sci_ali_psf_built = True
+        except Exception as _e:
+            self.sp_logger.warning(warn_y+f" measure_psf failed ({_e})")
         
         if self.sci_ali_psf_built == True:
             self.sp_logger.info(info_g+f" Science PSF built successfully")
             if plot_psfs!=False or self.args.show_plots==True:
                 sci_psf_fig = plt.figure(figsize=(12,8))
-                norm = simple_norm(self.sci_ali_epsf.data, 'log', percent=99.)
-                plt.imshow(self.sci_ali_epsf.data, norm=norm, origin='lower', cmap='viridis')
+                norm = simple_norm(self.sci_ali_psf, 'log', percent=99.)
+                plt.imshow(self.sci_ali_psf, norm=norm, origin='lower', cmap='viridis')
                 plt.title(f"Science PSF")
                 plt.colorbar()
                 plt.show()
                 plt.close(sci_psf_fig)
 
         if self.sci_ali_psf_built==False:
-            self.sp_logger.info(warn_r+f" Unable to build science PSF from science image, <3 bright stars to build PSF")
-            self.sp_logger.info(warn_r+f" Exiting...")
-            self.sys_exit=True
-            return
+            self.sp_logger.warning(warn_y+f" Unable to build empirical science PSF — falling back to Gaussian PSF from seeing estimate")
+            try:
+                from astropy.convolution import Gaussian2DKernel
+                _fwhm_pix = self.sci_seeing / self.sci_ps
+                _sigma    = _fwhm_pix / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+                _gauss    = Gaussian2DKernel(_sigma, x_size=31, y_size=31)
+                self.sci_ali_psf = _gauss.array / _gauss.array.sum()
+                self.sci_ali_psf_built = True
+                self.sp_logger.warning(warn_y+f" Gaussian science PSF: sigma={_sigma:.2f} pix (FWHM={_fwhm_pix:.2f} pix)")
+            except Exception as _e:
+                self.sp_logger.info(warn_r+f" Gaussian PSF fallback also failed: {_e} — exiting")
+                self.sys_exit=True
+                return
         else:
             self.ref_image_aligned=fits.open(self.ref_ali_name)
             self.ref_ali_img_hdu = self.ref_image_aligned[0]
@@ -2730,220 +3679,46 @@ class subtracted_phot(subphot_data):
                 #########################################
                 #BUILDING REFERENCE PSF
                 self.ref_ali_hdu = fits.open(self.ref_ali_name)[0]
-                self.ref_ali_mean,self.ref_ali_median, self.ref_ali_std = sigma_clipped_stats(self.ref_ali_hdu.data, sigma=5.0)
-                self.ref_ali_iraffind= IRAFStarFinder(threshold=abs(starscale*self.ref_ali_std)*3,fwhm=3,roundhi=0.3,minsep_fwhm=1.5,peakmax=50000)
-                self.ref_ali_co = self.ref_ali_iraffind(self.ref_ali_hdu.data)
+                self.sp_logger.info(info_g+' Measuring PSF of reference image...')
+                try:
+                    from psf_measure import measure_psf as _measure_psf
+                    _fwhm_ref = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+                    _ref_data = self.ref_ali_hdu.data.astype(float)
+                    if self.ref_valid_mask is not None and not np.all(self.ref_valid_mask):
+                        _ref_data = _ref_data.copy()
+                        _ref_data[~self.ref_valid_mask] = np.nan
+                    _ref_res = _measure_psf(_ref_data, fwhm_guess=_fwhm_ref, min_stars=1, threshold_sigma=4.0)
+                    self.ref_ali_psf = _ref_res['psf']
+                    self.sp_logger.info(info_g+f" Reference PSF: FWHM={_ref_res['fwhm']:.2f}px, n_stars={_ref_res['n_stars']}")
+                    # [v2] Trim to 6×FWHM and re-centre
+                    if self.ref_ali_psf is not None:
+                        self.ref_ali_psf = _trim_center_psf(
+                            self.ref_ali_psf, _ref_res['fwhm'], self.sp_logger)
+                except Exception as _e:
+                    self.sp_logger.warning(warn_y+f" measure_psf failed for reference ({_e})")
 
-                self.sp_logger.info(info_g+f" {len(self.ref_ali_co)} stars detected in aligned refrence image")
-                    
-
-
-
-                self.ref_ali_cox,self.ref_ali_coy = self.ref_ali_co['xcentroid'],self.ref_ali_co['ycentroid']
-
-
-                self.ref_ali_sig_clip = SigmaClip(sigma=3.)
-                self.ref_ali_bkg_estimator = SExtractorBackground(self.ref_ali_sig_clip)        
-                self.ref_ali_bkg = Background2D(self.ref_ali_hdu.data, (150, 150), filter_size=(3, 3),sigma_clip=sigma_clip, bkg_estimator=self.ref_ali_bkg_estimator)
-                self.ref_ali_bkg_error = self.ref_ali_bkg.background_rms
-
-                self.ref_ali_err = calc_total_error(self.ref_ali_hdu.data,self.ref_ali_bkg_error,self.sci_gain)
-                self.ali_pos = [(self.ref_ali_cox[i],self.ref_ali_coy[i]) for i in range(len(self.ref_ali_coy))]
-                self.ref_ali_photaps = photutils.CircularAperture(self.ali_pos, r=20)
-                self.ref_ali_photTab = photutils.aperture_photometry(self.ref_ali_hdu.data, self.ref_ali_photaps, error=self.ref_ali_err)
-                self.ref_ali_photTab['SNR'] = self.ref_ali_photTab['aperture_sum']/self.ref_ali_photTab['aperture_sum_err']
-                #remove saturated stars, i.e. stars with SNR>1000, SNR<0, aperture_sum<0, aperture_sum_err<0
-                self.ref_ali_photTab = self.ref_ali_photTab[(self.ref_ali_photTab['SNR']<1000)&(self.ref_ali_photTab['SNR']>0)&(self.ref_ali_photTab['aperture_sum']>0)&(self.ref_ali_photTab['aperture_sum_err']>0)&(self.ref_ali_photTab['aperture_sum']<50000)]
-                # self.sp_logger.info(np.sort(self.ref_ali_photTab)[0:15])
-                # sys.exit()
-                self.ref_ali_cox,self.ref_ali_coy = self.ref_ali_photTab['xcenter'],self.ref_ali_photTab['ycenter']
-                #check in the aperture of the stars for any NaN values or negative values
-                # for k in range(len(self.ref_ali_photTab)):
-                #     if any(np.isnan(x) for x in self.ref_ali_hdu.data[int(self.ref_ali_photTab['ycenter'][k])-20:int(self.ref_ali_photTab['ycenter'][k])+20,
-                #                                                         int(self.ref_ali_photTab['xcenter'][k])-20:int(self.ref_ali_photTab['xcenter'][k])+20]) == True:
-                #         self.sp_logger.info('saturated star')
-                # self.sp_logger.info(self.ref_ali_photTab['aperture_sum','aperture_sum_err','SNR','xcenter','ycenter'])
-                self.ref_ali_goodStars = (self.ref_ali_photTab['aperture_sum']>80*self.ref_ali_photTab['aperture_sum_err'])
-                if self.special_case!=None:
-                    if any(phrase == self.special_case for phrase in ['SN2023ixf','bright','brightstars.cat','sn2023ixf','2023ixf','brightstars']):
-                        self.bright_stars_sc = ascii.read(self.opath+'calstars4e.cat')#,skip_lines=1,names=['ra','dec','B','g','V','r','R','i','I','z','y'])
-                        self.sp_logger.info(info_g+f" Using bright stars catalog")
-                        self.bright_stars_sc_wcs = SkyCoord(ra=self.bright_stars_sc['ra']*u.deg, dec=self.bright_stars_sc['dec']*u.deg,frame='fk5')
-                        self.sp_logger.info(self.ref_ali_name)
-                        self.bs_coords_pix=wcs_to_pixels(self.ref_ali_name,np.column_stack((self.bright_stars_sc['ra'],self.bright_stars_sc['dec'])))
-
-
-
-                        # plt.show()
-
-                        self.bright_stars_sc['xcentroid']=self.bs_coords_pix[:,0]
-                        self.bright_stars_sc['ycentroid']=self.bs_coords_pix[:,1]
-
-                        #make an empty table with the same columns as the catalog
-
-                        self.bright_stars_sc_new = Table(names=self.bright_stars_sc.colnames,dtype=[float for i in range(len(self.bright_stars_sc.colnames))])
-                        #append the data from the catalog to the empty table
-
-                        for i in range(len(self.bright_stars_sc)-1):
-                            row = []
-                            for j in range(len(self.bright_stars_sc[i])):
-                                if self.bright_stars_sc[i][j]!='-':
-                                    row.append(float(self.bright_stars_sc[self.bright_stars_sc.colnames[j]].data[i]))
-                                else:
-                                    row.append(None)
-                            self.bright_stars_sc_new.add_row(row)
-
-
-                        self.bright_stars_sc=self.bright_stars_sc_new
-                        self.sp_logger.info(self.bright_stars_sc)
-                        self.bright_stars_sc = self.bright_stars_sc[self.bright_stars_sc[self.sci_filt]<self.bright_cat_mag_lim]
-                        self.ref_aligned_wcs = WCS(self.ref_ali_hdu.header)
-                        self.ref_ali_photTab_coords = self.ref_aligned_wcs.all_pix2world(np.column_stack((self.ref_ali_photTab['xcenter'],self.ref_ali_photTab['ycenter'])),1)
-                        self.ref_ali_photTab_coords = SkyCoord(ra=self.ref_ali_photTab_coords[:,0]*u.deg, dec=self.ref_ali_photTab_coords[:,1]*u.deg,frame='fk5')
-                        self.ref_ali_photTab['ra'],self.ref_ali_photTab['dec'] = self.ref_ali_photTab_coords.ra,self.ref_ali_photTab_coords.dec
-                        # self.bright_stars_sc['ra'],self.bright_stars_sc['dec'] = self.bright_stars_sc_coords.ra,self.bright_stars_sc_coords.dec 
-                        # self.sp_logger.info(self.bright_stars_sc)
-                        # self.sp_logger.info(self.ref_ali_photTab)
-                        # sys.exit()
-
-
-                        self.indx, self.d2d, self.d3d =self.ref_ali_photTab_coords.match_to_catalog_sky(self.bright_stars_sc_wcs)
-                        #where stars match by search rad in arcseconds!
-                        self.upd_indx=np.where(self.d2d<search_rad/3600.*u.deg)[0]
-                        # self.sp_logger.info(self.indx[self.upd_indx])
-                        self.sp_logger.info(info_g+' Bright stars found=',len(self.upd_indx),',',round(3600*(self.ref_width/60),6), 'arcsec search radius')
-                        self.ref_ali_photTab=self.ref_ali_photTab[self.upd_indx]
-                        self.ref_ali_cox,self.ref_ali_coy = self.ref_ali_photTab['xcenter'],self.ref_ali_photTab['ycenter']
-
-
-
-                        #find the common stars between the catalog and the detected stars
-                        # self.sp_logger.info(int(self.ref_ali_cox.value),type(self.ref_ali_cox))
-                        # self.sp_logger.info(int(self.ref_ali_coy.value),type(self.ref_ali_coy))
-                        #convert self.ref_ali_cox and self.ref_ali_coy to arrays of integers
-                        self.ref_ali_cox = np.array([int(i.value) for i in self.ref_ali_cox])
-                        self.ref_ali_coy = np.array([int(i.value) for i in self.ref_ali_coy])
-
-                        self.bright_stars_sc['xcentroid']=np.array([int(i) for i in self.bright_stars_sc['xcentroid']])
-                        self.bright_stars_sc['ycentroid']=np.array([int(i) for i in self.bright_stars_sc['ycentroid']])
-
-                        self.sp_logger.info(self.ref_ali_cox,self.ref_ali_coy)
-                        # self.sp_logger.info(self.bright_stars_sc['xcentroid'],self.bright_stars_sc['ycentroid'])
-                        # self.sp_logger.info(len(self.ref_ali_cox),len(self.ref_ali_coy))
-
-                        # self.sp_logger.info(int(self.bright_stars_sc['xcentroid']),type(self.bright_stars_sc['xcentroid']))
-                        # self.sp_logger.info(int(self.bright_stars_sc['ycentroid']),type(self.bright_stars_sc['ycentroid']))
-                        # self.sp_logger.info
-                        # self.ref_ali_goodStars = np.array([i for i in range(len(self.ref_ali_cox)-1) if any(np.sqrt((self.ref_ali_cox[i]-self.bright_stars_sc['xcentroid'])**2+(self.ref_ali_coy[i]-self.bright_stars_sc['ycentroid'])**2)<12)])
-                        # self.sp_logger.info([(np.sqrt((self.ref_ali_cox[i]-self.bright_stars_sc['xcentroid'])**2+(self.ref_ali_coy[i]-self.bright_stars_sc['ycentroid'])**2),self.ref_ali_photTab['xcenter','ycenter'][i]) for i in range(len(self.ref_ali_cox)) if any(np.sqrt((self.ref_ali_cox[i]-self.bright_stars_sc['xcentroid'])**2+(self.ref_ali_coy[i]-self.bright_stars_sc['ycentroid'])**2)<100)])
-                        self.ref_ali_seq_SNR = 20 #intial SNR threshold
-                        self.sp_logger.info(self.ref_ali_goodStars)
-                        sys.exit()
-
-
-                # sys.exit()
-                # if len(self.ref_ali_goodStars[self.ref_ali_goodStars]) >1e3: #choose the top 500 stars with the highest SNR to speed upo the psf building process
-                    # self.ref_ali_goodStars = np.argsort(self.ref_ali_photTab['aperture_sum']>10*self.ref_ali_photTab['aperture_sum_err'])[::-1][:500]
-                
-                # lowering SNR if intital threshold leaves less than 10 stars
-                if self.special_case==None:
-                    self.ref_ali_seq_SNR = 80 #intial SNR threshold
-                    if len(self.ref_ali_goodStars[self.ref_ali_goodStars]) < self.ref_ali_seq_SNR:
-                        self.sp_logger.info(info_g+f" Lowering SNR threshold to {self.ref_ali_seq_SNR/2}")
-                        self.ref_ali_goodStars = (self.ref_ali_photTab['aperture_sum']>5*self.ref_ali_photTab['aperture_sum_err'])
-                        self.ref_ali_seq_SNR/=2
-    
-                # self.sp_logger.info(self.ref_ali_photTab)
-
-                self.sp_logger.info(info_g+f" Found {len(self.ref_ali_goodStars)} stars in refrence with SNR>{self.ref_ali_seq_SNR}")
-                # if len(self.ref_ali_photTab)>250:
-                #     self.ref_ali_photTab_sort = self.ref_ali_photTab.sort('SNR')
-
-                # self.ref_ali_photTab = vstack([row for ind,row in enumerate(self.ref_ali_photTab_sort)])
-                # self.sp_logger.info(self.ref_ali_photTab)
-                # sys.exit()
-                self.ref_ali_nddata = astropy.nddata.NDData(data=self.ref_ali_hdu.data)
-                self.ref_ali_psfinput = astropy.table.Table()
-                self.ref_ali_psfinput['x'],self.ref_ali_psfinput['y'] = self.ref_ali_cox,self.ref_ali_coy
-                # self.sp_logger.info(len(self.ref_ali_goodStars))
-                # sys.exit()
-
-                self.ref_ali_psfthresh=5 #number of stars needed for fit
-                self.ref_psfthresh_tried = []
-                # if self.sci_filt=='u':
-                #     self.ref_ali_psfthresh=2
-
-                # psf quality tests
-                self.ref_ali_sumpsf,self.ref_ali_minpsf,self.ref_ali_x_peak,self.ref_ali_y_peak,self.ref_ali_psf_iter,self.ref_ali_stamprad = -1,-1,0,0,0,15
-                self.ref_stamprad_tried = []
-                while (self.ref_ali_sumpsf < 0) or (self.ref_ali_minpsf < -0.01) or ((self.ref_ali_x_peak/len(self.ref_ali_psf) < 0.4) or (self.ref_ali_x_peak/len(self.ref_ali_psf) > 0.6)) or ((self.ref_ali_y_peak/len(self.ref_ali_psf) < 0.4) or (self.ref_ali_y_peak/len(self.ref_ali_psf) > 0.6)) and (self.ref_ali_psf_iter < 5):
-                    if self.ref_ali_psf_iter > 0:
-                        self.sp_logger.info(warn_y+f' #{self.ref_ali_psf_iter}: PSF failed quality checked, randomly varying parameters and trying again')
-                        # while self.ref_ali_stamprad in self.ref_stamprad_tried:
-                        self.ref_ali_stamprad += np.random.randint(11)-5
-                        self.ref_ali_stamprad = max([self.ref_ali_stamprad,10])
-                        # while self.ref_ali_psfthresh in self.ref_psfthresh_tried:
-                        self.ref_ali_psfthresh += np.random.randint(10)
-
-                    #extract stars from image
-                    self.ref_ali_psfstars = photutils.psf.extract_stars(self.ref_ali_nddata, self.ref_ali_psfinput[self.ref_ali_photTab['aperture_sum']>self.ref_ali_psfthresh*self.ref_ali_photTab['aperture_sum_err']], size=2*self.ref_ali_stamprad+5)
-                    self.ref_psfthresh_tried.append(self.ref_ali_psfthresh),self.ref_stamprad_tried.append(self.ref_ali_stamprad)
-                    while(len(self.ref_ali_psfstars))<5 and self.ref_ali_psfthresh>0:
-                        self.sp_logger.info(warn_y+f' #{self.ref_ali_psf_iter}: Warning: too few PSF stars with threshold '+str(self.ref_ali_psfthresh)+' sigma, trying lower sigma')
-                        self.ref_ali_psfthresh -= 1
-                        self.ref_ali_psfstars = photutils.psf.extract_stars(self.ref_ali_nddata, self.ref_ali_psfinput[self.ref_ali_photTab['aperture_sum']>self.ref_ali_psfthresh*self.ref_ali_photTab['aperture_sum_err']], size=2*self.ref_ali_stamprad+5)
-                        # self.ref_psf_thresh_tried.append(self.ref_ali_psfthresh)
-                    if len(self.ref_ali_psfstars)<5:
-                        self.ref_ali_psfthresh = 5
-                        self.sp_logger.info(warn_y+f' #{self.ref_ali_psf_iter}: Could not find 5 PSF stars, trying for 3...')
-                        while(len(self.ref_ali_psfstars))<3 and self.ref_ali_psfthresh>0:
-                            self.ref_ali_psfthresh -= 1
-                            self.ref_ali_psfstars = photutils.psf.extract_stars(self.ref_ali_nddata, self.ref_ali_psfinput[self.ref_ali_photTab['aperture_sum']>self.ref_ali_psfthresh*self.ref_ali_photTab['aperture_sum_err']], size=2*self.ref_ali_stamprad+5)
-                        if self.ref_ali_psfthresh < 3:
-                            self.ref_ali_empirical = False
-                            break
-
-
+                # If the empirical reference PSF failed, fall back to a Gaussian using science seeing
+                _ref_psf_built = hasattr(self,'ref_ali_psf') and self.ref_ali_psf is not None
+                if not _ref_psf_built:
+                    self.sp_logger.warning(warn_y+f" Unable to build empirical reference PSF — falling back to Gaussian PSF")
                     try:
-                        self.ref_ali_epsf_builder = photutils.EPSFBuilder(maxiters=15,recentering_maxiters=15,oversampling=1,smoothing_kernel='quadratic',progress_bar=progress_bar,shape=2*self.ref_ali_stamprad-1)
-                        self.ref_ali_psf_iter+=1
-                        self.ref_ali_epsf, self.ref_ali_fitted_stars = self.ref_ali_epsf_builder(self.ref_ali_psfstars) #science PSF
-                        self.ref_ali_psf = self.ref_ali_epsf.data
-                        self.ref_ali_x_peak,self.ref_ali_y_peak = np.where(self.ref_ali_psf==self.ref_ali_psf.max())[1][0],np.where(self.ref_ali_psf==self.ref_ali_psf.max())[0][0]
-                        self.ref_ali_minpsf,self.ref_ali_sumpsf = np.min(self.ref_ali_psf),np.sum(self.ref_ali_psf)
-
-                        # self.sp_logger.info(self.ref_ali_sumpsf,self.ref_ali_minpsf,self.ref_ali_x_peak,self.ref_ali_y_peak,self.ref_ali_psf_iter,self.ref_ali_stamprad)
-                        # self.sp_logger.info('sumpsf:',self.ref_ali_sumpsf)
-                        # self.sp_logger.info('minpsf:',self.ref_ali_minpsf)
-                        # self.sp_logger.info('x_peak:',self.ref_ali_x_peak)
-                        # self.sp_logger.info('y_peak:',self.ref_ali_y_peak)
-                        # self.sp_logger.info('psf_iter:',self.ref_ali_psf_iter)
-                        # self.sp_logger.info('stamprad:',self.ref_ali_stamprad)
-                        # self.sp_logger.info(self.ref_ali_psf)
-                        
-
-                        
-
-
-                    except Exception as e:
-                        self.sp_logger.warning(warn_r+f" #{self.ref_ali_psf_iter}: Building reference PSF failed, error encountered {e}")
-                        self.sp_logger.warning(warn_r+f" {self.sci_obj},{self.sci_mjd},{self.sci_filt}: Unable to build reference PSF from reference image")
-
-                        self.sp_logger.info(warn_r+f" #{self.ref_ali_psf_iter}: Error building PSF from reference image, error encountered iteration{self.ref_ali_psf_iter}:{e}")
-                            # self.sp_logger.info(f"Exiting...")
-                        
-                        if self.ref_ali_psf_iter>40:
-                            self.sp_logger.info(warn_r+f" #{self.ref_ali_psf_iter}: Error building PSF from reference image, error encountered iteration{self.ref_ali_psf_iter}>=max iterations:{e}")
-                            self.sp_logger.info(warn_r+f" Exiting...")
-                            self.sys_exit=True
-                            return
+                        from astropy.convolution import Gaussian2DKernel
+                        _fwhm_pix = self.sci_seeing / self.sci_ps
+                        _sigma    = _fwhm_pix / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+                        _gauss    = Gaussian2DKernel(_sigma, x_size=31, y_size=31)
+                        self.ref_ali_psf = _gauss.array / _gauss.array.sum()
+                        self.sp_logger.warning(warn_y+f" Gaussian reference PSF: sigma={_sigma:.2f} pix (FWHM={_fwhm_pix:.2f} pix)")
+                    except Exception as _e:
+                        self.sp_logger.info(warn_r+f" Gaussian reference PSF fallback failed: {_e} — exiting")
+                        self.sys_exit=True
+                        return
 
                 self.sp_logger.info(info_g+f" Reference PSF built succesfully")
                 plot_psfs=True
                 if plot_psfs!=False  or self.args.show_plots==True:
                     ref_psf_fig = plt.figure(figsize=(12,8))
-                    norm = simple_norm(self.ref_ali_epsf.data, 'log', percent=99.)
-                    plt.imshow(self.ref_ali_epsf.data, norm=norm, origin='lower', cmap='viridis')
+                    norm = simple_norm(self.ref_ali_psf, 'log', percent=99.)
+                    plt.imshow(self.ref_ali_psf, norm=norm, origin='lower', cmap='viridis')
                     plt.title(f"Reference PSF")
                     plt.colorbar()
                     plt.show()
@@ -2954,7 +3729,8 @@ class subtracted_phot(subphot_data):
                 self.sci_conv = scipy_convolve(self.sci_image_aligned[0].data, self.ref_ali_psf, mode='same', method='fft')
                 self.sci_conv=np.nan_to_num(self.sci_conv)
                 fits.writeto(self.sci_conv_name, data=self.sci_conv, header=self.sci_image_aligned[0].header,overwrite=True)
-
+                self.sci_conv_hdu = fits.open(self.sci_conv_name)[0]
+                self.ref_conv_hdu = fits.open(self.ref_conv_name)[0]
 
                 self.sp_logger.info(info_g+f" Convolved reference PSF with science image with size {self.sci_conv.shape}")
                 self.sp_logger.info(info_g+f" Convolved science image saved to {self.sci_conv_name}")
@@ -3009,6 +3785,7 @@ class subtracted_phot(subphot_data):
                 # self.sp_logger.info(self.ref_coords_wcs)
 
             if self.sci_filt=='u' or self.use_sdss==True or self.args.sdsscat==True:
+                # if not os.path.exists(
                 self.ref_cat=sdss_query(ra_deg=round(self.sci_c.ra.deg,6),dec_deg=round(self.sci_c.dec.deg,6), rad_deg=round((self.ref_width),6))
                 # self.sp_logger.info(self.ref_cat)
                 self.stars=self.ref_cat
@@ -3028,8 +3805,8 @@ class subtracted_phot(subphot_data):
                 # self.sp_logger.info(self.ref_coords_pix)
         else:
             #If a reference catalogue is passed in with it's full path as self.auto_cat
-            if not self.auto_cat.startswith(self.data1_path):
-                self.auto_cat = self.data1_path+self.auto_cat
+            if not self.auto_cat.startswith(self.path):
+                self.auto_cat = self.path+self.auto_cat
 
             if not os.path.exists(self.auto_cat):
                 self.sp_logger.info(warn_r+f' Reference catalogue {self.auto_ref} not found')
@@ -3277,22 +4054,82 @@ class subtracted_phot(subphot_data):
         ###################################################################
         #  Combine science PSF with reference PSF, flatten PSF to 1D and gaussian fit
 
-        if not os.path.exists(self.data1_path+'convolved_psf'):
-            os.makedirs(self.data1_path+'convolved_psf')
+        if not os.path.exists(self.path+'convolved_psf'):
+            os.makedirs(self.path+'convolved_psf')
         
         # try:
-        #     if os.path.exists(self.data1_path+'convolved_psf'):
-        #         os.system('rm '+self.data1_path+'convolved_psf/*.fits')
+        #     if os.path.exists(self.path+'convolved_psf'):
+        #         os.system('rm '+self.path+'convolved_psf/*.fits')
         # except:
         #     pass
 
         self.comb_psf = scipy_convolve(self.kernel_sci, self.kernel_ref, mode='same', method='fft')
         self.comb_psf=self.comb_psf/np.sum(self.comb_psf)
-        self.hdu_comb_psf_name =self.data1_path+"convolved_psf/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][0:13]+f"comb_psf_{self.rand_nums_string}.fits"
+        self.hdu_comb_psf_name =self.path+"convolved_psf/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][0:13]+f"comb_psf_{self.rand_nums_string}.fits"
         self.hdu_comb_psf= fits.PrimaryHDU(self.comb_psf)
+        self.sp_logger.info(info_g+f" Saving combined PSF to {self.hdu_comb_psf_name}")
         self.hdu_comb_psf.writeto(self.hdu_comb_psf_name,overwrite=True)
 
 
+    def _check_alignment_quality(self, sci_data, ref_data, valid_mask,
+                                  ncc_warn=0.15, ncc_bad=0.05):
+        """Compute normalised cross-correlation (NCC) between aligned science and
+        reference images over the valid overlap region.
+
+        NCC = sum(A*B) / sqrt(sum(A^2) * sum(B^2))  on background-subtracted,
+        spatially high-pass filtered data to emphasise point sources.
+
+        Interpretation:
+          NCC > 0.3  : good alignment
+          0.15–0.3   : acceptable — typical for shallow science vs deep PS1
+          0.05–0.15  : marginal — photometry may be noisy
+          < 0.05     : poor / failed — check aligned images
+
+        Note: SEDM science frames vs PS1 reference routinely produce NCC in the
+        0.15–0.20 range due to depth and PSF differences; this is not indicative
+        of misalignment.  The warn threshold was lowered from 0.20 to 0.15 to
+        avoid false alarms in these normal cases.
+
+        Returns the NCC value and logs a warning if it is below threshold.
+        """
+        try:
+            _s = sci_data.astype(np.float64).copy()
+            _r = ref_data.astype(np.float64).copy()
+            _m = valid_mask.astype(bool)
+
+            # Restrict to valid pixels and high-pass filter to suppress sky gradient
+            _s[~_m] = 0.0
+            _r[~_m] = 0.0
+            _s -= scipy.ndimage.gaussian_filter(_s, sigma=10.0) * _m
+            _r -= scipy.ndimage.gaussian_filter(_r, sigma=10.0) * _m
+            _s[~_m] = 0.0
+            _r[~_m] = 0.0
+
+            _ss = np.sum(_s * _s)
+            _rr = np.sum(_r * _r)
+            if _ss <= 0 or _rr <= 0:
+                self.sp_logger.warning(warn_y+' [V2] Alignment quality check: one image is flat — NCC undefined')
+                return np.nan
+
+            ncc = float(np.sum(_s * _r) / np.sqrt(_ss * _rr))
+            if ncc < ncc_bad:
+                self.sp_logger.warning(
+                    warn_r+f' [V2] POOR ALIGNMENT: NCC={ncc:.3f} (< {ncc_bad}) — '
+                    f'check aligned reference image. Photometry will be unreliable.')
+            elif ncc < ncc_warn:
+                self.sp_logger.warning(
+                    warn_y+f' [V2] MARGINAL ALIGNMENT: NCC={ncc:.3f} (< {ncc_warn}) — '
+                    f'photometry may be noisy. Check aligned images.')
+            elif ncc < 0.3:
+                self.sp_logger.info(
+                    info_g+f' [V2] Alignment quality: NCC={ncc:.3f} ✓'
+                    f' (acceptable for shallow science vs deep reference)')
+            else:
+                self.sp_logger.info(info_g+f' [V2] Alignment quality: NCC={ncc:.3f} ✓')
+            return ncc
+        except Exception as _e:
+            self.sp_logger.warning(warn_y+f' [V2] Alignment quality check failed: {_e}')
+            return np.nan
 
 
     def cutout_psf(self,data,psf_array,xpos,ypos):
@@ -3377,11 +4214,11 @@ class subtracted_phot(subphot_data):
 
             data_cutout_mbkg = data_cutout - bkg
             #save the background subtracted image
-            fits.writeto(self.data1_path+'scaled_subtracted_imgs/'+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][0:13]+f"complex_bkg_subtracted_{self.rand_nums_string}.fits", data=data_cutout_mbkg, header=self.sci_img_hdu.header,overwrite=True)
+            fits.writeto(self.path+'scaled_subtracted_imgs/'+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][0:13]+f"complex_bkg_subtracted_{self.rand_nums_string}.fits", data=data_cutout_mbkg, header=self.sci_img_hdu.header,overwrite=True)
             
             #save the surface fit
             data_cutout_msurf = data_cutout - self.cutout_psf(data=surface,psf_array=self.comb_psf,xpos=[sn_x],ypos=[sn_y])[0]
-            fits.writeto(self.data1_path+'scaled_subtracted_imgs/'+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][0:13]+f"surface_fit_{self.rand_nums_string}.fits", data=data_cutout_msurf, header=self.sci_img_hdu.header,overwrite=True)
+            fits.writeto(self.path+'scaled_subtracted_imgs/'+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][0:13]+f"surface_fit_{self.rand_nums_string}.fits", data=data_cutout_msurf, header=self.sci_img_hdu.header,overwrite=True)
 
             data_cutout = data_cutout - bkg
             xoff, yoff, exoff, eyoff = chi2_shift(psf_array, data_cutout, 10, 
@@ -3468,7 +4305,7 @@ class subtracted_phot(subphot_data):
             if self.telescope not in SEDM and self.special_case==None and len(self.counts)>3:
                 self.sp_logger.info(info_g+' Number of stars before saturation check: '+str(len(self.matched_star_coords_pix)))
                 c=0
-                if self.sci_filt in ['g','r','z']:sat_mag,count_lim = 13.5,55000
+                if self.sci_filt in ['g','r','z']:sat_mag,count_lim = 13.5,47000
                 elif self.sci_filt in ['i']:sat_mag,count_lim = 15.0,40000
                 else:sat_mag,count_lim = 16.5,45000
 
@@ -3495,17 +4332,17 @@ class subtracted_phot(subphot_data):
                                 self.matched_new_mag.append(self.matched_catalog_mag[k])
                                 # self.sp_logger.info(info_g+f' Star {k} kept : mag:{self.matched_catalog_mag[k]:.2f} x: {int(self.matched_star_coords_pix[k][0])} y: {int(self.matched_star_coords_pix[k][1])}')
 
-                    if len(self.matched_new_pix)>=keep_min or c==3 or count_lim>=55000:
+                    if len(self.matched_new_pix)>=keep_min or c==3 or count_lim>=47000:
                         break
                     else:
                         if keep_min!=1:
                             keep_min-=1
                         if self.sci_filt in ['u'] and len(self.matched_star_coords_pix)>3:
                             sat_mag-=0.5
-                            count_lim+=5000
+                            # count_lim+=5000
                         else:
                             sat_mag-=0.5
-                            count_lim+=5000
+                            # count_lim+=5000
 
                     c+=1
                 self.matched_star_coords_pix = np.array(self.matched_new_pix)
@@ -3526,7 +4363,8 @@ class subtracted_phot(subphot_data):
             self.sp_logger.info(info_g+' Number of stars after removing duplicates: '+str(len(self.matched_star_coords_pix)))
 
             self.zp_size_check=1
-            while self.zp_size_check!=0:
+            self._zp_loop_attempts=0
+            while self.zp_size_check!=0 and self._zp_loop_attempts<3:
                 for i in range(0,len(self.matched_star_coords_pix)):
 
                     if self.special_case!=None:
@@ -3563,26 +4401,32 @@ class subtracted_phot(subphot_data):
                 if len(self.zp_sci)!=0:
                     self.zp_size_check=0
                     break
-                else:self.zp_size_check=2
+                else:
+                    self.zp_size_check=2
+                    self._zp_loop_attempts+=1
                 
 
         self.zp_sci,self.zp_ref=np.array(self.zp_sci),np.array(self.zp_ref)
         self.rsq_ref,self.rsq_sci=np.array(self.rsq_ref),np.array(self.rsq_sci)
-        print(self.zp_sci,self.zp_ref,self.rsq_sci,self.rsq_ref)
+        # print(self.zp_sci,self.zp_ref,self.rsq_sci,self.rsq_ref)
 
         if self.sci_filt=='u':
-            self.thresh=0.55
+            self.thresh=0.05
         if self.sci_filt!='u':
             self.thresh=0.75
         if self.telescope in SEDM:
-            self.thresh=0.75
+            # [v2] Increased RSQ threshold for SEDM from 0.1 to 0.35.
+            # The original 0.1 allowed very poorly-fitted PSFs to contribute to the
+            # zeropoint, introducing noise. 0.35 is still permissive enough for
+            # SEDM's small field while rejecting the worst PSF fits.
+            self.thresh=0.35
             if self.sci_filt=='u':
                 self.thresh=0.5
 
-        # print(self.zp_sci)
-        # print(self.rsq_sci)
-        # print(self.zp_ref)
-        # print(self.rsq_ref)
+        print(self.zp_sci)
+        print(self.rsq_sci)
+        print(self.zp_ref)
+        print(self.rsq_ref)
         # sys.exit()
         # if len(self.zp_sci) and len(self.zp_ref)>=10:
         #     #remove the smallest and largest values
@@ -3614,29 +4458,23 @@ class subtracted_phot(subphot_data):
             self.zp_sci_lim=27.5
         while self.rsq_cont==False:
             self.arr=(self.rsq_ref >=self.thresh) & (self.rsq_sci >=self.thresh) & (self.zp_sci >=0) & (self.zp_ref >=0) & (self.zp_sci<=self.zp_sci_lim)#filter out stars poorly fitted with PSF fit & weird zp measurement
-            # self.sp_logger.info(self.rsq_ref[self.arr],sum(self.arr)) 
-            if (len([i for i in self.rsq_ref if i>=self.thresh])<1 or len([i for i in self.rsq_sci if i>=self.thresh])<1) and len(self.zp_sci)>=5:
-                self.sp_logger.info(warn_y+f' Lowering threshold for rsq values to {self.thresh-0.05:.2f}')
-                self.thresh-=0.05
-            elif (len([i for i in self.rsq_ref if i>=self.thresh])<1 or len([i for i in self.rsq_sci if i>=self.thresh])<1) and len(self.zp_sci)<5:
-                self.sp_logger.info(warn_y+f' No stars with rsq values above threshold of {self.thresh:.2f}. Lowering threshold for rsq values to {self.thresh-0.05:.2f}')
+            if (len([i for i in self.rsq_ref if i>=self.thresh])<1 or len([i for i in self.rsq_sci if i>=self.thresh])<1):
+                self.sp_logger.info(warn_y+f' No stars with rsq>{self.thresh:.2f}. Lowering threshold to {self.thresh-0.05:.2f}')
                 self.thresh-=0.05
             else:
                 self.rsq_cont=True
                 break
 
-            if self.thresh<0.4 and self.sci_filt!='u':
-                self.sp_logger.warning(warn_r+' No stars with rsq values above threshold')
-                self.sp_logger.warning(warn_r+' Exiting..')
-                self.sys_exit=True
-                self.rsq_cont=True
+            # [v2] Floor at 0.05 — accept whatever we have rather than exiting.
+            # PSF quality varies with seeing/tracking; a poor fit is still better than
+            # no measurement. The aperture-ZP fallback below covers the worst cases.
+            if self.thresh < 0.05:
+                self.sp_logger.warning(warn_y+' [V2] PSF-fit quality poor for all stars — using best available at floor threshold 0.05')
+                self.thresh = 0.05
+                self.rsq_cont = True
                 break
-            if self.thresh<0.1:
-                self.sys_exit=True
-                self.sp_logger.warning(warn_r+' No stars with rsq values above threshold, exiting..')
-                return
 
-        self.arr=(self.rsq_ref >=self.thresh) & (self.rsq_sci >=self.thresh) & (self.zp_sci >=0) & (self.zp_ref >=0) #filter out stars poorly fitted with PSF fit & weird zp measurement
+        self.arr=(self.rsq_ref >=self.thresh) & (self.rsq_sci >=self.thresh) & (self.zp_sci >=0) & (self.zp_ref >=0) & (self.zp_ref<=34)#filter out stars poorly fitted with PSF fit & weird zp measurement
         # print(self.rsq_ref>=self.thresh)
         # print(self.rsq_sci>=self.thresh)
         # print(self.zp_sci>=0)
@@ -3648,14 +4486,54 @@ class subtracted_phot(subphot_data):
                 self.weird_img = 'science'
             else:
                 self.weird_img = 'reference'
+            self.sp_logger.warning(warn_r+f' All PSF-fit zeropoints failed for {self.weird_img} image ({self.sci_obj} {self.sci_filt})')
 
-
-            self.sp_logger.warning(warn_r+f' All stars in the {self.weird_img} images fit poorly or returned anomalous zeropoint measurements!')
-            self.sp_logger.warning(warn_r+f' {self.sci_obj} {self.sci_filt} {self.sci_mjd} {self.weird_img} images fit poorly or returned anomalous zeropoint measurements!')
-
-            self.sp_logger.warning(warn_r+" Exiting...")
-            self.sys_exit=True
-            return
+            # [v2] Aperture-photometry zeropoint fallback.
+            # When all PSF fits are poor (tracking errors, bad seeing), the combined-PSF
+            # fit is unreliable for every catalog star.  Aperture photometry is simpler and
+            # more robust in these conditions — it doesn't depend on the PSF model at all.
+            self.sp_logger.warning(warn_y+' [V2] Attempting aperture-photometry zeropoint fallback...')
+            try:
+                from photutils.aperture import CircularAperture, aperture_photometry
+                _aper_r_pix = max(3.0, getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37))
+                _sci_ali_hdu = fits.open(self.sci_ali_name)[0]
+                _aper_zp_sci, _aper_zp_ref = [], []
+                for _i, _pix in enumerate(self.matched_star_coords_pix):
+                    try:
+                        _ap = CircularAperture([_pix[0], _pix[1]], r=_aper_r_pix)
+                        _phot_sci = aperture_photometry(_sci_ali_hdu.data, _ap)
+                        _flux_sci = float(_phot_sci['aperture_sum'][0])
+                        if _flux_sci > 0:
+                            _aper_zp_sci.append(self.matched_star_mags[_i] + 2.5*np.log10(_flux_sci))
+                        _ref_ali_hdu = fits.open(self.ref_ali_name)[0]
+                        _phot_ref = aperture_photometry(_ref_ali_hdu.data, _ap)
+                        _flux_ref = float(_phot_ref['aperture_sum'][0])
+                        if _flux_ref > 0:
+                            _aper_zp_ref.append(self.matched_star_mags[_i] + 2.5*np.log10(_flux_ref))
+                    except Exception:
+                        continue
+                if len(_aper_zp_sci) >= 1 and len(_aper_zp_ref) >= 1:
+                    self.zp_sci = np.array(sigma_clip(_aper_zp_sci, sigma=3, maxiters=3).compressed()
+                                          if len(_aper_zp_sci) > 3 else _aper_zp_sci)
+                    self.zp_ref = np.array(sigma_clip(_aper_zp_ref, sigma=3, maxiters=3).compressed()
+                                          if len(_aper_zp_ref) > 3 else _aper_zp_ref)
+                    self.sp_logger.warning(warn_y+f' [V2] Aperture ZP fallback: {len(self.zp_sci)} sci stars, '
+                                           f'{len(self.zp_ref)} ref stars. '
+                                           f'ZP_sci={np.nanmedian(self.zp_sci):.3f}, ZP_ref={np.nanmedian(self.zp_ref):.3f}')
+                    # Dummy RSQ arrays (aperture has no RSQ concept — treat as passing)
+                    self.rsq_sci = np.ones(len(self.zp_sci))
+                    self.rsq_ref = np.ones(len(self.zp_ref))
+                    self.arr = np.ones(len(self.zp_sci), dtype=bool)
+                    self.zp_aperture_fallback = True
+                    # Skip to post-arr-filter section
+                else:
+                    self.sp_logger.warning(warn_r+' [V2] Aperture ZP fallback also found 0 valid stars — exiting')
+                    self.sys_exit = True
+                    return
+            except Exception as _aper_e:
+                self.sp_logger.warning(warn_r+f' [V2] Aperture ZP fallback failed: {_aper_e} — exiting')
+                self.sys_exit = True
+                return
 
         self.rsq_ref,self.rsq_sci = self.rsq_ref[self.arr],self.rsq_sci[self.arr]
         self.zp_sci,self.zp_ref = self.zp_sci[self.arr],self.zp_ref[self.arr]
@@ -3666,7 +4544,7 @@ class subtracted_phot(subphot_data):
         self.zp_ref_new=self.zp_ref_new[~self.zp_ref_new.mask]
         if len(self.zp_sci_new)==len(self.zp_sci) or len(self.zp_ref_new)==len(self.zp_ref):
             self.sp_logger.info(warn_y+' No stars removed after sigma clipping')
-            if len(self.zp_sci)>5 and len(self.zp_ref)>=5 and self.sci_filt!='u':
+            if len(self.zp_sci)>=5 and len(self.zp_ref)>=5 and self.sci_filt!='u':
                 self.sp_logger.info(info_g+f' Removing stars with zp values outside 5th and 95th percentiles')
                 self.zp_sci_new,self.zp_ref_new = [i for i in self.zp_sci if i>np.percentile(self.zp_sci,5) and i<np.percentile(self.zp_sci,95)],[i for i in self.zp_ref if i>np.percentile(self.zp_ref,5) and i<np.percentile(self.zp_ref,95)]
             
@@ -3695,7 +4573,7 @@ class subtracted_phot(subphot_data):
                 try:
                     if len(self.new_zp_sci)==len(self.zp_sci) and all(zp>10 for zp in [len(self.new_zp_sci),len(self.zp_sci)]):
                         N-=0.25
-                except Excpetion as e:
+                except Exception as e:
                     if len(self.new_zp_sci)==len(self.zp_sci) and len(self.zp_sci)>10:
                         N-=0.25
                     pass
@@ -3760,6 +4638,20 @@ class subtracted_phot(subphot_data):
         else:
             self.sp_logger.info(info_g+' ZP Sci=%.3f std=%.3f No. stars=%i'%(np.nanmedian(self.zp_sci),np.nanstd(self.zp_sci),len(self.zp_sci)))
             self.sp_logger.info(info_g+' ZP Ref=%.3f std=%.3f No. stars=%i'%(np.nanmedian(self.zp_ref),np.nanstd(self.zp_ref),len(self.zp_ref)))
+            # [V2] Quality warnings: flag epochs where photometry is likely unreliable
+            _ref_rsq_std = float(np.nanstd(self.rsq_ref)) if hasattr(self, 'rsq_ref') and len(self.rsq_ref) > 1 else 0.0
+            _ref_zp_std  = float(np.nanstd(self.zp_ref))
+            _sci_zp_std  = float(np.nanstd(self.zp_sci))
+            if _ref_rsq_std > 0.10:
+                self.sp_logger.warning(warn_y+f' [V2] QUALITY WARNING: reference RSQ std={_ref_rsq_std:.3f} > 0.10 '
+                                       f'— PSF matching quality is inconsistent across field stars. '
+                                       f'Photometry for this epoch may have systematic errors > 0.2 mag.')
+            if _ref_zp_std > 0.08:
+                self.sp_logger.warning(warn_y+f' [V2] QUALITY WARNING: reference ZP std={_ref_zp_std:.3f} > 0.08 '
+                                       f'— large scatter in reference zeropoint. Check alignment and scale factor.')
+            if len(self.zp_sci) < 5:
+                self.sp_logger.warning(warn_y+f' [V2] QUALITY WARNING: only {len(self.zp_sci)} ZP stars '
+                                       f'— zeropoint poorly constrained, photometry may be unreliable.')
 
         # sys.exit()
         if self.zp_only!=False:
@@ -3767,13 +4659,13 @@ class subtracted_phot(subphot_data):
                 self.zp_med,self.zp_std,self.zp_len = np.nanmedian(self.zp_sci),np.std(self.zp_sci),len(self.zp_sci)
                 if len(self.name)>0:
                     self.zp_name = re.sub(f'data/IOO_Stands/{self.folder}_1','',self.name[0])
-                    self.zp_file_name = self.data1_path+"zeropoints/"+self.folder+f"/{re.sub('.fits','',self.zp_name)}zpts_{self.sci_filt}.txt"
+                    self.zp_file_name = self.path+"zeropoints/"+self.folder+f"/{re.sub('.fits','',self.zp_name)}zpts_{self.sci_filt}.txt"
                     
                 else:
-                    if not os.path.exists(self.data1_path+'zeropoints/'+self.folder):
-                        os.mkdir(self.data1_path+'zeropoints/'+self.folder)
+                    if not os.path.exists(self.path+'zeropoints/'+self.folder):
+                        os.mkdir(self.path+'zeropoints/'+self.folder)
                     self.zp_name = re.sub(f'data/IOO_Stands/{self.folder}_1/','',self.name)
-                    self.zp_file_name = self.data1_path+"zeropoints/"+self.folder+f"/{re.sub('.fits','',self.zp_name)}zpts_{self.sci_filt}.txt"
+                    self.zp_file_name = self.path+"zeropoints/"+self.folder+f"/{re.sub('.fits','',self.zp_name)}zpts_{self.sci_filt}.txt"
                 self.zp_file = open(self.zp_file_name,"w")
                 self.zp_file.write(f"{self.zp_med},{self.zp_std},{self.zp_len}")
                 self.zp_file.close()
@@ -3869,7 +4761,7 @@ class subtracted_phot(subphot_data):
             sn_x,sn_y = wcs_to_pixels(self.sci_conv_name,np.column_stack((new_sci_c.ra.deg,new_sci_c.dec.deg)))[0]
 
             self.sn_cutout = self.cutout_psf(data=data,psf_array=psf,xpos=[sn_x],ypos=[sn_y])[0]
-            print(len(self.forced_phot))
+            # print(len(self.forced_phot))
             self.main_sn_psf_fit = self.psf_fit_noshift([self.sn_cutout],psf_array=psf)[0]
 
         sn_flux= self.main_sn_psf_fit[0]
@@ -3888,7 +4780,7 @@ class subtracted_phot(subphot_data):
             # defaulting to the original position so will use psf_fit_noshift
             self.sp_logger.info(info_g+' xoff_arc=%.3f arcsec, yoff_arc=%.3f arcsec'%(self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]))
             self.ra_off,self.dec_off = self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]
-            self.max_psf_offset=1
+            self.max_psf_offset=0.6
             if (sn_mag>15 and self.forced_phot==False) or (self.forced_phot!=False) or np.isnan(sn_mag):
                 if  self.telescope not in SEDM and any(abs(offset)>self.max_psf_offset for offset in [self.main_sn_psf_fit[5], self.main_sn_psf_fit[6]]):
                     self.sp_logger.warning(warn_y+f" PSF fit is shifted too much, defaulting to original position")
@@ -3900,14 +4792,14 @@ class subtracted_phot(subphot_data):
                     sn_flux= self.main_sn_psf_fit[0]
                     sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
                     self.sp_logger.info(warn_y+" New magnitude = %.3f"%sn_mag)
-                if self.telescope in SEDM and any(abs(offset)>0.5 for offset in [self.main_sn_psf_fit[5], self.main_sn_psf_fit[6]]):
-                    self.sp_logger.warning(warn_y+f" Mag before shifting to original position = %.3f"%sn_mag)
-                    self.sp_logger.warning(warn_y+f" PSF fit is shifted too much, defaulting to original position")
-                    self.sp_logger.warning(warn_y+" xoff =%.3f arsec, yoff_arc=%.3f arcsec"%(self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]))
-                    self.main_sn_psf_fit = self.psf_fit_noshift([self.sn_cutout],psf_array=psf)[0]
-                    sn_flux= self.main_sn_psf_fit[0]
-                    sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
-                    self.sp_logger.info(warn_y+" New magnitude = %.3f"%sn_mag)
+            if self.telescope in SEDM and any(abs(offset)>3 for offset in [self.main_sn_psf_fit[5], self.main_sn_psf_fit[6]]):
+                self.sp_logger.warning(warn_y+f" Mag before shifting to original position = %.3f"%sn_mag)
+                self.sp_logger.warning(warn_y+f" PSF fit is shifted too much, defaulting to original position")
+                self.sp_logger.warning(warn_y+" xoff =%.3f arsec, yoff_arc=%.3f arcsec"%(self.main_sn_psf_fit[5],self.main_sn_psf_fit[6]))
+                self.main_sn_psf_fit = self.psf_fit_noshift([self.sn_cutout],psf_array=psf)[0]
+                sn_flux= self.main_sn_psf_fit[0]
+                sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
+                self.sp_logger.info(warn_y+" New magnitude = %.3f"%sn_mag)
 
         psf_size=np.shape(psf)[0]+1
         #chose num number of coordinates to calculate the magnitude error within the image size but outside the psf
@@ -3926,112 +4818,141 @@ class subtracted_phot(subphot_data):
         # print(len(x),len_x1)
 
 
-        all_cutouts = []
-        for i in range(0,len(x)):
-            x__,y__=x[i],y[i]
-            # cond = (sn_x+x__<0)|(sn_x+x__>np.shape(data)[1])|(sn_y+y__<0)|(sn_y+y__>np.shape(data)[0])|(sn_x+x__-np.shape(psf)[0]/2)<0|(sn_y+y__-np.shape(psf)[1]/2)<0|(sn_x+x__+np.shape(psf)[0]/2)>np.shape(data)[1]|(sn_y+y__+np.shape(psf)[1]/2)>np.shape(data)[0]
-            # print(-num*psf_size,num*psf_size,(2))
-            
-            if sn_x+x__<0 or sn_x+x__>np.shape(data)[1] or sn_y+y__<0 or sn_y+y__>np.shape(data)[0] or (sn_x+x__-np.shape(psf)[0]/2)<0 or (sn_y+y__-np.shape(psf)[1]/2)<0 or (sn_x+x__+np.shape(psf)[0]/2)>np.shape(data)[1] or (sn_y+y__+np.shape(psf)[1]/2)>np.shape(data)[0]:
-                x__,y__=np.random.randint(-num*psf_size,num*psf_size,(2))
+        _inj_mask = self.valid_mask if (hasattr(self,'valid_mask') and self.valid_mask is not None) else None
+        _has_padding = _inj_mask is not None and not np.all(_inj_mask)
 
-                if sn_x+x__-radius<0 or sn_x+x__+radius>np.shape(data)[1] or sn_y+y__-radius<0 or sn_y+y__+radius>np.shape(data)[0]:
-                    c=0
-                    while sn_x+x__-radius<0 or sn_x+x__+radius>np.shape(data)[1] or sn_y+y__-radius<0 or sn_y+y__+radius>np.shape(data)[0]:
-                        x__,y__=np.random.randint(-num*psf_size,num*psf_size,(2))
-                        c+=1
-                        if c>20:break
-                        if sn_x+x__-radius<0 or sn_x+x__+radius>np.shape(data)[1] or sn_y+y__-radius<0 or sn_y+y__+radius>np.shape(data)[0]:continue
-    
+        # [v2] Pre-build a pool of valid injection positions instead of rejection-sampling
+        # on the fly. When the image has heavy padding (bad SEDM WCS), rejection sampling
+        # can exhaust 30 attempts per position and leave too few valid injections to
+        # estimate the limiting magnitude reliably.
+        _half_psf = int(np.shape(psf)[0] / 2) + 1
+        _h, _w = np.shape(data)
+        if _has_padding:
+            # Erode the valid mask by the PSF half-width so every sampled position
+            # guarantees a fully-valid PSF-sized cutout.
+            from scipy.ndimage import binary_erosion
+            _struct = np.ones((2*_half_psf+1, 2*_half_psf+1), dtype=bool)
+            _eroded = binary_erosion(_inj_mask, structure=_struct)
+            _vy, _vx = np.where(_eroded)
+            # Express positions relative to SN position (matching the x/y offset grid above)
+            _valid_offsets = list(zip((_vx - sn_x).astype(int), (_vy - sn_y).astype(int)))
+            np.random.shuffle(_valid_offsets)
+            self.sp_logger.info(info_g+f' [V2] Injection pool: {len(_valid_offsets)} valid positions in valid-data region')
+        else:
+            _valid_offsets = None  # no restriction; use the grid offsets as-is
+
+        _pool_idx = 0  # index into _valid_offsets when padding is present
+
+        for i in range(0, len(x)):
+            if _has_padding and _valid_offsets is not None:
+                if _pool_idx >= len(_valid_offsets):
+                    break  # exhausted the pool
+                x__, y__ = _valid_offsets[_pool_idx]
+                _pool_idx += 1
+                # Guard: skip if the position is within the PSF exclusion radius of the SN
+                if np.sqrt(x__**2 + y__**2) <= radius:
+                    continue
+            else:
+                x__, y__ = x[i], y[i]
+                # Guard: skip out-of-bounds positions
+                cx, cy = sn_x+x__, sn_y+y__
+                if (cx-_half_psf < 0 or cx+_half_psf >= _w or
+                        cy-_half_psf < 0 or cy+_half_psf >= _h):
+                    continue
+
             bkg_cutout=self.cutout_psf(data=data,psf_array=psf,xpos=[sn_x+x__],ypos=[sn_y+y__])[0]
-            # all_cutouts.append(bkg_cutout)
 
             flux_bkg=self.psf_fit_noshift(data_cutout=[bkg_cutout],psf_array=psf)[0][0]
             #flux_bkg_list is the PSF fitted to the sky
             flux_bkg_list.append(flux_bkg)
 
-            new_sn=bkg_cutout+((psf)*self.psf_fit([self.sn_cutout],psf_array=psf)[0][0])+self.psf_fit([self.sn_cutout],psf_array=psf)[0][1]
-            flux_new_sn=self.psf_fit(data_cutout=[new_sn],psf_array=psf)[0][0]
+            # [v2] Cache the source PSF fit result (psf_fit is called once, not twice).
+            _sn_fit = self.psf_fit([self.sn_cutout], psf_array=psf)[0]
+            new_sn = bkg_cutout + (psf * _sn_fit[0]) + _sn_fit[1]
+            # [v2] Use psf_fit_noshift for artificial source recovery, matching the
+            # background measurement method (psf_fit_noshift on line above).
+            # Reason: the injection position is exactly known, so no centroid shift
+            # is needed.  Using psf_fit (shift-allowed) with no max-shift guard for
+            # SEDM lets chi2_shift latch onto subtraction artefacts at each injection
+            # site, inflating std(flux_new_sn_list) by 2-3x above the true noise
+            # floor and producing an unrealistically large magnitude error.
+            flux_new_sn=self.psf_fit_noshift(data_cutout=[new_sn],psf_array=psf)[0][0]
             #flux_new_sn_list is the PSF fitted to the artificial supernova
             flux_new_sn_list.append(flux_new_sn)
 
+        # Remove masked/non-finite values that sigma_clip wraps as '--' or NaN before statistics
+        flux_bkg_list    = [f for f in flux_bkg_list    if np.isfinite(float(f)) if f != '--']
+        flux_new_sn_list = [f for f in flux_new_sn_list if np.isfinite(float(f)) if f != '--']
+
+        if len(flux_bkg_list) < 3:
+            self.sp_logger.warning(warn_r+' Too few valid background injection positions (<3) — limiting magnitude unreliable')
+            flux_bkg_list = [0.0]  # prevent downstream crash; limits will be flagged as 99
+        if len(flux_new_sn_list) < 3:
+            self.sp_logger.warning(warn_r+' Too few valid artificial SN positions (<3) — magnitude error unreliable')
+            flux_new_sn_list = [0.0]
+
+        self.sp_logger.info(info_g+f' Background injection positions used: {len(flux_bkg_list)}')
         self.sp_logger.info(info_g+' Sigma clipping the background flux')
         flux_bkg_list=sigma_clip(flux_bkg_list,sigma=3,maxiters=3)
         self.sp_logger.info(info_g+' Sigma clipping the artificial supernova flux')
         flux_new_sn_list=sigma_clip(flux_new_sn_list,sigma=3,maxiters=3)
 
-        SNR = sn_flux/np.std(flux_bkg_list)
+        # Scatter-based limits: use std of background directly (robust when background median ≈ 0 post-subtraction)
+        _bkg_std  = np.nanstd(flux_bkg_list)
+        _bkg_std  = _bkg_std if _bkg_std > 0 else 1e-30  # guard against zero std from contaminated lists
+        _flux_1sig = 1.0 * _bkg_std
+        _flux_3sig = 3.0 * _bkg_std
+        _flux_5sig = 5.0 * _bkg_std
+        _zp = np.nanmedian(zp_sci)
+        _lim_1sig = -2.5*np.log10(_flux_1sig) + _zp
+        _lim_3sig = -2.5*np.log10(_flux_3sig) + _zp
+        _lim_5sig = -2.5*np.log10(_flux_5sig) + _zp
+
+        SNR = sn_flux / _bkg_std
         self.SNR = SNR
 
-        self.sp_logger.info(info_g+' S/N (std background)= %.3f'%(sn_flux/np.std(flux_bkg_list))) 
-        self.sp_logger.info(info_g+' S/N (std artifical sn)= %.3f'%(sn_flux/np.std(flux_new_sn_list)))
-        
-        
-        if sn_flux/np.std(flux_bkg_list)<=2:
+        self.sp_logger.info(info_g+' S/N (std background)= %.3f'%SNR)
+        self.sp_logger.info(info_g+' S/N (std artifical sn)= %.3f'%(sn_flux/max(np.nanstd(flux_new_sn_list),1e-30)))
+
+        if SNR <= 2:
             #not detected
             minimal_mag=sn_mag
             mag=99.0
             magstd=99.0
             magerr=99.0
 
-            self.sp_logger.info(info_g+' Less than 2.5 sigma')
-            self.sp_logger.info(info_g+' Mag=%.3f+/-%.3f ' %(sn_mag,-2.5*np.log10(sn_flux)+2.5*np.log10(sn_flux+np.std(flux_new_sn_list))))
-            self.sp_logger.info(info_g+' Flux corresponding to the (marginal) detection + 2*sigma =%.3f'%(-2.5*np.log10(np.median(sn_flux)+(np.std(flux_bkg_list)*2))+np.nanmedian(zp_sci)))
-            self.sp_logger.info(info_g+' 5-sig limit =%.3f'%(-2.5*np.log10(abs(np.nanmedian(flux_bkg_list))+abs(np.nanstd(flux_bkg_list)*5))+np.nanmedian(zp_sci)))
-            self.sp_logger.info(info_g+' 3-sig limit =%.3f'%(-2.5*np.log10(abs(np.nanmedian(flux_bkg_list))+abs(np.nanstd(flux_bkg_list)*3))+np.nanmedian(zp_sci)))
-            # pick the most conservative out of:
-            #flux corresponding to the (marginal) detection + 2*sigma')
-            #'3-sig limit
-            limits=[-2.5*np.log10(np.nanmedian(sn_flux)+(np.nanstd(flux_bkg_list)*2))+np.nanmedian(zp_sci),-2.5*np.log10(np.nanmedian(flux_bkg_list)+abs(np.nanstd(flux_bkg_list)*3))+np.nanmedian(zp_sci)]
-            maglim=np.nanmin(limits)
+            self.sp_logger.info(info_g+' Less than 2 sigma — reporting limit')
+            # Most conservative of: flux of marginal detection + 2*sigma, or 3-sigma scatter limit
+            _lim_marginal = -2.5*np.log10(max(abs(sn_flux) + 2*_bkg_std, 1e-30)) + _zp
+            maglim = np.nanmin([_lim_marginal, _lim_3sig])
+            self.sp_logger.info(info_g+' 5-sig limit =%.3f'%_lim_5sig)
+            self.sp_logger.info(info_g+' 3-sig limit =%.3f'%_lim_3sig)
 
-        
-        if sn_flux/np.std(flux_bkg_list)>=2:
+        if SNR >= 2:
             minimal_mag=sn_mag
             mag=sn_mag
-            
-            magstd=-2.5*np.log10(sn_flux)+2.5*np.log10(sn_flux+np.std(flux_new_sn_list))
-            # self.sp_logger.info('magstd',magstd)
-            if self.sci_filt=='g' or self.sci_filt=='u':
-                self.sys_fact = 1.07
-            else:
-                self.sys_fact = 1.03
-            flux_bkg_list = [i for i in flux_bkg_list if i !='--']
-            flux_new_sn_list = [i for i in flux_new_sn_list if i !='--']
-            
-            magerr=magstd*self.sys_fact
-            maglim=-2.5*np.log10(abs(np.nanmedian(flux_bkg_list))+abs(np.nanstd(flux_bkg_list)*3))+np.nanmedian(zp_sci)
-            self.sp_logger.info(info_g+f' Liminting magnitude: {maglim:.3f} mag')
-            # self.sp_logger.info('maglim',maglim)
-
-
-            # self.sp_logger.info(final_flux_bkg_list,np.std(final_flux_bkg_list),np.median(final_flux_bkg_list))
-            # self.sp_logger.info(final_flux_new_sn_list,np.std(final_flux_new_sn_list),np.median(final_flux_new_sn_list))
-
+            magstd=-2.5*np.log10(sn_flux)+2.5*np.log10(sn_flux+np.nanstd(flux_new_sn_list))
+            magerr=magstd
+            maglim=_lim_3sig
+            self.sp_logger.info(info_g+f' Limiting magnitude (3-sigma scatter): {maglim:.3f} mag')
             self.sp_logger.info(info_g+' Mag = %.3f+/-%.3f ' %(sn_mag,magerr))
-            self.sp_logger.info(info_g+f' Flux corresponding to the (marginal) detection + 2*sigma {(-2.5*np.log10(np.median(sn_flux)+(np.std(flux_bkg_list)*2))+np.nanmedian(zp_sci)):3f}')
-            self.sp_logger.info(info_g+f' 5-sig limit = {(-2.5*np.log10(abs(np.nanmedian(flux_bkg_list))+abs(np.nanstd(flux_bkg_list)*5))+np.nanmedian(zp_sci)):3f}')
-            self.sp_logger.info(info_g+f' 3-sig limit = {(-2.5*np.log10(abs(np.nanmedian(flux_bkg_list))+abs(np.nanstd(flux_bkg_list)*3))+np.nanmedian(zp_sci)):3f}')
-                # self.sp_logger.info(flux_bkg_list)
-                # self.sp_logger.info('lims',np.std(flux_bkg_list),np.median(flux_bkg_list),np.median(flux_bkg_list)+np.std(flux_bkg_list)*2)
+            self.sp_logger.info(info_g+f' 5-sig limit = {_lim_5sig:.3f}')
+            self.sp_logger.info(info_g+f' 3-sig limit = {_lim_3sig:.3f}')
 
         # * If >3 sigma detection: report to Marshal with 1-sigma errors.
-        # * If <3 sigma detection:r eport whichever of these two is more conservative:
+        # * If <3 sigma detection: report whichever of these two is more conservative:
         # * The flux corresponding to the (marginal) detection + 2*sigma.
         # * The flux corresponding to 3*sigma.
 
         sn_flux=sn_flux/3631
-        sn_flux_err = abs(np.std(flux_new_sn_list))/3631
-        # self.sp_logger.info(magerr,magstd)
+        sn_flux_err = abs(np.nanstd(flux_new_sn_list))/3631
 
         try:self.check_nearby_resid(data,psf,sn_x,sn_y,sn_mag)
         except:pass
 
-
-
         self.find_align_err()
-        return(mag,magstd,magerr,maglim,sn_flux/np.std(flux_bkg_list),sn_flux/np.std(flux_new_sn_list),-2.5*np.log10(np.median(flux_bkg_list)+(np.std(flux_bkg_list)*1))+np.nanmedian(zp_sci),
-        -2.5*np.log10(np.median(flux_bkg_list)+(np.std(flux_bkg_list)*3))+np.nanmedian(zp_sci),-2.5*np.log10(np.median(flux_bkg_list)+(np.std(flux_bkg_list)*5))+np.nanmedian(zp_sci),
+        return(mag,magstd,magerr,maglim,SNR,sn_flux/max(np.nanstd(flux_new_sn_list)/3631,1e-30),
+        _lim_1sig,_lim_3sig,_lim_5sig,
         minimal_mag,SNR,sn_flux,sn_flux_err)
     
     def find_align_err(self):
@@ -4065,12 +4986,12 @@ class subtracted_phot(subphot_data):
 
         self.sp_logger.info(info_g+ f' Finding astrometric error')
         # self.sci_sex_command = 
-        os.system(sex_path + " " + self.sci_ali_name + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL 50000 -BACK_TYPE MANUAL"+f" -CATALOG_NAME "+data1_path+f"config_files/sci_asterr_{self.rand_nums_string}.cat")
-        self.sci_sources = ascii.read(data1_path+f"config_files/sci_asterr_{self.rand_nums_string}.cat")
-        os.system(sex_path + " " + self.ref_ali_name + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL 50000 -BACK_TYPE MANUAL"+f" -CATALOG_NAME "+data1_path+f"config_files/ref_asterr_{self.rand_nums_string}.cat")
-        self.ref_sources = ascii.read(data1_path+f"config_files/ref_asterr_{self.rand_nums_string}.cat")
+        os.system(sex_path + " " + self.sci_ali_name + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL 50000 -BACK_TYPE MANUAL"+f" -CATALOG_NAME "+path+f"config_files/sci_asterr_{self.rand_nums_string}.cat")
+        self.sci_sources = ascii.read(path+f"config_files/sci_asterr_{self.rand_nums_string}.cat")
+        os.system(sex_path + " " + self.ref_ali_name + " -c "+path+"config_files/align_sex.config -SATUR_LEVEL 50000 -BACK_TYPE MANUAL"+f" -CATALOG_NAME "+path+f"config_files/ref_asterr_{self.rand_nums_string}.cat")
+        self.ref_sources = ascii.read(path+f"config_files/ref_asterr_{self.rand_nums_string}.cat")
         
-        self.files_to_clean.append(data1_path+f"config_files/sci_asterr_{self.rand_nums_string}.cat"),self.files_to_clean.append(data1_path+f"config_files/ref_asterr_{self.rand_nums_string}.cat")
+        self.files_to_clean.append(path+f"config_files/sci_asterr_{self.rand_nums_string}.cat"),self.files_to_clean.append(path+f"config_files/ref_asterr_{self.rand_nums_string}.cat")
         self.sci_sources,self.ref_sources = self.sci_sources[self.sci_sources['FLAGS']==0],self.ref_sources[self.ref_sources['FLAGS']==0]
         # print(self.sci_sources.columns)
         self.sci_sc = SkyCoord(ra=self.sci_sources['ALPHA_J2000'],dec=self.sci_sources['DELTA_J2000'],unit=(u.deg,u.deg))
@@ -4115,10 +5036,22 @@ class subtracted_phot(subphot_data):
         else:
             self.scale_factor=np.power(10,(np.nanmedian(self.zp_sci)-np.nanmedian(self.zp_ref))/2.5)
 
+        # [v2] Scale factor sanity check: if the scale factor is outside a reasonable
+        # range it means the ZP calibration is very wrong. Log a warning and clamp.
+        # A factor of 0.5–2.0 covers +/-0.75 mag ZP difference which is already large.
+        # if not (0.25 < self.scale_factor < 4.0):
+        #     self.sp_logger.warning(
+        #         warn_r + f' [V2] Scale factor {self.scale_factor:.4f} is outside expected '
+        #         f'range [0.25, 4.0] — ZP calibration may be unreliable. '
+        #         f'ZP_sci={np.nanmedian(self.zp_sci):.3f}, ZP_ref={np.nanmedian(self.zp_ref):.3f}')
+        #     _sf_clamped = float(np.clip(self.scale_factor, 0.25, 4.0))
+        #     self.sp_logger.warning(warn_y + f' [V2] Clamping scale factor to {_sf_clamped:.4f}')
+        #     self.scale_factor = _sf_clamped
+
         self.sp_logger.info(info_g+' Scale factor: %.3f'%self.scale_factor)
 
         if self.to_subtract==True:
-            self.sci_scale_sub_name = self.data1_path+'scaled_subtracted_imgs/'+self.sci_img_name[:-5]+'_scaled_subtraction.fits'
+            self.sci_scale_sub_name = self.path+'scaled_subtracted_imgs/'+self.sci_img_name[:-5]+'_scaled_subtraction.fits'
 
 
             self.sub=(self.sci_conv)-(self.scale_factor*self.ref_conv)
@@ -4134,7 +5067,7 @@ class subtracted_phot(subphot_data):
 
 
         if self.to_subtract==False:
-            self.sci_scale_sub_name = self.data1_path+'no_scaled_subtracted_imgs/'+self.sci_img_name[:-5]+'no_scaled_subtraction.fits'
+            self.sci_scale_sub_name = self.path+'no_scaled_subtracted_imgs/'+self.sci_img_name[:-5]+'no_scaled_subtraction.fits'
             self.sub=(self.sci_conv)
             self.hdu_fits_sub= fits.PrimaryHDU(self.sub)
             #add a header
@@ -4210,9 +5143,9 @@ class subtracted_phot(subphot_data):
             self.ax[0].set_title('New')
 
             if self.out_dir=="photometry/":       
-                self.cutout_name = self.data1_path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
+                self.cutout_name = self.path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
             else:
-                self.cutout_name = self.data1_path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
+                self.cutout_name = self.path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
 
             self.sp_logger.info(info_g+f" Saving cutout panel to {self.cutout_name}")
             self.fig.savefig(self.cutout_name)
@@ -4243,9 +5176,9 @@ class subtracted_phot(subphot_data):
                 self.ax[2].axis('off') 
                 self.ax[2].set_title('Sub')      
                 if self.out_dir=="photometry/":
-                    self.sub_cutout_name = self.data1_path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_sub"+self.img_type+".png"
+                    self.sub_cutout_name = self.path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_sub"+self.img_type+".png"
                 else:
-                    self.sub_cutout_name = self.data1_path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_sub"+self.img_type+".png" 
+                    self.sub_cutout_name = self.path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_sub"+self.img_type+".png" 
                 self.fig.savefig(self.cutout_name)
             except:
                 pass
@@ -4303,38 +5236,38 @@ class subtracted_phot(subphot_data):
         self.img_type=""
         if self.if_stacked==True:
             self.img_type = "_stacked"
-        if os.path.exists(self.data1_path+self.out_dir):
+        if os.path.exists(self.path+self.out_dir):
             if self.morning_round_up==False:
                 if self.to_subtract==False:
                     if self.out_dir=="photometry/":
-                        self.phot_file_name = self.data1_path+'photometry/'+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
-                        self.phot_date_name = self.data1_path+f'photometry_date/{self.folder}/'+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
+                        self.phot_file_name = self.path+'photometry/'+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
+                        self.phot_date_name = self.path+f'photometry_date/{self.folder}/'+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
                     elif self.out_dir!="photometry/":
-                        self.phot_file_name = self.data1_path+self.out_dir+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
+                        self.phot_file_name = self.path+self.out_dir+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
                         
                 elif self.to_subtract!=False:
                     if self.out_dir=="photometry/":
-                        self.phot_file_name = self.data1_path+'photometry/'+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
-                        self.phot_date_name = self.data1_path+f'photometry_date/{self.folder}/'+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
+                        self.phot_file_name = self.path+'photometry/'+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
+                        self.phot_date_name = self.path+f'photometry_date/{self.folder}/'+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
                     elif self.out_dir!="photometry/":
-                        self.phot_file_name = self.data1_path+self.out_dir+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
+                        self.phot_file_name = self.path+self.out_dir+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
 
             elif self.morning_round_up!=False:
                 if self.to_subtract==False:
                     if self.out_dir=="photometry/":
-                        self.phot_file_name = self.data1_path+'photometry/'+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
-                        self.phot_date_name = self.data1_path+f'photometry_date/{self.folder}/morning_rup/'+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
+                        self.phot_file_name = self.path+'photometry/'+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
+                        self.phot_date_name = self.path+f'photometry_date/{self.folder}/morning_rup/'+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
                     elif self.out_dir!="photometry/":
-                        self.phot_file_name = self.data1_path+self.out_dir+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
-                        self.phot_date_name = self.data1_path+self.out_dir+f'morning_rup/'+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
+                        self.phot_file_name = self.path+self.out_dir+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
+                        self.phot_date_name = self.path+self.out_dir+f'morning_rup/'+self.sci_img_name[:-11]+self.img_type+"_no_sb_photometry.txt"
                         
                 elif self.to_subtract!=False:
                     if self.out_dir=="photometry/":
-                        self.phot_file_name = self.data1_path+'photometry/'+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
-                        self.phot_date_name = self.data1_path+f'photometry_date/{self.folder}/morning_rup/'+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
+                        self.phot_file_name = self.path+'photometry/'+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
+                        self.phot_date_name = self.path+f'photometry_date/{self.folder}/morning_rup/'+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
                     elif self.out_dir!="photometry/":
-                        self.phot_file_name = self.data1_path+self.out_dir+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
-                        self.phot_date_name = self.data1_path+self.out_dir+f'morning_rup/'+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
+                        self.phot_file_name = self.path+self.out_dir+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
+                        self.phot_date_name = self.path+self.out_dir+f'morning_rup/'+self.sci_img_name[:-11]+self.img_type+"_photometry.txt"
 
             self.text_file = open(self.phot_file_name, "w")
             self.text_file.write(self.sci_obj+" "+f"sdss{self.sci_filt}"+" "+str(self.sci_mjd)+" %.3f %.3f %.3f %s %s %s  %.3f %.3f \n" % (self.mag[0],self.mag_all_err,self.mag[3],self.ra_string,self.dec_string,self.sci_exp_time,self.mag[11],self.mag[12]))
@@ -4394,29 +5327,27 @@ class subtracted_phot(subphot_data):
         else:self.sp_logger.info(warn_r+f" Unable to save {obj_id} to group {save_group_id}, STATUS CODE={save_response.status_code}")
         return
 
-    def sedm_uplaod_phot(self):
-        #essentially the same as uplaod phot but specific to SEDM/P60
-        return
+    # def uplaod_phot(self):
+    #     #essentially the same as uplaod phot but specific to SEDM/P60
+    #     return
 
     def upload_phot(self):
+        try:save_to_group(self.sci_obj,1754)
+        except:pass
+        print(info_g+f" Attempting to upload photometry")
 
-        save_to_group(self.sci_obj,1754)
-        self.sp_logger.info(info_g+f" Attempting to upload photometry")
-
-        # self.sp_logger.info(self.mag[0]+self.mag_all_err,self.mag[3],self.mag[0]+self.mag_all_err>self.mag[3])
+        # print(self.mag[0]+self.mag_all_err,self.mag[3],self.mag[0]+self.mag_all_err>self.mag[3])
         if self.SNR<=3 or self.mag[0]+self.mag_all_err>self.mag[3]:
-            self.sp_logger.info(warn_r+f' S/N of {self.SNR:.2f} or mag+magerr of {self.mag[0]+self.mag_all_err:.2f} > maglim of {self.mag[3]:.2f}, uploading limit')
+            print(warn_r+f' S/N of {self.SNR:.2f} or mag+magerr of {self.mag[0]+self.mag_all_err:.2f} > maglim of {self.mag[3]:.2f}, uploading limit')
             self.mag=[99.0,90.0,99.0,self.mag[3]]
         
 
         
         # if self.sci_obj.startswith('AT') or self.sci_obj.startswith('SN'):self.sci_obj = self.sci_obj[2:]
         self.data = {"filter":f"sdss{self.sci_filt}","magerr": self.mag_all_err,"obj_id": self.sci_obj,
-                    "mag":self.mag[0],"limiting_mag": self.mag[3],"mjd": self.sci_mjd,"magsys": "ab","group_ids":[1754]}
+                    "mag":self.mag[0],"limiting_mag": self.mag[3],"mjd": self.sci_mjd,"magsys": "ab","group_ids":'all'}
         # return 
-
-        if self.telescope in ['LT','lt','Liverpool','Liverpool Telescope','liverpool telescope','liverpool','liverpooltelescope']:self.data['instrument_id'],self.data['origin']='33','LT_IOO_PIPE'
-        elif self.telescope in SEDM:self.data['instruement_id'],self.data['origin']='2','SEDM_SUBPHOT_KPIPE'
+        self.data['instrument_id'],self.data['origin']='2','SEDM_SUBPHOT_KPIPE'
         # elif self.telescope in ['SLT','Lulin','slt','lulin']:self.data['instrument_id'],self.data['origin']='1104','SLT_SUBPHOT_KPIPE'
         # elif self.telescope in ['TJO','tjo','MEIA3','meia3']:self.data['instrument_id'],self.data['origin']='1103','TJO_SUBPHOT_KPIPE'
         # elif self.telescope in ['OSIRIS','osiris','GTC-OSIRIS','gtc-osiris']:self.data['instrument_id'],self.data['origin']='37','OSIRIS_SUBPHOT_KPIPE'
@@ -4447,22 +5378,22 @@ class subtracted_phot(subphot_data):
 
         self.data['obj_id'] = self.name
 
-        [self.sp_logger.info(key+': '+str(item)) for key,item in self.data.items()]
-        self.sp_logger.info(info_g+f' Fritz page: https://fritz.science/source/{self.name}')
+        [print(key+': '+str(item)) for key,item in self.data.items()]
+        print(info_g+f' Fritz page: https://fritz.science/source/{self.name}')
 
         if self.mag[0]>40:
-            self.sp_logger.info(warn_r+f' Magnitude of {self.mag[0]} recorded, not uploading magnitude')
+            print(warn_r+f' Magnitude of {self.mag[0]} recorded, not uploading magnitude')
             if self.mag[3]<30:
-                self.sp_logger.info(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} recorded, attempting to upload, checking if already uploaded')
+                print(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} recorded, attempting to upload, checking if already uploaded')
                 # self.upload_new=False
                 # if self.upload_new==False:
-                #     self.sp_logger.info(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} already uploaded, not uploading')
-                #     [self.sp_logger.info(key,item) for key,item in self.data.items()]
+                #     print(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} already uploaded, not uploading')
+                #     [print(key,item) for key,item in self.data.items()]
                 #     return
                 
                 # return 
                 self.all_fritz_data = self.SN_data_phot(self.name)
-                self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==33 and self.all_fritz_data['filter'].iloc[ind]==self.data['filter']]
+                self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==2 and self.all_fritz_data['filter'].iloc[ind]==self.data['filter'] and self.all_fritz_data['origin'].iloc[ind]=='SEDM_SUBPHOT_KPIPE']
 
                 self.on_fritz_mjd = [np.round(self.all_fritz_data['mjd'].iloc[ind],6) for ind in self.fritz_ind]
                 self.on_fritz_id = [self.all_fritz_data['id'].iloc[ind] for ind in self.fritz_ind]
@@ -4470,19 +5401,19 @@ class subtracted_phot(subphot_data):
                 self.upload_new=True  #identifier to update photometry in the case of stacking
 
                 if self.sci_mjd in self.on_fritz_mjd:
-                    self.sp_logger.info(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} already uploaded, checking if it is the same')
+                    print(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} already uploaded, checking if it is the same')
                     self.upload_new=False
                     if any(abs(self.on_fritz_mag[ind]-self.mag[3])<0.1 for ind in range(len(self.on_fritz_mag))) or any(self.on_fritz_mag[ind]==np.round(self.mag[3],3) for ind in range(len(self.on_fritz_mag))):
-                        self.sp_logger.info(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} already uploaded, not uploading')
+                        print(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} already uploaded, not uploading')
                         self.sys_exit=True 
                         return
                     else:   
-                        self.sp_logger.info(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} not uploaded, uploading')
+                        print(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} not uploaded, uploading')
                         self.upload_new=True
 
                 if self.upload_new==True:
-                    self.data = {'filter':f"sdss{self.sci_filt}",'mag':None,'magerr':None,'mjd':self.sci_mjd,'limiting_mag_nsigma':5,'obj_id':self.sci_obj,'origin':'P60_KSUBPHOT_PIPE',
-                                        'magsys':'ab','group_ids':'all','limiting_mag':self.mag[3],'instrument_id':33,}
+                    self.data = {'filter':f"sdss{self.sci_filt}",'mag':None,'magerr':None,'mjd':self.sci_mjd,'limiting_mag_nsigma':5,'obj_id':self.sci_obj,'origin':'SEDM_SUBPHOT_KPIPE',
+                                        'magsys':'ab','group_ids':'all','limiting_mag':self.mag[3],'instrument_id':'2',}
                     self.data['altdata'] = {}
 
 
@@ -4506,12 +5437,12 @@ class subtracted_phot(subphot_data):
                         if self.response.status_code==200:
                             break
                         if time.time()-self.start_upl_time>60 and attempts<=1:
-                            self.sp_logger.info(warn_y+f' Upload timed out, waiting 30s and trying again')
+                            print(warn_y+f' Upload timed out, waiting 30s and trying again')
                             time.sleep(30)
                             attempts+=1
                             self.start_upl_time = time.time()
                         elif time.time()-self.start_upl_time>60 and attempts>1:
-                            self.sp_logger.info(warn_r+f' Upload timed out, giving up')
+                            print(warn_r+f' Upload timed out, giving up')
                             break
                     
             return self.data
@@ -4535,7 +5466,7 @@ class subtracted_phot(subphot_data):
             # print(self.all_fritz_data)
             # if len(self.all_fritz_data)==0:
             #     self.all_fritz_data = self.SN_data_phot(self.name[2:])
-            self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==33 and self.all_fritz_data['filter'].iloc[ind]==self.data['filter']]
+            self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==2 and self.all_fritz_data['filter'].iloc[ind]==self.data['filter'] and self.all_fritz_data['origin'].iloc[ind]=='SEDM_SUBPHOT_KPIPE']
 
             self.on_fritz_mjd = [np.round(self.all_fritz_data['mjd'].iloc[ind],6) for ind in self.fritz_ind]
             self.on_fritz_id = [self.all_fritz_data['id'].iloc[ind] for ind in self.fritz_ind]
@@ -4551,13 +5482,13 @@ class subtracted_phot(subphot_data):
                     #this uses the delete photometry function and then uploads this new photometric point 
                     if abs(np.round(self.sci_mjd,6)-self.del_mjd)<0.005:  
                         deletion_dict = {'phot_id':self.del_id,'mjd':self.del_mjd}
-                        self.sp_logger.info(info_g+f" Updating photometric point with phot ID: {self.del_id}")
+                        print(info_g+f" Updating photometric point with phot ID: {self.del_id}")
                         self.upload_new=True
                         self.delete_photometry(deletion_dict)
 
                         #update the photometry downloadeds
                         self.all_fritz_data = self.SN_data_phot(self.name)
-                        self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==33 and self.all_fritz_data['filter'].iloc[ind]==self.data['filter']]
+                        self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==2 and self.all_fritz_data['filter'].iloc[ind]==self.data['filter']  and self.all_fritz_data['origin'].iloc[ind]=='SEDM_SUBPHOT_KPIPE']
 
                         self.on_fritz_mjd = [np.round(self.all_fritz_data['mjd'].iloc[ind],6) for ind in self.fritz_ind]
                         self.on_fritz_id = [self.all_fritz_data['id'].iloc[ind] for ind in self.fritz_ind]
@@ -4566,59 +5497,61 @@ class subtracted_phot(subphot_data):
 
 
                 except:
-                    self.sp_logger.info(info_g+f" No photometry to delete for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']}, proceeding with upload")
+                    print(info_g+f" No photometry to delete for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']}, proceeding with upload")
 
             if any(x in self.on_fritz_mjd for x in self.MJD)==True and self.upload_new!=True:
-                self.sp_logger.info(info_g+f" Data taken for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']} already uploaded, not uploading")
-                # self.sp_logger.info(0,'-------------------')
+                print(info_g+f" Data taken for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']} already uploaded, not uploading")
+                # print(0,'-------------------')
                 self.upload_new=False
 
 
             elif (all(x not in self.on_fritz_mjd for x in self.MJD)==True and self.upload_new!=False)==True or (self.if_stacked==True and self.upload_new!=False and np.round(self.sci_mjd,6) not in self.on_fritz_mjd)==True:
-                self.sp_logger.info(info_g+f" Data taken for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']} not uploaded, proceeding with upload")
+                print(info_g+f" Data taken for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']} not uploaded, proceeding with upload")
                 
                 #uploading data
                 self.start_upl_time = time.time()
-                while True:
-                    #sleep for 5 seconds and try again if the upload fails
-                    time.sleep(5)
-                    self.response = requests.post(url=f"https://fritz.science/api/photometry",headers = {'Authorization': f'token {token}'} ,json=self.data)
-                    if self.response.status_code==200:
-                        break
-                    if time.time()-self.start_upl_time>60:
-                        self.sp_logger.info(warn_r+f' Upload timed out, giving up')
-                        break
+                self.response = requests.post(url=f"https://fritz.science/api/photometry",headers = {'Authorization': f'token {token}'} ,json=self.data)
+                print(self.response)
+                # while True:
+                #     #sleep for 5 seconds and try again if the upload fails
+                #     time.sleep(5)
+                #     self.response = requests.post(url=f"https://fritz.science/api/photometry",headers = {'Authorization': f'token {token}'} ,json=self.data)
+                #     if self.response.status_code==200:
+                #         break
+                #     if time.time()-self.start_upl_time>60:
+                #         print(warn_r+f' Upload timed out, giving up')
+                #         break
                     
 
                 if self.response.status_code == 200:
-                    self.sp_logger.info(info_g+f" Successfully uploaded photometry for {self.name} in {self.data['filter']} taken at {self.data['mjd']}, uploaded at {self.current_time}")
+                    print(info_g+f" Successfully uploaded photometry for {self.name} in {self.data['filter']} taken at {self.data['mjd']}, uploaded at {self.current_time}")
                 else:
-                    self.sp_logger.info(warn_r+f" Failed to upload photometry for {self.name} in {self.data['filter']}, status code ={self.response.status_code} ")
+                    print(warn_r+f" Failed to upload photometry for {self.name} in {self.data['filter']}, status code ={self.response.status_code} ")
             
                 return self.data
 
             else:
-                self.sp_logger.info(info_b+f" Data taken for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']} already uploaded, not uploading")
+                print(info_b+f" Data taken for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']} already uploaded, not uploading")
 
                 return self.data  
 
         except Exception as e:
-            self.sp_logger.info(warn_y+f" Unable to find Fritz photometry for {self.sci_obj} "+e)
-            self.sp_logger.warning(warn_r+f" Fritz error for {self.sci_obj} in {self.sci_filt} band, (ie. event not on Fritz or error retrieving photometry from Fritz, check token and Fritz status)")
+            print(warn_y+f" Unable to find Fritz photometry for {self.sci_obj} "+e)
+            print(warn_r+f" Fritz error for {self.sci_obj} in {self.sci_filt} band, (ie. event not on Fritz or error retrieving photometry from Fritz, check token and Fritz status)")
         
     def clean_directory(self):
-        self.sp_logger.info(info_g+f" Cleaning directories")
-        for self.out_file in os.listdir(self.data1_path+"out"):
+        print(info_g+f" Cleaning directories")
+        for self.out_file in os.listdir(self.path+"out"):
             if self.rand_nums_string in self.out_file:
                 try:
-                    if os.path.exists(self.data1_path+'out/'+self.out_file):os.system('rm '+self.data1_path+'out/'+self.out_file)
+                    if os.path.exists(self.path+'out/'+self.out_file):os.system('rm '+self.path+'out/'+self.out_file)
                 except:
                     pass
 
-        for self.config_file in os.listdir(self.data1_path+"temp_config_files"):
+        for self.config_file in os.listdir(self.path+"temp_config_files"):
             if self.rand_nums_string in self.config_file:
                 try:
-                    if os.path.exists(self.data1_path+'temp_config_files/'+self.config_file):os.system('rm '+self.data1_path+'temp_config_files/'+self.config_file)
+                    if os.path.exists(self.path+'temp_config_files/'+self.config_file):os.system('rm '+self.path+'temp_config_files/'+self.config_file)
                 except:
                     pass
         

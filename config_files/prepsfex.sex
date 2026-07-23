@@ -5,7 +5,7 @@
 
 #-------------------------------- Catalog ------------------------------------
 
-CATALOG_NAME     /data/sedmdrp/redux/phot/config_files/prepsfex.cat   # Catalog filename
+CATALOG_NAME     /data/sedmdrp/sedmpy/subphot_pipe/config_files/prepsfex.cat   # Catalog filename
 CATALOG_TYPE     FITS_LDAC      # FITS_LDAC format
 PARAMETERS_NAME  /data/sedmdrp/sedmpy/subphot_pipe/config_files/default.param # name of the file containing catalog contents
 

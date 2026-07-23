@@ -13,7 +13,7 @@ import pandas as pd
 #       nonstandard, edit the global variable below to specify. 
 #     For help, type "python autoastrometry.py -help"
 
-sexpath = '/opt/homebrew/bin/'  # if "sex" works in any directory, leave blank
+sexpath = '/data/sedmdrp/miniconda3/envs/subphot/bin/'  # if "sex" works in any directory, leave blank
 #sexcmd = 'sex'
 #sexpath = '/usr/local/optical/sextractor/bin/'
 sexcmd = 'sex'
@@ -1226,7 +1226,7 @@ overwriteself=False, outfile='', saturation=-1, quiet=False, norot=0):
         #calucate NAXIS1 and NAXIS2 from the image size
         nxpix = fits[sciext].data.shape[1]
         nypix = fits[sciext].data.shape[0]
-        sys.exit(1)
+        # sys.exit(1)
     try:
         key = 'CRVAL1'
         cra =  float(h[key])
@@ -1256,7 +1256,7 @@ overwriteself=False, outfile='', saturation=-1, quiet=False, norot=0):
             print('Must specify pixel scale (-px VAL) or provide provisional basic WCS info via CD matrix.')
             #Some images might use CROT parameters, could try to be compatible with this too...?
             return -1
-            sys.exit(1)
+            # sys.exit(1)
 
     # Wipe nonstandard astrometry keywords from the header
     # Distortion keywords are NOT removed, but if the image is rotated the sky-plane distortion keywords will be rendered

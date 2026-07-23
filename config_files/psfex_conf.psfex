@@ -47,7 +47,7 @@ HOMOKERNEL_SUFFIX  .homo.fits   # Filename extension for homogenisation kernels
 #----------------------------- Output catalogs -------------------------------
 
 OUTCAT_TYPE        ASCII_HEAD        # NONE, ASCII_HEAD, ASCII, FITS_LDAC
-OUTCAT_NAME        /data/sedmdrp/redux/phot/out/psfex_out.cat  # Output catalog filename
+OUTCAT_NAME        /data/sedmdrp/sedmpy/subphot_pipe/out/psfex_out.cat  # Output catalog filename
 
 
 
@@ -63,7 +63,7 @@ CHECKPLOT_NAME      fwhm, ellipticity, counts, countfrac, chi2, resi
 
 CHECKIMAGE_TYPE CHI,PROTOTYPES,SAMPLES,RESIDUALS,SNAPSHOTS,MOFFAT,-MOFFAT,-SYMMETRICAL
                                 # Check-image types
-CHECKIMAGE_NAME /data/sedmdrp/redux/phot/out/chi.fits,/data/sedmdrp/redux/phot/out/proto.fits,/data/sedmdrp/redux/phot/out/samp.fits,/data/sedmdrp/redux/phot/out/resi.fits,/data/sedmdrp/redux/phot/out/snap.fits,/data/sedmdrp/redux/phot/out/moffat.fits,/data/sedmdrp/redux/phot/out/submoffat.fits,/data/sedmdrp/redux/phot/out/subsym.fits
+CHECKIMAGE_NAME /data/sedmdrp/sedmpy/subphot_pipe/out/chi.fits,/data/sedmdrp/sedmpy/subphot_pipe/out/proto.fits,/data/sedmdrp/sedmpy/subphot_pipe/out/samp.fits,/data/sedmdrp/sedmpy/subphot_pipe/out/resi.fits,/data/sedmdrp/sedmpy/subphot_pipe/out/snap.fits,/data/sedmdrp/sedmpy/subphot_pipe/out/moffat.fits,/data/sedmdrp/sedmpy/subphot_pipe/out/submoffat.fits,/data/sedmdrp/sedmpy/subphot_pipe/out/subsym.fits
                                 # Check-image filenames
 CHECKIMAGE_CUBE Y
 
@@ -71,11 +71,11 @@ CHECKIMAGE_CUBE Y
 
 #----------------------------- Miscellaneous ---------------------------------
 
-PSF_DIR         /data/sedmdrp/redux/phot/out/ # Where to write PSFs (empty=same as input)
+PSF_DIR         /data/sedmdrp/sedmpy/subphot_pipe/out/ # Where to write PSFs (empty=same as input)
 PSF_SUFFIX      .psf            # Filename extension for output PSF filename
-VERBOSE_TYPE    NORMAL          # can be QUIET,NORMAL,LOG or FULL
+VERBOSE_TYPE    QUIET          # can be QUIET,NORMAL,LOG or FULL
 WRITE_XML       Y               # Write XML file (Y/N)?
-XML_NAME        /data/sedmdrp/redux/phot/out/psfex.xml       # Filename for XML output
+XML_NAME        /data/sedmdrp/sedmpy/subphot_pipe/out/psfex.xml       # Filename for XML output
 NTHREADS        0               # Number of simultaneous threads for
                                 # the SMP version of PSFEx
                                 # 0 = automatic

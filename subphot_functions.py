@@ -1,5 +1,5 @@
 
-
+from astropy.wcs import WCS
 import astroscrappy
 import requests
 from astropy import wcs
@@ -390,7 +390,7 @@ def prepsexfile(verbose='QUIET',gain=1.6):
 
 #-------------------------------- Catalog ------------------------------------
 
-CATALOG_NAME     '''+data1_path+'''config_files/prepsfex.cat   # Catalog filename
+CATALOG_NAME     '''+path+'''config_files/prepsfex.cat   # Catalog filename
 CATALOG_TYPE     FITS_LDAC      # FITS_LDAC format
 PARAMETERS_NAME  '''+path+'''config_files/default.param # name of the file containing catalog contents
 
@@ -472,7 +472,7 @@ HOMOKERNEL_SUFFIX  .homo.fits   # Filename extension for homogenisation kernels
 #----------------------------- Output catalogs -------------------------------
 
 OUTCAT_TYPE        ASCII_HEAD        # NONE, ASCII_HEAD, ASCII, FITS_LDAC
-OUTCAT_NAME        '''+data1_path+'''out/psfex_out.cat  # Output catalog filename
+OUTCAT_NAME        '''+path+'''out/psfex_out.cat  # Output catalog filename
 
 
 
@@ -488,7 +488,7 @@ CHECKPLOT_NAME      fwhm, ellipticity, counts, countfrac, chi2, resi
 
 CHECKIMAGE_TYPE CHI,PROTOTYPES,SAMPLES,RESIDUALS,SNAPSHOTS,MOFFAT,-MOFFAT,-SYMMETRICAL
                                 # Check-image types
-CHECKIMAGE_NAME '''+data1_path+'''out/chi.fits,'''+data1_path+'''out/proto.fits,'''+data1_path+'''out/samp.fits,'''+data1_path+'''out/resi.fits,'''+data1_path+'''out/snap.fits,'''+data1_path+'''out/moffat.fits,'''+data1_path+'''out/submoffat.fits,'''+data1_path+'''out/subsym.fits
+CHECKIMAGE_NAME '''+path+'''out/chi.fits,'''+path+'''out/proto.fits,'''+path+'''out/samp.fits,'''+path+'''out/resi.fits,'''+path+'''out/snap.fits,'''+path+'''out/moffat.fits,'''+path+'''out/submoffat.fits,'''+path+'''out/subsym.fits
                                 # Check-image filenames
 CHECKIMAGE_CUBE Y
 
@@ -496,11 +496,11 @@ CHECKIMAGE_CUBE Y
 
 #----------------------------- Miscellaneous ---------------------------------
 
-PSF_DIR         '''+data1_path+'''out/ # Where to write PSFs (empty=same as input)
+PSF_DIR         '''+path+'''out/ # Where to write PSFs (empty=same as input)
 PSF_SUFFIX      .psf            # Filename extension for output PSF filename
 VERBOSE_TYPE    '''+verbose+'''          # can be QUIET,NORMAL,LOG or FULL
 WRITE_XML       Y               # Write XML file (Y/N)?
-XML_NAME        '''+data1_path+'''out/psfex.xml       # Filename for XML output
+XML_NAME        '''+path+'''out/psfex.xml       # Filename for XML output
 NTHREADS        0               # Number of simultaneous threads for
                                 # the SMP version of PSFEx
                                 # 0 = automatic'''
@@ -527,28 +527,28 @@ def panstarrs_query(ra_deg, dec_deg, rad_deg, logger=None,
                 server: servername
     returns: astropy.table object
     """
-    if not os.path.exists(data1_path+'ps_catalogs'):
-      os.makedirs(data1_path+'ps_catalogs')
+    if not os.path.exists(path+'ps_catalogs'):
+      os.makedirs(path+'ps_catalogs')
     
 
-    if not os.path.exists(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml'):  
+    if not os.path.exists(path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml'):  
         r = requests.get(server, 
                 params= {'RA': ra_deg, 'DEC': dec_deg, 
                 'SR': rad_deg, 'max_records': maxsources, 
                 'outputformat': 'VOTable', 
                 'ndetections': ('>%d' % mindet)})
                 
-        outf = open(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml', 'w') 
+        outf = open(path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml', 'w') 
         outf.write(r.text) 
         outf.close() 
-        if logger!=None:logger.info(info_g+f" PS1 Catalog downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
-        else:print(info_g+f" PS1 Catalog downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+        if logger!=None:logger.info(info_g+f" PS1 Catalog downloaded to: "+path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+        else:print(info_g+f" PS1 Catalog downloaded to: "+path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
     else:
-        if logger!=None:logger.info(info_g+f" PS1 Catalog already downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
-        else:print(info_g+f" PS1 Catalog already downloaded to:",data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+        if logger!=None:logger.info(info_g+f" PS1 Catalog already downloaded to: "+path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+        else:print(info_g+f" PS1 Catalog already downloaded to: "+path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
     # write query data into local file
     # parse local file into astropy.table object 
-    data = parse_single_table(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
+    data = parse_single_table(path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
     return data.to_table(use_names_over_ids=True) 
 
 ##################################
@@ -571,7 +571,7 @@ def sdss_query(ra_deg, dec_deg, rad_deg):
         #print(fields2)
         #cr.readlines()
         #  print(cr.readlines())
-        print(cr)
+        # print(cr)
         for ind,row in enumerate(cr):
             #  print(row)
             #  print(ind)
@@ -629,13 +629,13 @@ def sdss_query(ra_deg, dec_deg, rad_deg):
 #             print(info_b+' SDSS image already downloaded',image_name[:-4], (nx,ny))
 #         if not os.path.exists(image_name[:-4]):
 #             zname=image_name
-#             zfile = open(data1_path+'ref_imgs/'+image_name, 'wb')
+#             zfile = open(path+'ref_imgs/'+image_name, 'wb')
 #             zfile.write(r.content)
 #             zfile.close()
-#             os.system('bzip2 -d '+data1_path+'ref_imgs/'+image_name )
+#             os.system('bzip2 -d '+path+'ref_imgs/'+image_name )
 #             # if self.termoutp!='quiet':
 #             print(info_g+' Downloading new SDSS ',str(filt),'-band..',image_name[:-4], (nx,ny))
-#             ref_path=data1_path+'ref_imgs/'+image_name[:-4]
+#             ref_path=path+'ref_imgs/'+image_name[:-4]
 #             # os.system('rm '+path+'ref_imgs/'+image_name+'.bz2')
 #     except requests.exceptions.HTTPError as err:
 #         print(warn_r+' Not in SDSS footprint! Exiting..')
@@ -723,18 +723,18 @@ def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None,lnks_done=[]):
         image_name=image_link.rsplit('/', 1)[-1]
         r=requests.get(image_link)
         r.raise_for_status()
-        if os.path.exists(data1_path+'ref_imgs/'+image_name[:-4]):
+        if os.path.exists(path+'ref_imgs/'+image_name[:-4]):
             # if self.termoutp!='quiet':
             log.info(info_b+f' SDSS image already downloaded'+image_name[:-4]+str((nx,ny)))
         if not os.path.exists(image_name[:-4]):
             zname=image_name
-            zfile = open(data1_path+'ref_imgs/'+image_name, 'wb')
+            zfile = open(path+'ref_imgs/'+image_name, 'wb')
             zfile.write(r.content)
             zfile.close()
-            os.system('bzip2 -d '+data1_path+'ref_imgs/'+image_name )
+            os.system('bzip2 -d '+path+'ref_imgs/'+image_name )
             # if self.termoutp!='quiet':
             log.info(info_g+' Downloading new SDSS '+str(filt)+'-band..'+image_name[:-4]+str((nx,ny)))
-            ref_path=data1_path+'ref_imgs/'+image_name[:-4]
+            ref_path=path+'ref_imgs/'+image_name[:-4]
             # os.system('rm '+path+'ref_imgs/'+image_name+'.bz2')
     # except requests.exceptions.HTTPError as err:
     #     log.warning(warn_r+' Migth not be in SDSS footprint! Exiting..')
@@ -965,8 +965,8 @@ class subphot_data():
 
         images_ = []
         for k in range(len(images)):
-            if not images[k].startswith(data1_path) and not images[k].startswith('/'):
-                images_.append(data1_path+images[k])
+            if not images[k].startswith(path) and not images[k].startswith('/'):
+                images_.append(path+images[k])
             else:
                 images_.append(images[k])
 
@@ -1193,8 +1193,8 @@ class subphot_data():
 
 
     def down_recentdata(self,day=''):
-        if not os.path.exists(f'{data1_path}RecentData'):
-            os.mkdir(f'{data1_path}RecentData')
+        if not os.path.exists(f'{path}RecentData'):
+            os.mkdir(f'{path}RecentData')
         
         #setting data to todays data in format YYYYMMDD
         t = date.today()
@@ -1221,8 +1221,8 @@ class subphot_data():
 
         for proposal in proposals_arc.keys():
             try:
-                if os.path.exists(f'{data1_path}RecentData/{DAY}') == False:
-                    os.mkdir(f'{data1_path}RecentData/{DAY}')
+                if os.path.exists(f'{path}RecentData/{DAY}') == False:
+                    os.mkdir(f'{path}RecentData/{DAY}')
                 url1 = f'https://telescope.livjm.ac.uk/DataProd/RecentData/{proposal}'
                 response1 = requests.get(url1,auth=(proposal,proposals_arc[proposal][0]))
                 avail = {} #dictionary containing all observations available on quicklook
@@ -1240,7 +1240,7 @@ class subphot_data():
                 print(info_g+f' Data has been taken for {proposal} and uploaded to LT Recent Data')
                 print(url2)
                 response2 = requests.get(url2,auth=(proposal,proposals_arc[proposal][0]))
-                open(f'{data1_path}RecentData/{proposal}_{DAY}_1.tgz','wb').write(response2.content)
+                open(f'{path}RecentData/{proposal}_{DAY}_1.tgz','wb').write(response2.content)
                 print(info_g+f' Downloaded data as tarball at {datetime.datetime.now().strftime("%H:%M:%S")}')
                 print()
             except:
@@ -1254,8 +1254,8 @@ class subphot_data():
 
 
     def down_quicklook(self,day=''):
-        if not os.path.exists(f'{data1_path}Quicklook'):
-            os.mkdir(f'{data1_path}Quicklook')
+        if not os.path.exists(f'{path}Quicklook'):
+            os.mkdir(f'{path}Quicklook')
 
         #setting data to todays data in format YYYYMMDD
         t = date.today()
@@ -1289,17 +1289,17 @@ class subphot_data():
         print(info_g+f' Last nights observation date is {DAY}, looking for data from the following proposals: {", ".join(proposals_arc.keys())}')
         print()
   
-        if os.path.exists(f"{data1_path}photometry_date/{DAY}")==False:
-            os.mkdir(f"{data1_path}photometry_date/{DAY}")
+        if os.path.exists(f"{path}photometry_date/{DAY}")==False:
+            os.mkdir(f"{path}photometry_date/{DAY}")
 
         
                 
         for proposal in proposals_arc.keys():
             new_fits_only=[]
             try:
-                if os.path.exists(f'{data1_path}Quicklook/{DAY}') == False:
-                    os.mkdir(f'{data1_path}Quicklook/{DAY}')
-                    os.mkdir(f'{data1_path}Quicklook/{DAY}/spec')
+                if os.path.exists(f'{path}Quicklook/{DAY}') == False:
+                    os.mkdir(f'{path}Quicklook/{DAY}')
+                    os.mkdir(f'{path}Quicklook/{DAY}/spec')
                 #opening quicklook homepage
                 url1 = f'https://telescope.livjm.ac.uk/DataProd/quicklook/{proposal}'
                 response1 = requests.get(url1,auth=(proposal,proposals_arc[proposal][0]))
@@ -1337,24 +1337,24 @@ class subphot_data():
                         #print(fits_name)
 
                 #creating a txt file with all fits.gz files and appending to it everytime it checks
-                if os.path.exists(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt')==False:
+                if os.path.exists(f'{path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt')==False:
                     print(info_g+f' Fits log for {DAY} does not yet exist, creating file and writing')
-                    fits_name_txt = open(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt', 'w+')
+                    fits_name_txt = open(f'{path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt', 'w+')
                     for name in gzip_fits:
                         name=re.sub(' ','',name)
                         name=re.sub('=','',name)
 
-                        if name not in os.listdir(f'{data1_path}Quicklook/{DAY}/'):
+                        if name not in os.listdir(f'{path}Quicklook/{DAY}/'):
                             #gzip_fits = re.sub('=','',gzip_fits)
                             fits_name_txt.write(f'{name}\n')
                             new_fits_only.append(name)
                     fits_name_txt.close()
                     print(info_g+f' Written {len(new_fits_only)} new fits into {proposal}_{DAY}_fits_log.txt')
 
-                elif os.path.exists(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt')==True:
+                elif os.path.exists(f'{path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt')==True:
                     print(info_g+f' Fits log for {DAY} exists, opening and writing new fits')
-                    fits_name_txt = open(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt', 'a+')
-                    fits_in = open(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt').readlines()
+                    fits_name_txt = open(f'{path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt', 'a+')
+                    fits_in = open(f'{path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt').readlines()
                     for name in gzip_fits:
                         if all(name not in f for f in fits_in):
                             name=re.sub('=','',name)
@@ -1364,24 +1364,24 @@ class subphot_data():
                     print(info_g+f' Written {len(new_fits_only)} new fits into {proposal}_{DAY}_fits_log.txt')
 
                 #reading in and downloading fits files to data/{TODAY} directory
-                down_fits = open(f'{data1_path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt').readlines()
+                down_fits = open(f'{path}Quicklook/{DAY}/{proposal}_{DAY}_fits_log.txt').readlines()
 
                 if len(new_fits_only)>0:
                     for fits in new_fits_only:
                         #fits = fits[:-1]
     
-                        if os.path.exists(f'{data1_path}Quicklook/{DAY}/{fits}')==False and os.path.exists(f'{data1_path}Quicklook/{DAY}/{fits}.gz')==False and os.path.exists(f"{data1_path}Quicklook/{DAY}/{re.sub('.gz','',fits)}")==False:# and os.path.exists(f'data/Quicklook/{DAY}/{fits}')==False:
+                        if os.path.exists(f'{path}Quicklook/{DAY}/{fits}')==False and os.path.exists(f'{path}Quicklook/{DAY}/{fits}.gz')==False and os.path.exists(f"{path}Quicklook/{DAY}/{re.sub('.gz','',fits)}")==False:# and os.path.exists(f'data/Quicklook/{DAY}/{fits}')==False:
                             url3 = f'https://telescope.livjm.ac.uk/DataProd/quicklook/{proposal}/{DAY}/{fits}'
                             url3 = re.sub('	','',url3)
                             print(url3)
 
                             response3 = requests.get(url3,auth=(proposal,proposals_arc[proposal][0]))
                             if fits[0]=="h":
-                                open(f'{data1_path}Quicklook/{DAY}/{fits}', 'wb').write(response3.content)
-                                os.system(f"gunzip {data1_path}Quicklook/{DAY}/{fits}")
+                                open(f'{path}Quicklook/{DAY}/{fits}', 'wb').write(response3.content)
+                                os.system(f"gunzip {path}Quicklook/{DAY}/{fits}")
                             elif (fits[0:3]=="v_e")==True:
-                                open(f'{data1_path}Quicklook/{DAY}/spec/{fits}', 'wb').write(response3.content)
-                                os.system(f"gunzip {data1_path}Quicklook/{DAY}/spec/{fits}")
+                                open(f'{path}Quicklook/{DAY}/spec/{fits}', 'wb').write(response3.content)
+                                os.system(f"gunzip {path}Quicklook/{DAY}/spec/{fits}")
          
                 print()
             except Exception as e:
@@ -1414,3 +1414,662 @@ class subphot_data():
 
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage import maximum_filter, label, center_of_mass
+from skimage import measure
+from shapely.geometry import Polygon, MultiPoint
+from astropy.io import fits
+
+# ----------------------------
+# Helper functions
+# ----------------------------
+def extract_curved_border(mask):
+    """Extract the longest contour from a binary mask (curved border)."""
+    contours = measure.find_contours(mask.astype(float), 0.5)
+    if len(contours) == 0:
+        raise RuntimeError("No valid border found")
+    return max(contours, key=len)[:, ::-1]  # convert (row,col) -> (x,y)
+
+def detect_stars_with_size(image, threshold_sigma=5.0, fwhm=3.0, border_mask=None, n_max=None, avoid_radius=None):
+    """
+    Detect stars and measure approximate size. Avoid overlapping stars.
+
+    Parameters
+    ----------
+    image : 2D array
+        Science image
+    threshold_sigma : float
+        Detection threshold in sigma above background
+    fwhm : float
+        Approximate FWHM of stars in pixels (used for max filter)
+    border_mask : 2D bool array, optional
+        Mask of valid pixels
+    n_max : int, optional
+        Max stars to keep by flux
+    avoid_radius : float, optional
+        Pixels to avoid around each detected star
+
+    Returns
+    -------
+    xy : (N,2) array of centroids
+    flux : (N,) array of fluxes
+    size : (N,) array of star sizes (approximate sigma)
+    """
+    # Background statistics
+    mean = np.mean(image)
+    median = np.median(image)
+    std = np.std(image)
+    threshold = median + threshold_sigma * std
+
+    # Initialize mask of pixels allowed for detection
+    if border_mask is None:
+        valid_mask = np.ones_like(image, dtype=bool)
+    else:
+        valid_mask = border_mask.copy()
+
+    xy_list = []
+    flux_list = []
+    size_list = []
+
+    while True:
+        # Apply maximum filter to find local maxima
+        size_filter = int(np.ceil(fwhm))
+        local_max = (maximum_filter(image*valid_mask, size=size_filter) == image*valid_mask)
+        detect = local_max & (image > threshold) & valid_mask
+
+        labeled, n_labels = label(detect)
+        if n_labels == 0:
+            break
+
+        # Pick the brightest remaining peak
+        peak_flux = 0
+        peak_idx = -1
+        for region_id in range(1, n_labels+1):
+            mask = labeled == region_id
+            total_flux = image[mask].sum()
+            if total_flux > peak_flux:
+                peak_flux = total_flux
+                peak_idx = region_id
+
+        if peak_idx == -1:
+            break
+
+        mask = labeled == peak_idx
+        y_c, x_c = center_of_mass(image, labels=mask, index=1)
+
+        # Compute approximate size: sigma_x, sigma_y
+        ys, xs = np.nonzero(mask)
+        fluxes = image[ys, xs]
+        x_mean = np.sum(xs * fluxes) / np.sum(fluxes)
+        y_mean = np.sum(ys * fluxes) / np.sum(fluxes)
+        sigma_x = np.sqrt(np.sum(fluxes * (xs - x_mean)**2) / np.sum(fluxes))
+        sigma_y = np.sqrt(np.sum(fluxes * (ys - y_mean)**2) / np.sum(fluxes))
+        star_size = np.mean([sigma_x, sigma_y])
+
+        xy_list.append([x_c, y_c])
+        flux_list.append(np.sum(image[mask]))
+        size_list.append(star_size)
+
+        # Mask out pixels within avoid_radius or star_size
+        if avoid_radius is not None:
+            y_grid, x_grid = np.indices(image.shape)
+            dist2 = (x_grid - x_c)**2 + (y_grid - y_c)**2
+            mask_radius = dist2 <= (avoid_radius + star_size)**2
+            valid_mask[mask_radius] = False
+        else:
+            # If no avoid_radius, mask only the detected pixels
+            valid_mask[mask] = False
+
+        # Stop if reached n_max
+        if n_max is not None and len(xy_list) >= n_max:
+            break
+
+    return np.array(xy_list), np.array(flux_list), np.array(size_list)
+
+# ----------------------------
+# Example usage
+# ----------------------------
+
+
+def get_stars(sci_file,ref_file):
+    sci_data, sci_hdr = fits.getdata(sci_file, header=True)
+    sci_data = sci_data.astype(float)
+
+    # print(f"10 pixels = {pix_10_arcsec:.2f} arcsec")
+    ref_data, ref_hdr = fits.getdata(ref_file, header=True)
+    ref_data = ref_data.astype(float)
+
+    # Define valid science pixels
+    sci_mask = np.abs(sci_data) > 1e-6
+    sci_border_pix = extract_curved_border(sci_mask)
+
+    sci_wcs = WCS(sci_hdr)
+    ref_wcs = WCS(ref_hdr)
+
+    # Detect stars, avoid overlapping within 5 pixels
+    # print("Detecting stars in science image...")
+    xy_sci, flux_sci, size_sci = detect_stars_with_size(
+        sci_data, threshold_sigma=3.0, fwhm=3.0, border_mask=sci_mask, n_max=50, avoid_radius=30
+    )
+    print(f"Detected {len(xy_sci)} stars in science image.")
+
+    # print("Detecting stars in reference image...")
+    xy_ref, flux_ref, size_ref = detect_stars_with_size(
+        ref_data, threshold_sigma=2.0, fwhm=3.0, border_mask=sci_mask, n_max=50, avoid_radius=20
+    )
+    print(f"Detected {len(xy_ref)} stars in reference image.")
+    #keep only the stars that are inside border -10 pixels
+    BL=15
+    sci_keep = []
+    # print("Filtering stars near border...")
+    for i in range(len(xy_sci)):
+        xl_border = sci_border_pix[:,0][sci_border_pix[:,1]==xy_sci[i,1]].min()+BL
+        xr_border = sci_border_pix[:,0][sci_border_pix[:,1]==xy_sci[i,1]].max()-BL
+        yl_border = sci_border_pix[:,1][sci_border_pix[:,0]==xy_sci[i,0]].min()+BL
+        yr_border = sci_border_pix[:,1][sci_border_pix[:,0]==xy_sci[i,0]].max()-BL
+        # print(xy_sci[i])
+        # print(xl_border,xr_border,xl_border<xy_sci[i,0]<xr_border)
+        # print(yl_border,yr_border,yl_border<xy_sci[i,1]<yr_border)
+
+            
+        if (xl_border<xy_sci[i,0]<xr_border) and (yl_border<xy_sci[i,1]<yr_border):
+            sci_keep.append(True)
+        else:
+            sci_keep.append(False)
+    if sum(sci_keep)>4:
+        sci_keep = np.array(sci_keep)
+        xy_sci = xy_sci[sci_keep]
+        flux_sci = flux_sci[sci_keep]
+        size_sci = size_sci[sci_keep]
+    ref_keep = []
+    # print("Filtering reference stars near border...")
+    for i in range(len(xy_ref)):
+        xl_border = sci_border_pix[:,0][sci_border_pix[:,1]==xy_ref[i,1]].min()+BL
+        xr_border = sci_border_pix[:,0][sci_border_pix[:,1]==xy_ref[i,1]].max()-BL
+        yl_border = sci_border_pix[:,1][sci_border_pix[:,0]==xy_ref[i,0]].min()+BL
+        yr_border = sci_border_pix[:,1][sci_border_pix[:,0]==xy_ref[i,0]].max()-BL
+        if (xl_border<xy_ref[i,0]<xr_border) and (yl_border<xy_ref[i,1]<yr_border):
+            ref_keep.append(True)
+        else:
+            ref_keep.append(False)
+    
+    if sum(ref_keep)>4:
+        ref_keep = np.array(ref_keep)
+        xy_ref = xy_ref[ref_keep]
+        flux_ref = flux_ref[ref_keep]
+        size_ref = size_ref[ref_keep]
+    radec_sci = sci_wcs.all_pix2world(xy_sci[:,0], xy_sci[:,1], 0)
+    radec_ref = ref_wcs.all_pix2world(xy_ref[:,0], xy_ref[:,1], 0)
+
+
+    return (xy_sci, flux_sci, size_sci, sci_border_pix, sci_data, radec_sci), (xy_ref, flux_ref, size_ref, sci_border_pix, ref_data, radec_ref)
+
+def plot_stars(xy, flux, size, border_pix, data,ax):
+    # ----------------------------
+    # Plot detected stars
+    # ----------------------------
+    vmin, vmax = np.percentile(data, [5, 99])
+    # fig, ax = plt.subplots(figsize=(10,10))
+    ax.imshow(data, origin='lower', cmap='gray', vmin=vmin, vmax=vmax)
+    ax.plot(border_pix[:,0], border_pix[:,1], 'r-', lw=2, label='Science border')
+    # ax.axvline(78.5-25,c='pink')
+    # ax.axvline(892.5+25,c='pink')
+
+    for i, (x, y) in enumerate(xy):
+        circle = plt.Circle((x, y), 6, color='yellow', fill=False, lw=2.5)
+        ax.add_artist(circle)
+        ax.text(x+3, y+3, f"{i+1}", color='red', fontsize=12)
+
+    # ax.set_title("Detected Stars with Sizes and Avoidance Radius")
+    # ax.legend()
+    # plt.show()
+
+    # Print
+    # for i in range(len(xy)):
+    #     print(f"Star {i+1}: xy=({xy[i,0]:.1f},{xy[i,1]:.1f}), flux={flux[i]:.1f}")
+
+    return ax
+
+def get_cover(sci_border_pix, sci_xy_matched):
+    sci_border_polygon = Polygon(sci_border_pix)
+    border_poly = Polygon(sci_border_pix)
+    if not border_poly.is_valid:
+        border_poly = border_poly.buffer(0)
+
+    # Convex hull of matched stars
+    hull = MultiPoint(sci_xy_matched).convex_hull
+
+    # Intersection area
+    intersection = hull.intersection(border_poly)
+
+    border_area = border_poly.area
+    covered_area = intersection.area
+
+    coverage_fraction = covered_area / border_area if border_area > 0 else 0
+    return coverage_fraction,hull,intersection
+    
+def match_stars(radec_sci, radec_ref,xy_sci,xy_ref, border_pix,max_sep_arcsec=2.0):
+    from astropy.coordinates import SkyCoord
+    from astropy import units as u
+
+    sci_coords = SkyCoord(ra=radec_sci[0]*u.deg, dec=radec_sci[1]*u.deg, frame='fk5')
+    ref_coords = SkyCoord(ra=radec_ref[0]*u.deg, dec=radec_ref[1]*u.deg, frame='fk5')
+
+    idx, sep2d, _ = sci_coords.match_to_catalog_sky(ref_coords)
+
+    matched_sci = []
+    matched_ref = []
+    for i in range(len(sci_coords)):
+        if sep2d[i].arcsec < max_sep_arcsec:
+            matched_sci.append((sci_coords[i].ra.deg, sci_coords[i].dec.deg))
+            matched_ref.append((ref_coords[idx[i]].ra.deg, ref_coords[idx[i]].dec.deg))
+
+
+    sci_xy_matched = []
+    ref_xy_matched = []
+    # print(len(sci_radec,len(matched_sci)))
+    for sc, rc in zip(matched_sci, matched_ref):
+        sci_idx = np.where((radec_sci[0]==sc[0]) & (radec_sci[1]==sc[1]))[0][0]
+        ref_idx = np.where((radec_ref[0]==rc[0]) & (radec_ref[1]==rc[1]))[0][0]
+        sci_xy_matched.append(xy_sci[sci_idx])
+        ref_xy_matched.append(xy_ref[ref_idx])
+    sci_xy_matched = np.array(sci_xy_matched)
+    ref_xy_matched = np.array(ref_xy_matched)
+    return np.array(matched_sci), np.array(matched_ref), sci_xy_matched, ref_xy_matched
+
+def plot_matches(sci_xy, sci_data,ref_xy,ref_data,border_pix,plot=False):
+    # ax.plot(sci_xy[:,0], sci_xy[:,1], 'ro', label='Science Stars')
+    # ax.plot(ref_xy[:,0], ref_xy[:,1], 'bx', label='Reference Stars')
+    axs=None
+    if plot:
+        cols = plt.cm.tab20.colors
+        sci_vmin, sci_vmax = np.percentile(sci_data, [5, 99])
+        ref_vmin, ref_vmax = np.percentile(ref_data, [5, 99])
+        fig, axs= plt.subplots(1,2,figsize=(14,7))
+        axs[0].imshow(sci_data, origin='lower', cmap='gray', vmin=sci_vmin, vmax=sci_vmax)
+        axs[0].plot(border_pix[:,0], border_pix[:,1], 'r-', lw=2, label='Science border')
+        for i, (x, y) in enumerate(sci_xy):
+            # print(x, y)
+            circle = plt.Circle((x, y), 6, color=cols[i%len(cols)], fill=False, lw=2.5)
+            axs[0].add_artist(circle)
+            axs[0].text(x+3, y+3, f"{i+1}", color=cols[i%len(cols)], fontsize=12)
+
+        axs[1].imshow(ref_data, origin='lower', cmap='gray', vmin=ref_vmin, vmax=ref_vmax)
+        axs[1].plot(border_pix[:,0], border_pix[:,1], 'r-', lw=2, label='Science border')
+        for i, (x, y) in enumerate(ref_xy):
+            circle = plt.Circle((x, y), 6, color=cols[i%len(cols)], fill=False, lw=2.5)
+            axs[1].add_artist(circle)
+            axs[1].text(x+3, y+3, f"{i+1}", color=cols[i%len(cols)], fontsize=12)
+
+        # axs[0].set_title("Matched Stars Between Science and Reference")
+        # axs[1].set_title("Matched Stars Between Science and Reference")
+
+        hx, hy = hull.exterior.xy
+        axs[0].plot(hx, hy, 'b--', lw=2, label='Matched-star hull')
+
+        # Intersection (filled)
+        if not intersection.is_empty:
+            ix, iy = intersection.exterior.xy
+            axs[0].fill(ix, iy, color='cyan', alpha=0.3, label='Covered area')
+
+        # axs.legend()
+        # plt.show()
+        plt.close()
+    cov,hull,intersection = get_cover(border_pix, sci_xy)
+    return axs,cov
+
+
+
+def transform_stars(
+    sci_xy,
+    ref_xy,
+    sci_data,
+    ref_data,
+    order=1,
+    transform_type="poly",
+    print_errors=True
+):
+    """
+    Transform science image into reference frame using matched stars.
+
+    Parameters
+    ----------
+    sci_xy : (N,2) array
+        Science star pixel positions
+    ref_xy : (N,2) array
+        Reference star pixel positions
+    sci_data : 2D array
+        Science image
+    ref_data : 2D array
+        Reference image
+    order : int
+        Polynomial order (poly only)
+    transform_type : str
+        'poly', 'affine', 'similarity', 'projective'
+    print_errors : bool
+        Print per-star residuals
+
+    Returns
+    -------
+    corrected_sci : 2D array
+        Science image warped into reference frame
+    trans : transform object
+    """
+
+    from skimage.transform import (
+        warp,
+        PolynomialTransform,
+        AffineTransform,
+        SimilarityTransform,
+        ProjectiveTransform,
+    )
+
+    sci_xy = np.asarray(sci_xy)
+    ref_xy = np.asarray(ref_xy)
+
+    # ----------------------------
+    # Select transform
+    # ----------------------------
+    if transform_type == "poly":
+        trans = PolynomialTransform()
+        success = trans.estimate(sci_xy,ref_xy, order=order)
+
+    elif transform_type == "affine":
+        trans = AffineTransform()
+        success = trans.estimate(sci_xy, ref_xy)
+
+    elif transform_type == "similarity":
+        trans = SimilarityTransform()
+        success = trans.estimate(sci_xy, ref_xy)
+
+    elif transform_type == "projective":
+        trans = ProjectiveTransform()
+        success = trans.estimate(sci_xy, ref_xy)
+
+    else:
+        raise ValueError(f"Unknown transform_type: {transform_type}")
+
+    if not success:
+        raise RuntimeError(f"{transform_type} transform estimation failed")
+
+    # ----------------------------
+    # Warp science → reference
+    # ----------------------------
+
+    inverse = trans.inverse if transform_type != "poly" else trans
+    
+    corrected_sci = warp(
+        sci_data,
+        inverse_map=inverse,
+        output_shape=ref_data.shape,
+        preserve_range=True,
+    )
+
+    # ----------------------------
+    # Print diagnostics
+    # ----------------------------
+    if print_errors:
+        print(info_g+f"=== {transform_type.upper()} TRANSFORM ===")
+        print(info_g+" idx | sci(x,y) → trans(x,y) | ref(x,y) | residual (pix)")
+        # print(INFO_"-" * 72)
+
+        total_err = []
+
+        for i, (sci_pt, ref_pt) in enumerate(zip(sci_xy, ref_xy)):
+            x_s, y_s = sci_pt
+            x_r, y_r = ref_pt
+
+            x_t, y_t = trans(np.array([[x_s, y_s]]))[0]
+
+            err = np.hypot(x_t - x_r, y_t - y_r)
+            total_err.append(err)
+
+            print(
+                f"{i:3d} | "
+                f"({x_s:7.2f},{y_s:7.2f}) → "
+                f"({x_t:7.2f},{y_t:7.2f}) | "
+                f"({x_r:7.2f},{y_r:7.2f}) | "
+                f"{err:6.3f}"
+            )
+
+
+        total_err = np.array(total_err)
+        # print("-" * 72)
+        print(info_g+
+            f"Mean residual: {total_err.mean():.3f} px | "
+            f"Median: {np.median(total_err):.3f} px | "
+            f"Max: {total_err.max():.3f} px"
+        )
+
+    return corrected_sci, trans, total_err
+
+def plot_correct(corrected_sci,ref_data,sci_border_pix,sci_xy_matched,ref_xy_matched,trans):
+    # ----------------------------
+    # Plot corrected science image
+    # ----------------------------
+    fig,axs = plt.subplots(1,2,figsize=(14,7))
+    sci_vmin, sci_vmax = np.percentile(corrected_sci, [5, 99])
+    ref_vmin, ref_vmax = np.percentile(ref_data, [5, 99])
+    axs[0].imshow(corrected_sci, origin='lower', cmap='gray', vmin=sci_vmin, vmax=sci_vmax)
+    cols = plt.cm.tab20.colors
+    axs[0].plot(sci_border_pix[:,0], sci_border_pix[:,1], 'r-', lw=2, label='Science border')
+    axs[1].plot(sci_border_pix[:,0], sci_border_pix[:,1], 'r-', lw=2, label='Science border')
+    for i, (x, y) in enumerate(ref_xy_matched):
+        circle = plt.Circle((x, y), 6, color=cols[i%len(cols)], fill=False, lw=2.5)
+        axs[1].add_artist(circle)
+        axs[1].text(x+3, y+3, f"{i+1}", color=cols[i%len(cols)], fontsize=12)
+    for i, (x,y) in enumerate(sci_xy_matched):
+        # circle = plt.Circle((x, y), 6, color=cols[i%len(cols)], fill=False, lw=2.5)
+        # axs[0].add_artist(circle)
+        #plot an arrow showing movement from sci to transformed position
+        x_t,y_t = trans(np.array([[x, y]]))[0]
+        axs[0].arrow(x, y, x_t - x, y_t - y, color=cols[i%len(cols)], head_width=2, head_length=2)
+        circle = plt.Circle((x_t, y_t), 6, color=cols[i%len(cols)], fill=False, lw=2.5, ls='--')
+        axs[0].add_artist(circle)
+        axs[0].text(x_t+3, y_t+3, f"{i+1}", color=cols[i%len(cols)], fontsize=12)
+
+    axs[1].imshow(ref_data, origin='lower', cmap='gray', vmin=ref_vmin, vmax=ref_vmax)
+    # axs[1].set_title('Transformed Science Image')
+    plt.show()
+
+    return
+
+
+
+
+def correct_distrotion(science_fits,reference_fits,):
+    print('Finding stars in science and reference images...')
+    sci_stars,ref_stars = get_stars(science_fits,reference_fits)
+    (sci_xy, sci_flux, sci_size, 
+        sci_border_pix, sci_data, sci_radec) = sci_stars
+
+    (ref_xy, ref_flux, ref_size, 
+        ref_border_pix, ref_data, ref_radec) = ref_stars 
+
+    # figs,axs = plt.subplots(1,2,figsize=(14,7))
+    # axs[0]=plot_stars(sci_xy, sci_flux, sci_size, sci_border_pix, sci_data,axs[0])
+    # axs[1]=plot_stars(ref_xy, ref_flux, ref_size, ref_border_pix, ref_data,axs[1])
+    # plt.show()
+
+    match_tries = 0
+    print('Matching stars between science and reference images...')
+    [print(sci_radec[o]) for o in range(len(sci_radec))]
+    [print(ref_radec[o]) for o in range(len(ref_radec))]
+
+    while match_tries<=7:
+        match_sci, match_ref, sci_xy_matched, ref_xy_matched = match_stars(sci_radec, ref_radec, sci_xy, ref_xy, sci_border_pix, max_sep_arcsec=3+match_tries)
+        # match_sci, match_ref = match_stars(sci_radec, ref_radec, max_sep_arcsec=3+match_tries)
+        cov = get_cover(sci_border_pix, sci_xy_matched)[0]
+        print(f"Sep: {3+match_tries}, Matched stars: {len(match_sci)}, Coverage: {cov:.3f}")
+        if cov>=0.5:
+            break
+        match_tries+=1
+
+
+    axs,cov=plot_matches(sci_xy_matched, sci_data, ref_xy_matched, ref_data, sci_border_pix)
+
+    # print(sci_xy_matched,ref_xy_matched
+    # get_cover(sci_border_pix, sci_xy_matched)
+
+
+    errs = {}
+    for mode in ['poly']:#'affine', 'similarity', 'projective', ]:
+        for order in [1,2]:
+            if mode !='poly' and order!=1:
+                continue
+            print(f"\n\n=== Testing {mode.upper()} Transform ===")
+            corrected_sci,trans,err = transform_stars(sci_xy_matched, ref_xy_matched, sci_data, ref_data, order=order, transform_type=mode)
+            errs[(mode, order)] = err,corrected_sci,trans
+
+            # plot_correct(corrected_sci,ref_data,sci_border_pix,sci_xy_matched,ref_xy_matched,trans)
+
+
+    #choose best transform
+    mean_errs = {k: np.mean(v[0]) for k,v in errs.items()}
+    best_transform = min(mean_errs, key=mean_errs.get)
+    print(f"Best transform: {best_transform[0].upper()} order {best_transform[1]} with mean residual {mean_errs[best_transform]:.3f} px")
+
+    return errs[best_transform][1], errs[best_transform][2]
+
+# science_fits = "/Users/kryanhinds/sedm_phot/aligned_images/ZTF25acchxhv_g2025-12-28T13_49728bkgsub_padded.fits"
+# reference_fits = "/Users/kryanhinds/sedm_phot/aligned_images/stack_g_ra247.269893_dec2.509080_arcsec366_skycell1384.066.resamp.fits"
+# reference_catalog_file ='/Users/kryanhinds/sedm_phot/ps_catalogs/ps_247.269893_2.50908_0.092553.xml'
+
+# raw = '/Users/kryanhinds/sedm_phot/./data/ZTF25acchxhv/rc20251228_13_51_10_f_b_ZTF25acchxhv_r_r.fits'
+# bkg = '/Users/kryanhinds/sedm_phot/bkg_subtracted_science/ZTF25acchxhv_r2025-12-28T13_49870bkgsub.fits'
+# science_fits = "/Users/kryanhinds/sedm_phot/aligned_images/ZTF25acchxhv_r2025-12-28T13_49870bkgsub_padded.fits"
+# reference_fits = "/Users/kryanhinds/sedm_phot/aligned_images/stack_r_ra247.269893_dec2.509080_arcsec419_skycell1384.066.resamp.fits"
+
+def plot_img(img):
+    img=fits.getdata(img) if isinstance(img,str) else img
+    plt.imshow(img, origin='lower', cmap='gray', vmin=np.percentile(img,5), vmax=np.percentile(img,95))
+    plt.show()
+
+def find_border_high(sci_hdu):
+    border_xl,border_xr = [],[]
+    border_yl,border_yt = [],[]
+
+    pos = np.arange(250,850,50)
+
+    for Y in pos:
+        middle_med_x = np.nanmedian(sci_hdu.data[Y][250:750])
+        break_left, break_right = False, False
+        for i in range(len(sci_hdu.data[Y])-5,0,-1):
+            j = len(sci_hdu.data[Y])-i
+            if all(x>middle_med_x*1.2 for x in sci_hdu.data[Y][i:i+5]) and break_left ==False and i< len(sci_hdu.data[Y])/2:
+                border_xl.append(i)
+                break_left = True
+
+            if all(x>middle_med_x*1.2 for x in sci_hdu.data[Y][j:j+5]) and break_right ==False and j>len(sci_hdu.data[Y])/2:
+                border_xr.append(j)
+                break_right = True
+            
+            if break_left and break_right:
+                break
+                
+    if len(border_xl)==0:border_xl = 0
+    else:border_xl = int(np.median(border_xl))+10
+
+    if len(border_xr)==0:border_xr = np.shape(sci_hdu.data)[1]
+    else:border_xr = int(np.median(border_xr))-10
+    if border_xr<850: border_xr = 950
+    if border_xl>150: border_xl = 50
+
+    print(f"Left X border at {border_xl}")
+    print(f'Right X border at {border_xr}')
+
+
+    for X in pos:
+        break_top, break_bottom = False, False
+        middle_med_y = np.nanmedian(sci_hdu.data[250:750,X])
+        for i in range(len(sci_hdu.data[:,X])-5,0,-1):
+            j = len(sci_hdu.data[:,X])-i
+            if all(x>middle_med_y*1.2 for x in sci_hdu.data[i:i+5,X]) and break_bottom ==False and i< len(sci_hdu.data[:,X])/2:
+                border_yl.append(i)
+                break_bottom = True
+
+            if all(x>middle_med_y*1.2 for x in sci_hdu.data[j:j+5,X]) and break_top ==False and j>len(sci_hdu.data[:,X])/2:
+                border_yt.append(j)
+                break_top = True
+                
+            if break_bottom and break_top:
+                break
+    if len(border_yl)==0:border_yl = 0
+    else:border_yl = int(np.median(border_yl))+10
+
+    if len(border_yt)==0:border_yt = np.shape(sci_hdu.data)[0]
+    else:border_yt = int(np.median(border_yt))-10
+
+    if border_yt<850: border_yt = 850
+    if border_yl>150: border_yl = 150
+    print(f"Bottom Y border at {border_yl}")
+    print(f'Top Y border at {border_yt}')
+
+    return int(border_xl),int(border_xr),int(border_yl),int(border_yt)
+
+def find_border_0(sci_hdu):
+    print(info_g+"Finding borders using gradient method...")
+    inds_every_10_x = np.arange(10, np.shape(sci_hdu.data)[1], 10)
+    inds_every_10_y = np.arange(10, np.shape(sci_hdu.data)[0], 10)
+    grads = {'xl':{},'xr':{},'yl':{}, 'yt':{}}
+    pos = np.arange(250,850,50)
+    for Y in pos:
+        gl,gr = [],[]
+        for i in inds_every_10_x:
+            gl.append([int(i)-5, (sci_hdu.data[int(Y),int(i)]-sci_hdu.data[int(Y),int(i)-10])/10])
+            # print(np.shape(sci_hdu.data)[1] - i+5)
+            try:gr.append([np.shape(sci_hdu.data)[1] - i+5, (sci_hdu.data[int(Y),int(i)]-sci_hdu.data[int(Y),int(i)+10])/10])
+            except:pass
+        gl,gr = np.array(gl),np.array(gr)
+        grads['xl'][Y] = gl[np.where(gl[:,1]!=0)[0][0],0]
+        grads['xr'][Y] = gr[np.where(gr[:,1]!=0)[0][0],0]
+        # grads['xr'][Y] = 
+        # grads = np.array(grads)
+
+    for X in pos:
+        gl,gt = [],[]
+        for i in inds_every_10_y:
+            gl.append([int(i)-5, (sci_hdu.data[int(i),int(X)]-sci_hdu.data[int(i)-10,int(X)])/10])
+            try:gt.append([np.shape(sci_hdu.data)[0]-int(i)+5, (sci_hdu.data[int(i),int(X)]-sci_hdu.data[int(i)+10,int(X)])/10])
+            except:pass
+        gl,gt = np.array(gl),np.array(gt)
+
+        grads['yl'][X] = gl[np.where(gl[:,1]!=0)[0][0],0]
+        grads['yt'][X] = gt[np.where(gt[:,1]!=0)[0][0],0]
+
+    xl,xr = np.median(list(grads['xl'].values()))+5, np.median(list(grads['xr'].values()))-5
+    print(f"X left border at {xl}, X right border at {xr}")
+    yl,yt = np.median(list(grads['yl'].values()))+5, np.median(list(grads['yt'].values()))-5
+    print(f"Y bottom border at {yl}, Y top border at {yt}")
+
+    return xl,xr,yl,yt
+
+def get_borders(sci_hdu):
+    print(info_g+"Finding borders using two methods...")
+    xl_1,xr_1,yl_1,yt_1 = find_border_0(sci_hdu)
+    print(info_g+"Method 1 done ")
+    xl_2,xr_2,yl_2,yt_2 = find_border_high(sci_hdu)
+    print(info_g+"Method 2 done ")
+
+    XL = np.max([xl_1, xl_2])
+    XR = np.min([xr_1, xr_2])
+    YL = np.max([yl_1, yl_2])
+    YT = np.min([yt_1, yt_2])
+
+    return int(XL), int(XR), int(YL), int(YT)
+
+def new_cutout(sci_hdu):
+    print(info_g+"Cutting out the image using the borders...")
+    XL, XR, YL, YT = get_borders(sci_hdu)
+    data = sci_hdu.data.astype(float)
+    header = sci_hdu.header.copy()
+    print(f"Cutting out image with borders: XL={XL}, XR={XR}, YL={YL}, YT={YT}")
+    blank = np.zeros_like(data)
+    blank[int(YL):int(YT), int(XL):int(XR)] = data[int(YL):int(YT), int(XL):int(XR)]
+
+    trimmed_data = np.nan_to_num(blank)
+
+
+
+    return trimmed_data

@@ -153,11 +153,11 @@ parser.add_argument('--use_swarp','-swarp',action='store_true',default=True,
 parser.add_argument('--position','-pos',default='header',nargs='+',
                     help="Position of object in image, default is header, if not in header then parse RA DEC, input as 'HH:MM:SS ±HH:MM:SS")
 
-parser.add_argument('--use_psfex','-psfex',action='store_true',default=True,
-                    help="Use psfex to create psf, default is False")
+parser.add_argument('--use_psfex','-psfex',action='store_false',default=True,
+                    help="Use PSFEx for PSF modelling (default True). Pass -psfex to disable and use the Python fallback instead.")
 
-parser.add_argument('--telescope_facility','-tel',default='LT',
-                    help="Telescope facility, default is LT. SEDM and HCT are also option")
+parser.add_argument('--telescope_facility','-tel',default='SEDM',
+                    help="Telescope facility, default is SEDM. LT, HCT and others are also supported.")
 
 parser.add_argument('--redo_astrometry','-reastrom',default=False,action='store_true',
                     help="Redo astrometry, default is True, set to False if you want to use the astrometry from the header")
@@ -188,7 +188,7 @@ if args.redo_batch_astrometry!=None:
 
     for n in range(len(args.redo_batch_astrometry)):
         
-        [redo_list.append(i) for i in glob.glob(data1_path+args.redo_batch_astrometry[n]+'/*') if i.endswith('.fits')]
+        [redo_list.append(i) for i in glob.glob(path+args.redo_batch_astrometry[n]+'/*') if i.endswith('.fits')]
     print(redo_list)
 
     for i in range(len(redo_list)):
@@ -208,14 +208,17 @@ if args.list_fits!=None:
         else:
             # print(info_g+' Listing fits files in '+args.list_fits)
             args.list_fits[0]+='/'
-        print(info_g+' Listing fits files in '+data1_path+' '.join(args.list_fits))
+        print(info_g+' Listing fits files in '+path+' '.join(args.list_fits))
         # print(args.list_fits[1].split('/'))
         for fold_ in args.list_fits:
             arr=[]
-            for file_ in os.listdir(data1_path+fold_):
+            for file_ in os.listdir(path+fold_):
                 # print(file_)
-                if file_.endswith('.fits') and 'tpv' not in file_:
-                    hdul = fits.open(data1_path+fold_+file_)
+                if file_.endswith('.fits') and 'tpv' not in file_ and not file_.startswith('.'):
+                    # print(file_)
+                    hdul = fits.open(path+fold_+file_)
+                    # for key,val in hdul[0].header.items():
+                    #     print(key,val)
                     hdr = hdul[0].header
                     try:
                         arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD-OBS'],hdr['SEEING'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['DATE-OBS']])
@@ -226,9 +229,15 @@ if args.list_fits!=None:
                         continue#hdr['CAT-RA'],hdr['CAT-DEC']])
                     except:pass
                     try:
-                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD_OBS'],hdr['FWHM'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['DATE-OBS']])
+                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD_OBS'],hdr['FWHM'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['UTC']])
                         continue#,hdr['OBJRA'],hdr['OBJDEC']])
                     except:pass
+                    try:
+                        arr.append([file_,hdr['OBJECT'],hdr['FILTER'],hdr['MJD_OBS'],hdr['FWHM'],hdr['AIRMASS'],hdr['EXPTIME'],hdr['DATE-OBS']])
+                        continue#,hdr['OBJRA'],hdr['OBJDEC']])
+                    except Exception as e:
+                        pass
+
             df = pd.DataFrame(arr,columns=['IMG','OBJ','FILT','MJD','SEE','AIRM','EXPTIME','DATE-OBS'])
 
             print(tabulate(df.sort_values(by=['OBJ','FILT']), headers='keys', tablefmt='psql'))
@@ -243,20 +252,6 @@ if args.list_fits!=None:
 args.telescope_facility = args.telescope_facility.upper()
 # sys.exit(1)
 seeing_limit =5
-if len(args.down_date_ql)>0:
-    if args.down_date_ql[0] in ['current_obs' ,'current','most_recent','last_night']:
-        ql_day = subphot_data().down_quicklook()
-    else:
-        for ql_date in args.down_date_ql:
-            # if len(ql_date)
-            ql_day = subphot_data().down_quicklook(ql_date)
-
-if len(args.down_date_re)>0:
-    if args.down_date_re[0] in ['current_obs' ,'current','most_recent','last_night']:
-        re_day = subphot_data().down_recentdata()
-    else:
-        for re_date in args.down_date_re:
-            re_day = subphot_data().down_recentdata(re_date)
 
 # sys.exit(1)
     #setting data to todays data in format YYYYMMDD
@@ -286,7 +281,7 @@ if args.mroundup!=False:
     
 
 try:
-    if store_lc_ims and not os.path.exists(data1_path+'entire_lc_imgs'):os.makedirs(data1_path+'entire_lc_imgs')
+    if store_lc_ims and not os.path.exists(path+'entire_lc_imgs'):os.makedirs(path+'entire_lc_imgs')
 except:pass
 
 
@@ -334,28 +329,28 @@ if args.make_log!=False:
                 # print(args.folder[k])
                 if '/' in args.folder[k]:out_dir=args.folder[k].split('/')[-1]
                 else:out_dir=args.folder[k]
-                if not os.path.exists(data1_path+out_dir):os.mkdir(data1_path+out_dir)
+                if not os.path.exists(path+out_dir):os.mkdir(path+out_dir)
         else:
             out_dir='photometry'
     else:out_dir=args.output.split('/')[-1]
 
 
-    if args.output!='by_name' and not os.path.exists(data1_path+out_dir):os.mkdir(data1_path+out_dir)
+    if args.output!='by_name' and not os.path.exists(path+out_dir):os.mkdir(path+out_dir)
 
-    if not os.path.exists(data1_path+log_dest):os.mkdir(data1_path+log_dest)
-    if log_dest=='night_log':log_name = f"{data1_path}night_log/{DATE}_night_log.log"
-    else:log_name = f"{data1_path}{log_dest}/{out_dir}_log.log"
+    if not os.path.exists(path+log_dest):os.mkdir(path+log_dest)
+    if log_dest=='night_log':log_name = f"{path}night_log/{DATE}_night_log.log"
+    else:log_name = f"{path}{log_dest}/{out_dir}_log.log"
     if log_dest=='0':
         log_dest=out_dir
-        log_name = f"{data1_path}{out_dir}/{out_dir}_log.log"
+        log_name = f"{path}{out_dir}/{out_dir}_log.log"
     
     if args.pros_job_id!=None:
-        if not os.path.exists(f'/mnt/data1/users/arikhind/phot_data/nightly_routine_logs/{DATE}'):os.mkdir(f'/mnt/data1/users/arikhind/phot_data/nightly_routine_logs/{DATE}')
-        log_name = f'/mnt/data1/users/arikhind/phot_data/nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}_py.log'
+        if not os.path.exists(f'/mnt/aridata1/users/arikhind/phot_data/nightly_routine_logs/{DATE}'):os.mkdir(f'/mnt/aridata1/users/arikhind/phot_data/nightly_routine_logs/{DATE}')
+        log_name = f'/mnt/aridata1/users/arikhind/phot_data/nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}_py.log'
 
 
     if args.mroundup!=False:
-        log_name = f"{data1_path}{log_dest}/{DATE}_night_log.log"
+        log_name = f"{path}{log_dest}/{DATE}_night_log.log"
 
     sp_logger = logging
     sp_logger.basicConfig(level=logging.INFO,encoding='utf-8',handlers=[
@@ -369,14 +364,14 @@ else:args.sp_logger=None
 # sys.exit()
 class multi_subtract():
     def __init__(self,folder,folder_path=None):
-        #folder_path is the path from data_1path to where the folders are (so that when cron is called, the same folder path can be used from data1_path instead of having to
-        # specify the full path from data1_path each time, it is easier for large jobs)
+        #folder_path is the path from data_1path to where the folders are (so that when cron is called, the same folder path can be used from path instead of having to
+        # specify the full path from path each time, it is easier for large jobs)
         if folder_path!=None:
             self.folder_path=folder_path
         else:
             folder_path=''
         self.path=path
-        self.data1_path=data1_path
+        self.path=path
         self.g_fits,self.r_fits,self.i_fits,self.z_fits,self.u_fits=[],[],[],[],[]
         self.bess_V_fits,self.bess_R_fits,self.bess_I_fits,self.bess_B_fits = [],[],[],[]
         self.fits_dict = {'SDSS-G':self.g_fits,'SDSS-R':self.r_fits,'SDSS-I':self.i_fits,'SDSS-Z':self.z_fits,'SDSS-U':self.u_fits,
@@ -407,19 +402,19 @@ class multi_subtract():
     def analyse_folder(self):
         self.fits_files,self.all_fits,self.all_in_dir = [],[],[]
 
-        [self.all_in_dir.append(f) for f in os.listdir(f"{self.data1_path}{self.FOLDER}") if f.endswith('.fits')]
+        [self.all_in_dir.append(f) for f in os.listdir(f"{self.path}{self.FOLDER}") if f.endswith('.fits')]
         # print(self.all_in_dir)
         if args.telescope_facility=='LT' or args.telescope_facility=='lt':
-            [self.all_fits.append(self.trunc(f)) for f in os.listdir(f"{self.data1_path}{self.FOLDER}") if (f.endswith('.fits') and f.startswith('h_') and self.trunc(f) not in self.all_fits)
+            [self.all_fits.append(self.trunc(f)) for f in os.listdir(f"{self.path}{self.FOLDER}") if (f.endswith('.fits') and f.startswith('h_') and self.trunc(f) not in self.all_fits)
             and not f.startswith('.')]
         elif args.telescope_facility=='HCT' or args.telescope_facility=='hct':
-            [self.all_fits.append(self.trunc(f,instrument='HCT')) for f in os.listdir(f"{self.data1_path}{self.FOLDER}") if (f.endswith('.fits') and self.trunc(f,instrument='HCT') not in self.all_fits) 
+            [self.all_fits.append(self.trunc(f,instrument='HCT')) for f in os.listdir(f"{self.path}{self.FOLDER}") if (f.endswith('.fits') and self.trunc(f,instrument='HCT') not in self.all_fits) 
             and not f.startswith('.')]
         elif args.telescope_facility=='SEDM' or args.telescope_facility=='sedm':
-            [self.all_fits.append(self.trunc(f,instrument='SEDM')) for f in os.listdir(f"{self.data1_path}{self.FOLDER}") if (f.endswith('.fits') and self.trunc(f,instrument='SEDM') not in self.all_fits)
+            [self.all_fits.append(self.trunc(f,instrument='SEDM')) for f in os.listdir(f"{self.path}{self.FOLDER}") if (f.endswith('.fits') and self.trunc(f,instrument='SEDM') not in self.all_fits)
             and not f.startswith('.') and 'tpv' not in f]
         elif args.telescope_facility=='SLT' or args.telescope_facility=='slt':
-            [self.all_fits.append(self.trunc(f,instrument='SLT')) for f in os.listdir(f"{self.data1_path}{self.FOLDER}") if (f.endswith('.fits') and self.trunc(f,instrument='SLT') not in self.all_fits)
+            [self.all_fits.append(self.trunc(f,instrument='SLT')) for f in os.listdir(f"{self.path}{self.FOLDER}") if (f.endswith('.fits') and self.trunc(f,instrument='SLT') not in self.all_fits)
             and not f.startswith('.')]
 
         # print(self.all_fits)
@@ -434,8 +429,8 @@ class multi_subtract():
         else:
             for self.file_arr in self.all_fits:
                 self.file,self.end_string = self.file_arr
-                self.end_string=re.sub('.fits','',self.end_string)
-                self.number = sum([self.file in x for x in os.listdir(f"{self.data1_path}{self.FOLDER}") if not x.startswith('.')])
+                self.end_string = re.sub(r'\.fits$', '', self.end_string)
+                self.number = sum([self.file in x for x in os.listdir(f"{self.path}{self.FOLDER}") if not x.startswith('.') and x.endswith('.fits')])
 
                 if self.number>1:
                     self.file_name,self.fi = [],[]
@@ -450,7 +445,7 @@ class multi_subtract():
 
 
 
-                    if all(h in os.listdir(f"{self.data1_path}{self.FOLDER}") for h in self.fi)==False:
+                    if all(h in os.listdir(f"{self.path}{self.FOLDER}") for h in self.fi)==False:
                         self.fits_files.append([self.file_name,self.number,f"{self.file}1{self.end_string}.fits"])
                 else:
                     if self.file.endswith('.fits')==False:
@@ -462,11 +457,11 @@ class multi_subtract():
         # print(self.fits_files)
         for i in range(len(self.fits_files)):
             if len(self.fits_files[i])==2:
-                try:self.fits_hdu = fits.open(self.data1_path+str(self.FOLDER)+"/"+str(self.fits_files[i][0][0]))[0].header
-                except:self.fits_hdu = fits.open(self.data1_path+str(self.FOLDER)+"/"+str(self.fits_files[i][0])).header
+                try:self.fits_hdu = fits.open(self.path+str(self.FOLDER)+"/"+str(self.fits_files[i][0][0]))[0].header
+                except:self.fits_hdu = fits.open(self.path+str(self.FOLDER)+"/"+str(self.fits_files[i][0])).header
             else:
                 # print(self.fits_files[i][2])
-                self.fits_hdu = fits.open(self.data1_path+str(self.FOLDER)+"/"+str(self.fits_files[i][2]))[0].header
+                self.fits_hdu = fits.open(self.path+str(self.FOLDER)+"/"+str(self.fits_files[i][2]))[0].header
             # print(self.fits_hdu['FILTER'])
             try:
                 self.fits_filt,self.fits_obj = self.fits_hdu['FILTER1'],self.fits_hdu['OBJECT']
@@ -537,23 +532,58 @@ class multi_subtract():
 filt_kws = ['FILTER1','FILTER']
 name_kws = ['OBJECT','TARGET','TCSTGT']
 date_obs_kws = ['DATE-OBS','DATE','UTC']
+def _run_pipeline(sub_obj, sp_logger):
+    """Run the full reduction sequence on a subtracted_phot object.
+
+    Executes each pipeline step in order and returns the photometry dict on
+    success, or None if any step sets sys_exit=True.  Using early-returns
+    instead of nested if/else keeps the control flow linear and easy to follow.
+    """
+    if args.unsubtract:
+        sub_obj.to_subtract = False
+
+    steps = [
+        ('Background subtraction',   sub_obj.bkg_subtract),
+        ('Cosmic-ray removal',        sub_obj.remove_cosmic),
+        ('Image alignment',           sub_obj.swarp_ref_align if args.use_swarp else sub_obj.py_ref_align),
+        ('PSF convolution',           sub_obj.psfex_convolve_images if args.use_psfex else sub_obj.py_convolve_images),
+        ('Reference catalog',         sub_obj.gen_ref_cat),
+        ('Combined PSF',              sub_obj.combine_psf),
+        ('Zeropoint calibration',     sub_obj.get_zeropts),
+        ('Scaled subtraction',        sub_obj.scaled_subtract),
+    ]
+    for step_name, step_fn in steps:
+        step_fn()
+        if sub_obj.sys_exit:
+            sp_logger.warning(warn_r+f' Pipeline stopped after: {step_name}')
+            return None
+
+    result = sub_obj.get_photometry()
+    if sub_obj.sys_exit:
+        return None
+
+    if args.upfritz or args.upfritz_f:
+        sub_obj.upload_phot()
+
+    return result
+
+
 def run_subtraction(data_dict):
-    final_phot=[]
-    '''Function takes a dictonary input of fits files and performs photometry automatically stacking based on the structure of the fits_files array e.g. length 1==single length >1 == stack'''
-    filts = {'SDSS-U':'u','SDSS-G':'g','SDSS-R':'r','SDSS-I':'i','SDSS-Z':'z',}
-            # 'Bessel-V':'V','Bessel-R':'R','Bessel-I':'I','Bessel-B':'B'}
+    """Process all FITS files in one filter band, returning list of phot dicts."""
+    filts = {'SDSS-U':'u','SDSS-G':'g','SDSS-R':'r','SDSS-I':'i','SDSS-Z':'z'}
     f_time_start = time.time()
-    fits_files,filter_,FOLDER,new_only = data_dict['fits'],data_dict['filter'],data_dict['FOLDER'],data_dict['new_only']
+    fits_files, filter_, FOLDER, new_only = (
+        data_dict['fits'], data_dict['filter'], data_dict['FOLDER'], data_dict['new_only'])
+    final_phot = []
 
     sp_logger.info(colored('---------------------------------------------------------------------------------------------','yellow'))
     sp_logger.info(info_g+f" For {filter_}, there are {len(fits_files)} fits")
-    
 
-    if len(fits_files)==0:
+    if len(fits_files) == 0:
         sp_logger.info(warn_y+f' No fits files found in filter: {filter_}')
-        pass
-    else:
-        for file_array in fits_files:
+        return final_phot
+
+    for file_array in fits_files:
             if file_array[1]=='1' or file_array[1]==1:
                 fits_file=file_array[0][0]
                 sub_file = [re.sub('.fits','',file_array[0][0])]
@@ -562,295 +592,105 @@ def run_subtraction(data_dict):
                 fits_file = file_array[2]      
                 sub_file = file_array[0]
             
-            if fits_file.endswith('.fits') and 'tpv' not in fits_file:# and fits_file.startswith('h_'):
-                fits_name = sub_file 
-                sub_file[0] = str(FOLDER)+"/"+sub_file[0]
-                if data1_path not in sub_file[0]:
-                    sub_file[0] = data1_path+sub_file[0]
+            if not fits_file.endswith('.fits') or 'tpv' in fits_file:
+                continue
 
-                
-                if args.termoutp!='quiet':
-                    if len(sub_file)==1:
-                        sp_logger.info(colored('---------------------------------------------------------------------------------------------','blue'))
-                        sp_logger.info(info_g+f' Performing image subtraction on {sub_file[0]}')
-                    else:
-                        sp_logger.info(info_g+f" Performing image subtraction on {', '.join(sub_file)}")
-                        sp_logger.info(colored('---------------------------------------------------------------------------------------------','blue'))
-                
+            sub_file[0] = str(FOLDER) + '/' + sub_file[0]
+            if path not in sub_file[0]:
+                sub_file[0] = path + sub_file[0]
 
-                sp_logger.info(info_g+' Extracting header information from '+sub_file[0])
-                sci_img = fits.open(f'{data1_path}{FOLDER}/{fits_file}')
-                sci_hdr = sci_img[0].header
-                for filt_kw in filt_kws:
-                    if filt_kw in sci_hdr.keys():
-                        filt = sci_hdr[filt_kw]
-                        break
+            if args.termoutp != 'quiet':
+                sp_logger.info(colored('---------------------------------------------------------------------------------------------','blue'))
+                label = sub_file[0] if len(sub_file) == 1 else ', '.join(sub_file)
+                sp_logger.info(info_g+f' Performing image subtraction on {label}')
 
-                for name_kw in name_kws:
-                    if name_kw in sci_hdr.keys():
-                        name = sci_hdr[name_kw]
-                        break
+            # Extract filter / object name / date from header
+            sci_hdr = fits.open(f'{path}{FOLDER}/{fits_file}')[0].header
+            filt = next((sci_hdr[k] for k in filt_kws if k in sci_hdr), None)
+            name = next((sci_hdr[k] for k in name_kws if k in sci_hdr), None)
+            date_obs = next((sci_hdr[k] for k in date_obs_kws if k in sci_hdr), None)
+            if filt is None or name is None or date_obs is None:
+                sp_logger.warning(warn_y+f' Could not read filter/name/date from {fits_file} — skipping')
+                continue
 
-                for date_obs_kw in date_obs_kws:
-                    if date_obs_kw in sci_hdr.keys():
-                        date_obs = sci_hdr[date_obs_kw]
-                        break
-                
-                if ' ' and sci_hdr['TELESCOP']=='60': #specifically for P60
-                    if 'ACQ-' in name: 
-                        name = name.split('-')[1]
-                    name = name.split(' ')
-                    name,_f = name[0],name[-1]
+            # P60/SEDM-specific name and filter normalisation
+            if sci_hdr.get('TELESCOP') == '60':
+                if 'ACQ-' in name:
+                    name = name.split('-')[1]
+                name = name.split(' ')[0]
+                filt = {'r':'SDSS-R','g':'SDSS-G','i':'SDSS-I','u':'SDSS-U'}.get(filt, filt)
 
-                    filt = {'r':'SDSS-R','g':'SDSS-G','i':'SDSS-I','u':'SDSS-U'}[filt]
+            if 'p_Astrodon' in filt:
+                filt = FILTERS[filt.split('p_')[0]]
 
-                if store_lc_ims:
-                    if not os.path.exists(f'{data1_path}entire_lc_imgs/{name}'):
-                        os.makedirs(f'{data1_path}entire_lc_imgs/{name}')
-                        sp_logger.info(info_g+' Making folder to store entire light curve for '+name)
-                    
-                    sp_logger.info(info_g+' Storing image/s for '+name+' in '+data1_path+'entire_lc_imgs/'+name+' if it does not already exist')
-                    try:
-                        for fit in sub_file:
-                            fit_file_name = fit.split('/')[-1]
-                            lc_path = f'{data1_path}entire_lc_imgs/{name}/'
-                            fit_ = f'{lc_path}{fit_file_name}'
-                            if not fit.endswith('.fits'):fit,fit_ = fit+'.fits',fit_+'.fits'
-                            if not os.path.exists(fit_):
-                                shutil.copy(fit,data1_path+'entire_lc_imgs/'+name) 
-                    except Exception as e:
-                        pass
-                # print(sub_file)
-                # print(fits_file)
-                # sys.exit()
-                # try:filt,name,date_obs = sci_img[0].header['FILTER1'],sci_img[0].header['OBJECT'],sci_img[0].header['DATE-OBS']
-                # except:filt,name,date_obs = sci_img[0].header['FILTER'],sci_img[0].header['OBJECT'],sci_img[0].header['DATE-OBS']
-                if 'p_Astrodon' in filt:
-                    filt = FILTERS[filt.split('p_')[0]]
+            if filt not in filts:
+                continue
 
-                if filt in filts.keys():
-                    final_name = name+'_'+filts[filt]+date_obs[:-13]+'_'+str(datetime.timedelta(hours=int(date_obs[11:13]), minutes=int(date_obs[14:16]),seconds=float(date_obs[17:31])).seconds)+'_photometry.txt'
-                    final_name_stk = re.sub('photometry','stacked_photometry',final_name)
-                    # sp_logger.info(info_g+f' Final name of photometry file is: {final_name}')
-                    if len(sub_file)>1:
-                        args.stack=True
-
-                    if new_only==False:
+            # Optionally archive raw images for the full LC
+            if store_lc_ims:
+                lc_path = f'{path}entire_lc_imgs/{name}/'
+                os.makedirs(lc_path, exist_ok=True)
+                for fit in sub_file:
+                    if not fit.endswith('.fits'):
+                        fit = fit + '.fits'
+                    dst = lc_path + fit.split('/')[-1]
+                    if not os.path.exists(dst):
                         try:
-                        # if True:
-                            if len(sub_file)>1:
-                                # sp_logger.info(sub_file)
-                                sp_logger.info(info_g+f' Checking seeing of all images is below {seeing_limit}')
-                                sub_file = check_seeing(sub_file,sp_logger=sp_logger)
-                                # sp_logger.info(sub_file)
-                                # sys.exit(1)
-                                if len(sub_file)==0: sp_logger.warning(warn_r+' No images with seeing < 5, passing on image'); continue
-                                if len(sub_file)==1: sp_logger.warning(warn_y+' Only one image with seeing < 5, continuing with single image'); args.stack=False
-
-                            sp_logger.info('---------------------------------------------------------------------------------------------')
-                            sp_logger.info(info_g+f' Starting sequence on {sub_file[0]}')
-                            sub_obj = subtracted_phot(ims=sub_file,args=args)
-                            sys_exit=sub_obj.sys_exit
-                            # sp_logger.info(sys_exit)
-
-                            if sys_exit==True:
-                                pass
-                            else:
-
-                                if args.unsubtract==True:
-                                    sub_obj.to_subtract=False
-
-                                sys_exit=sub_obj.sys_exit
-
-                                if sys_exit==True:
-                                    pass
-                                else:
-
-                                    sub_obj.bkg_subtract()
-                                    sys_exit=sub_obj.sys_exit
-                                    if sys_exit==True:
-                                        pass
-                                    else:
-
-                                        sub_obj.remove_cosmic()
-                                        sys_exit=sub_obj.sys_exit
-                                        if sys_exit==True:
-                                            pass
-                                        else:
-                                            
-                                            if args.use_swarp==True: sub_obj.swarp_ref_align()
-                                            else: sub_obj.py_ref_align()
-                                            sys_exit=sub_obj.sys_exit
-                                            if sys_exit==True:
-                                                pass
-                                            else:
-
-                                                if args.use_psfex==True: sub_obj.psfex_convolve_images()
-                                                else: sub_obj.py_convolve_images()
-                                                sys_exit=sub_obj.sys_exit
-                                                if sys_exit==True:
-                                                    pass
-                                                else:
-
-                                                    sub_obj.gen_ref_cat()
-                                                    sys_exit=sub_obj.sys_exit
-                                                    if sys_exit==True:
-                                                        pass
-                                                    else:
-
-                                                        sub_obj.combine_psf()
-                                                        sys_exit=sub_obj.sys_exit
-                                                        if sys_exit==True:
-                                                            pass
-                                                        else:
-
-                                                            sub_obj.get_zeropts()
-                                                            sys_exit=sub_obj.sys_exit
-                                                            if sys_exit==True:
-                                                                pass
-                                                            else:
-
-                                                                sub_obj.scaled_subtract()
-                                                                sys_exit=sub_obj.sys_exit
-                                                                if sys_exit==True:
-                                                                    pass
-                                                                else:
-
-                                                                    final_phot.append(sub_obj.get_photometry())
-                                                                    sys_exit=sub_obj.sys_exit
-                                                                    if sys_exit==True:
-                                                                        pass
-                                                                    else:
-                                                                        if args.upfritz==True or args.upfritz_f==True:
-                                                                            sub_obj.upload_phot()
-                                
-                                                                        sys_exit=True
-                            
-                                    if args.cleandirs!=False:
-                                        sub_obj.clean_directory()
-                        
-                        except Exception as e:
-                            sp_logger.warning(e)
+                            shutil.copy(fit, lc_path)
+                        except Exception:
                             pass
-                            
 
+            if len(sub_file) > 1:
+                args.stack = True
 
+            # Build the expected output filename to support new_only mode
+            _dt = datetime.timedelta(
+                hours=int(date_obs[11:13]),
+                minutes=int(date_obs[14:16]),
+                seconds=float(date_obs[17:31]))
+            final_name = f'{name}_{filts[filt]}{date_obs[:-13]}_{_dt.seconds}_photometry.txt'
+            final_name_stk = final_name.replace('photometry', 'stacked_photometry')
 
-                    elif new_only==True:
-                        if (final_name in os.listdir(f'{data1_path}photometry'))==False and (final_name_stk in os.listdir(f'{data1_path}photometry'))==False:
-                            if len(sub_file)>1:
-                                args.stack =True
-                            # print(final_name)
-                            # print(final_name in os.listdir(f'{data1_path}photometry'))
-                            # print(final_name_stk in os.listdir(f'{data1_path}photometry'))
-                            # sys.exit()
-                            try:
-                                if len(sub_file)>1:
-                                    sub_file = check_seeing(sub_file,sp_logger=sp_logger)
-                                    if len(sub_file)==0: sp_logger.info(warn_r+' No images with seeing < 5, passing on image'); continue
-                                    if len(sub_file)==1: sp_logger.info(warn_y+' Only one image with seeing < 5, continuing with single image'); args.stack=False
-                                sub_obj = subtracted_phot(ims=sub_file,args=args)
-                                sys_exit=sub_obj.sys_exit
+            if new_only:
+                phot_dir = f'{path}photometry'
+                existing = os.listdir(phot_dir) if os.path.exists(phot_dir) else []
+                if final_name in existing or final_name_stk in existing:
+                    sp_logger.info(info_b+f' {name} {filter_} {date_obs} already measured — skipping')
+                    continue
 
-                                if sys_exit==True:
-                                    pass
-                                else:
+            # Seeing filter for stacks
+            if len(sub_file) > 1:
+                sub_file = check_seeing(sub_file, sp_logger=sp_logger)
+                if len(sub_file) == 0:
+                    sp_logger.warning(warn_r+' No images with seeing < 5 — skipping')
+                    continue
+                if len(sub_file) == 1:
+                    sp_logger.warning(warn_y+' Only one image with seeing < 5 — proceeding as single')
+                    args.stack = False
 
-                                    if args.unsubtract==True:
-                                        sub_obj.to_subtract=False
+            # Run the full pipeline via the clean helper
+            try:
+                sp_logger.info(info_g+f' Starting reduction sequence on {sub_file[0]}')
+                sub_obj = subtracted_phot(ims=sub_file, args=args)
+                if sub_obj.sys_exit:
+                    continue
+                result = _run_pipeline(sub_obj, sp_logger)
+                if result is not None:
+                    final_phot.append(result)
+            except Exception as e:
+                sp_logger.warning(warn_r+f' Unhandled exception on {sub_file[0]}: {e}')
 
-                                    sys_exit=sub_obj.sys_exit
-
-                                    if sys_exit==True:
-                                        pass
-                                    else:
-
-                                        sub_obj.bkg_subtract()
-                                        sys_exit=sub_obj.sys_exit
-                                        if sys_exit==True:
-                                            pass
-                                        else:
-
-                                            sub_obj.remove_cosmic()
-                                            sys_exit=sub_obj.sys_exit
-                                            if sys_exit==True:
-                                                pass
-                                            else:
-
-                                                if args.use_swarp==True: sub_obj.swarp_ref_align()
-                                                else: sub_obj.py_ref_align()
-                                                sys_exit=sub_obj.sys_exit
-                                                if sys_exit==True:
-                                                    pass
-                                                else:
-
-                                                    if args.use_psfex==True: sub_obj.psfex_convolve_images()
-                                                    else: sub_obj.py_convolve_images()
-                                                    sys_exit=sub_obj.sys_exit
-                                                    if sys_exit==True:
-                                                        pass
-                                                    else:
-
-                                                        sub_obj.gen_ref_cat()
-                                                        sys_exit=sub_obj.sys_exit
-                                                        if sys_exit==True:
-                                                            pass
-                                                        else:
-
-                                                            sub_obj.combine_psf()
-                                                            sys_exit=sub_obj.sys_exit
-                                                            if sys_exit==True:
-                                                                pass
-                                                            else:
-
-                                                                sub_obj.get_zeropts()
-                                                                sys_exit=sub_obj.sys_exit
-                                                                if sys_exit==True:
-                                                                    pass
-                                                                else:
-
-                                                                    sub_obj.scaled_subtract()
-                                                                    sys_exit=sub_obj.sys_exit
-                                                                    if sys_exit==True:
-                                                                        pass
-                                                                    else:
-
-                                                                        final_phot.append(sub_obj.get_photometry())
-                                                                        sys_exit=sub_obj.sys_exit
-                                                                        if sys_exit==True:
-                                                                            pass
-                                                                        else:
-                                                                            if args.upfritz==True or args.upfritz_f==True:
-                                                                                sub_obj.upload_phot()
-                                    
-                                                                            sys_exit=True
-                                                                            
-                                        
-                                        if args.cleandirs!=False:
-                                            sub_obj.clean_directory()
-                            except Exception as e:
-                                sp_logger.warning(e)
-                                pass
-                                
-                                    
-
-                        else:
-                            sp_logger.info(info_b+f' {name} photometry for data taken at {date_obs} in {filter_} already measured')
-    
-
-        f_time_end = time.time()
-        f_time_total = f_time_end - f_time_start
-        if f_time_total > 60:
-            f_time_total = f_time_total/60
-            time_unit = 'minutes'
-        else:
-            time_unit = 'seconds'
-        sp_logger.info(colored('---------------------------------------------------------------------------------------------','blue'))
-        sp_logger.info(info_g+f" Finished subtracted photometry in {filter_}, time taken {np.round(f_time_total,2)} {time_unit}")
-        #sp_logger.info a table of the photometry
-        if len(final_phot)>0: 
-            # sp_logger.info(pd.DataFrame(final_phot,columns=final_phot[0].keys()).sort_values(by=['obj','mjd']))    
-            sp_logger.info(tabulate(pd.DataFrame(final_phot,columns=final_phot[0].keys()).sort_values(by=['obj','mjd']), headers='keys', tablefmt='psql'))
+    f_time_end = time.time()
+    f_time_total = f_time_end - f_time_start
+    time_unit = 'minutes' if f_time_total > 60 else 'seconds'
+    if f_time_total > 60:
+        f_time_total /= 60
+    sp_logger.info(colored('---------------------------------------------------------------------------------------------','blue'))
+    sp_logger.info(info_g+f' Finished {filter_} in {np.round(f_time_total, 2)} {time_unit}')
+    if final_phot:
+        sp_logger.info(tabulate(
+            pd.DataFrame(final_phot, columns=final_phot[0].keys()).sort_values(by=['obj','mjd']),
+            headers='keys', tablefmt='psql'))
     return final_phot
             
 FILTS=[]
@@ -871,8 +711,8 @@ if len(args.ims)>0:
         if '*' in ims[0]:
             ims_start = ims[0].split('*')[0]
             ims=[]
-            sp_logger.info(info_g+' Searching for images in '+data1_path+ims_path+' starting with '+ims_start)
-            [ims.append(f) for f in os.listdir(data1_path+ims_path) if f.endswith('.fits')==True and ims_start.split('/')[-1] in f and not f.startswith('.') and 'tpv' not in f]
+            sp_logger.info(info_g+' Searching for images in '+path+ims_path+' starting with '+ims_start)
+            [ims.append(f) for f in os.listdir(path+ims_path) if f.endswith('.fits')==True and ims_start.split('/')[-1] in f and not f.startswith('.') and 'tpv' not in f]
             ims = list(np.sort(ims))
             sp_logger.info(info_g+f" Found {len(ims)} images to process")
 
@@ -886,27 +726,8 @@ if len(args.ims)>0:
             if ims_path not in ims[i]:
                 image=ims_path+'/'+re.sub('.fits','',ims[i])
 
-            fits_hdu = fits.open(data1_path+image+'.fits')[0].header
-            try:
-                fits_filt,fits_obj = fits_hdu['FILTER1'],fits_hdu['OBJECT']
-                # sp_logger.info(info_g+' Found FILTER1 and OBJECT in header',fits_filt,fits_obj,fits_obj in args.sci_names)
-            except:
-                sp_logger.info(warn_y+' No FILTER1 or OBJECT in header, trying FILTER and OBJECT')
-
-                try:
-                    fits_filt,fits_obj = fits_hdu['FILTER'],fits_hdu['OBJECT']
-                    if 'p_Astrodon' in fits_filt:
-                        fits_filt = fits_filt.split('p_')[0]
-                    sp_logger.info(info_g+' Found FILTER and OBJECT in header '+fits_filt+' '+fits_obj)
-                except:
-                    sp_logger.info(warn_r+' No FILTER or OBJECT in header, skipping image')
-                    try:fits_filt,fits_obj = fits_hdu['FILTERS'],fits_hdu['OBJECT']
-                    except:
-                        try:fits_filt,fits_obj = fits_hdu['ESO INS FILT1 NAME'],fits_hdu['OBJECT']
-                        except:
-                            try:fits_filt,fits_obj = fits_hdu['ESO INS FILT1 NAME'],fits_hdu['OBJECT']
-                            except:continue
-
+            fits_hdu = fits.open(image+'.fits')[0].header
+            fits_filt,fits_obj = fits_hdu['FILTER'],fits_hdu['OBJECT']
 
             if args.bands==['All'] and args.sci_names == ['All']:
                 pass
@@ -1033,12 +854,12 @@ if len(args.ims)>0:
             # sp_logger.info(ims[0])
             # sp_logger.info(ims_start)
             ims=[]
-            sp_logger.info(info_g+' Searching for images in '+data1_path+ims_path+' starting with '+ims_start)
+            sp_logger.info(info_g+' Searching for images in '+path+ims_path+' starting with '+ims_start)
 
-            # for f in os.listdir(data1_path+ims_path):
+            # for f in os.listdir(path+ims_path):
             #     if f.endswith('.fits')==True and ims_start.split('/')[-1] in f:
-            # sp_logger.info(glob.glob(data1_path+ims_path+'/*'))
-            [ims.append(f) for f in glob.glob(data1_path+ims_path+'/'+ims_start.split('/')[-1]+'*')]#) if f.endswith('.fits')==True ]#and ims_start.split('/')[-1] in f]
+            # sp_logger.info(glob.glob(path+ims_path+'/*'))
+            [ims.append(f) for f in glob.glob(path+ims_path+'/'+ims_start.split('/')[-1]+'*')]#) if f.endswith('.fits')==True ]#and ims_start.split('/')[-1] in f]
             ims = list(np.sort(ims))
             # sp_logger.info(ims)
             # sys.exit(1)
@@ -1059,7 +880,7 @@ if len(args.ims)>0:
         #     if ims_path not in ims[i]:
         #         image=ims_path+'/'+re.sub('.fits','',ims[i])
 
-        #     fits_hdu = fits.open(data1_path+image+'.fits')[0].header
+        #     fits_hdu = fits.open(path+image+'.fits')[0].header
         #     try:
         #         fits_filt,fits_obj = fits_hdu['FILTER1'],fits_hdu['OBJECT']
         #         # sp_logger.info(info_g+' Found FILTER1 and OBJECT in header',fits_filt,fits_obj,fits_obj in args.sci_names)
@@ -1285,9 +1106,9 @@ elif len(args.folder)>0 and args.plc[0]!=[None]:
 
 
     if args.pros_job_id!=None:
-        if not os.path.exists(data1_path+'nightly_routine_logs/'+DATE):os.mkdir(data1_path+'nightly_routine_logs/'+DATE)
-        os.system(f'cp /mnt/data1/users/arikhind/phot_data/nightly_routine_logs/SPNR.log {data1_path}nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}_scron.log')
-        sp_logger.info(info_g+f' Copied log file for job {args.pros_job_id} to {data1_path}nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}_scron.log')
+        if not os.path.exists(path+'nightly_routine_logs/'+DATE):os.mkdir(path+'nightly_routine_logs/'+DATE)
+        os.system(f'cp /mnt/aridata1/users/arikhind/phot_data/nightly_routine_logs/SPNR.log {path}nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}_scron.log')
+        sp_logger.info(info_g+f' Copied log file for job {args.pros_job_id} to {path}nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}_scron.log')
 
         # os.system
 
@@ -1298,7 +1119,7 @@ def load_photometry(folder,name,filters=['All']):
     else:
         filter_list = ['g','r','i','z','u','R']
 
-    all_phot_files = [data1_path+folder+'/'+f for f in os.listdir(data1_path+folder) if re.search(name,f)]
+    all_phot_files = [path+folder+'/'+f for f in os.listdir(path+folder) if re.search(name,f)]
     # all_phot_files = [path+folder+'/'+f for f in os.listdir(path+folder) if name+'_' in f]
 
 
@@ -1337,7 +1158,7 @@ if args.plc[0]!=None:
 
         for obj_name in phot_name:
             #find all text files in the photometry folder that contain obj_name
-            phot_files = [data1_path+f for f in os.listdir(data1_path+phot_folder) if re.search(obj_name,f)]
+            phot_files = [path+f for f in os.listdir(path+phot_folder) if re.search(obj_name,f)]
             sp_logger.info(info_g+f'Found {len(phot_files)} files for {obj_name}')
 
             filters = {'g':[],'r':[],'i':[],'z':[],'u':[],'R':[],'B':[]} #dictionary to store the photometry for each filter
@@ -1399,30 +1220,30 @@ if args.plc[0]!=None:
 
                 if 'save' in args.plc:
                     sp_logger.info(info_g+f' Saving light curve for {obj_name} in {key}')
-                    fig.savefig(data1_path+phot_folder+'/'+obj_name+'_'+key+'_light_curve.png',dpi=300)
+                    fig.savefig(path+phot_folder+'/'+obj_name+'_'+key+'_light_curve.png',dpi=300)
                     plt.close(fig)
 
                     sp_logger.info(info_g+f' Saving photometry for {obj_name} in {key}')
-                    df.to_csv(data1_path+phot_folder+'/'+obj_name+'_'+key+'_photometry.csv',index=False)
+                    df.to_csv(path+phot_folder+'/'+obj_name+'_'+key+'_photometry.csv',index=False)
 
 
 if args.mroundup==True:
-    today_phot_files = [f for f in os.listdir(data1_path+'photometry_date/'+DATE) if f!='cut_outs' and f!='morning_rup']
+    today_phot_files = [f for f in os.listdir(path+'photometry_date/'+DATE) if f!='cut_outs' and f!='morning_rup']
 
-    if os.path.exists(data1_path+'photometry_date/'+DATE+'/morning_rup'):
-        today_mrup_phot_files = [f for f in os.listdir(data1_path+'photometry_date/'+DATE+'/morning_rup') if f!='cut_outs' and f!='morning_rup']
+    if os.path.exists(path+'photometry_date/'+DATE+'/morning_rup'):
+        today_mrup_phot_files = [f for f in os.listdir(path+'photometry_date/'+DATE+'/morning_rup') if f!='cut_outs' and f!='morning_rup']
 
         if len(today_mrup_phot_files)!=len(today_phot_files): #finding the files in today_phot_files that aren't in today_mrup_phot_files
             for i in today_phot_files:
                 if i not in today_mrup_phot_files:
                     try:
-                        os.system('cp '+data1_path+'photometry_date/'+DATE+'/'+i+' '+data1_path+'photometry_date/'+DATE+'/morning_rup/'+i)
+                        os.system('cp '+path+'photometry_date/'+DATE+'/'+i+' '+path+'photometry_date/'+DATE+'/morning_rup/'+i)
                     except Exception as e:
                         print(f'Failed to copy across {i} to photometry_data/{DATE}/morning_rup',e)
 
     # LT_proposals = 'JL23A05 JZ21B01 JL23A06 JL23A07 JL23B05 JL23B06 JL24A04 JL24A09'
 
-    # morning_logs = glob.glob(data1_path+'morning_rup_logs/'+DATE+'/*')
+    # morning_logs = glob.glob(path+'morning_rup_logs/'+DATE+'/*')
     # #find the log with DATE in the name
     # for log in morning_logs:
     #     if DATE in log:
