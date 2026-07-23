@@ -47,8 +47,10 @@ _*.fits
 _*.png
 *.weight.fits
 
-# Configuration/Cache files
+# Per-machine config files (absolute paths differ per host — see SERVER_SETUP.md)
 config_files/
+sex.config
+sex.conv
 ps_catalogs/
 
 # Notebook checkpoints and IDE
