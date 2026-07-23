@@ -1,11 +1,16 @@
-# Generated output directories
+# Generated output directories (per-target reductions)
 SN*/
 grb*/
 dist_test*/
 ztf*/
+2023ixf_*
+24wpp_phot
 photometry/
 photometry_date/
 phot_fits_info/
+entire_lc_imgs/
+investigate/
+stacked/
 
 # Photometry and cutout files
 *_photometry.txt
@@ -18,7 +23,12 @@ poly_comps/
 aligned_images/
 bkg_subtracted_science/
 convolved_psf/
+convolved_ref/
+convolved_sci/
 scaled_subtracted_imgs/
+no_scaled_subtracted_imgs/
+trimmed_sci_imgs/
+combined_imgs/
 ref_imgs/
 out/
 temp_config_files/
@@ -30,21 +40,23 @@ temp_config_files/
 *.psf
 *.txt
 temp.cat
-sex.config
-sex.conv
+temp.fits
 match.list
 det.*
+_*.fits
+_*.png
+*.weight.fits
 
 # Configuration/Cache files
 config_files/
 ps_catalogs/
 
-# Notebooks and IDE
+# Notebook checkpoints and IDE
 .ipynb_checkpoints/
-*.ipynb
 .vscode/
 .idea/
 *.swp
+.claude/settings.local.json
 
 # Credentials (NEVER commit this!)
 sedm_credentials.py
@@ -69,7 +81,11 @@ Thumbs.db
 *.zip
 *.tar.gz
 
-# Logs and reports
+# Logs and generated reports/figures
 *.log
 *.pdf
-*.fits*_fits_list.csv
+*.png
+*.fits
+*_fits_list.csv
+coadd.weight.fits
+science_shadow_removed.fits
