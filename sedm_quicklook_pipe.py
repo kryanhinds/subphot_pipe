@@ -1668,9 +1668,9 @@ class subtracted_phot(subphot_data):
 
 
     def swarp_ref_align(self,image_size=image_size):
-        
+
         # prepsexfile(gain=self.sci_gain)
-        
+
         if self.telescope in SEDM:
             self.image_size=1000
         else:
@@ -1682,6 +1682,22 @@ class subtracted_phot(subphot_data):
             # self.image_size=1500
             self.image_size=1650
             # self.image_size=1300
+
+        # [override] --force_image_size N : use the user-supplied size as the
+        # target SWarp frame and pad both sci & ref to it in the mismatch
+        # branch below, instead of shrinking to whichever resamp came out
+        # smaller (which can crop the transient out when the target is far
+        # from the science image centre).
+        try:
+            _fis = getattr(self.args, 'force_image_size', None)
+        except Exception:
+            _fis = None
+        if _fis is not None and int(_fis) > 0:
+            self.image_size = int(_fis)
+            self.sp_logger.info(info_g + f' [force] --force_image_size override: '
+                                         f'using IMAGE_SIZE = {self.image_size} px')
+        self._force_image_size_active = (_fis is not None and int(_fis) > 0)
+        self._initial_image_size = self.image_size
 
         self.sp_logger.info(info_g+f' Aligning science with reference image')
 
@@ -1907,6 +1923,85 @@ class subtracted_phot(subphot_data):
 
             if np.shape(fits.open(self.sci_ali_name)[0].data)!=np.shape(fits.open(self.ref_ali_name)[0].data) and ((self.image_size,self.image_size)!=np.shape(fits.open(self.sci_ali_name)[0].data) or (self.image_size,self.image_size)!=np.shape(fits.open(self.ref_ali_name)[0].data)):
                 self.sp_logger.warning(warn_y+' Science image or reference image and aligned image have different sizes. This may be due to the reference image being too far away from the science image')
+
+                # [force_image_size] branch: pad BOTH sci and ref to the
+                # original requested IMAGE_SIZE using their respective COMIN
+                # offsets, instead of shrinking to the smaller resamp shape
+                # (which crops the transient out when the target is offset
+                # from the science image centre).
+                if getattr(self, '_force_image_size_active', False):
+                    try:
+                        _target = int(self._initial_image_size)
+                        _sci_hdu = fits.open(self.sci_ali_name)[0]
+                        _ref_hdu = fits.open(self.ref_ali_name)[0]
+                        _scx = int(_sci_hdu.header.get('COMIN1', 1))
+                        _scy = int(_sci_hdu.header.get('COMIN2', 1))
+                        _rcx = int(_ref_hdu.header.get('COMIN1', 1))
+                        _rcy = int(_ref_hdu.header.get('COMIN2', 1))
+
+                        def _pad_to(data, cx, cy, target):
+                            out = np.zeros((target, target), dtype=data.dtype)
+                            y0, x0 = cy - 1, cx - 1
+                            y1, x1 = y0 + data.shape[0], x0 + data.shape[1]
+                            sy0, sy1 = max(0, -y0), min(data.shape[0], target - y0)
+                            sx0, sx1 = max(0, -x0), min(data.shape[1], target - x0)
+                            dy0, dy1 = max(0, y0), min(target, y1)
+                            dx0, dx1 = max(0, x0), min(target, x1)
+                            if sy1 > sy0 and sx1 > sx0:
+                                out[dy0:dy1, dx0:dx1] = data[sy0:sy1, sx0:sx1]
+                            return out
+
+                        _padded_sci = _pad_to(_sci_hdu.data, _scx, _scy, _target)
+                        _padded_ref = _pad_to(_ref_hdu.data, _rcx, _rcy, _target)
+
+                        # New WCS = SWarp combined-frame WCS. Each .resamp header
+                        # carries the projection of the COMBINEd output but its
+                        # CRPIX is relative to the cropped resamp. Add COMIN-1
+                        # to recover the combined-frame CRPIX.
+                        _new_hdr = _sci_hdu.header.copy()
+                        _new_hdr['CRPIX1'] = float(_new_hdr['CRPIX1']) + (_scx - 1)
+                        _new_hdr['CRPIX2'] = float(_new_hdr['CRPIX2']) + (_scy - 1)
+                        _new_hdr['NAXIS1'] = _target
+                        _new_hdr['NAXIS2'] = _target
+
+                        # Write padded files
+                        _sci_padded_name = self.path + 'aligned_images/' + \
+                            self.sci_img_name.split('/')[-1].replace('.fits', '_padded.fits')
+                        _ref_padded_name = self.path + 'aligned_images/' + \
+                            os.path.basename(self.ref_ali_name).replace('.resamp.fits', '_padded.fits')
+                        fits.writeto(_sci_padded_name, _padded_sci, header=_new_hdr, overwrite=True)
+                        fits.writeto(_ref_padded_name, _padded_ref, header=_new_hdr, overwrite=True)
+
+                        # Wire them in as the official aligned outputs
+                        self.sci_ali_img_hdu = fits.open(_sci_padded_name)[0]
+                        self.ref_ali_img_hdu = fits.open(_ref_padded_name)[0]
+                        self.sci_ali_name = _sci_padded_name
+                        self.ref_ali_name = _ref_padded_name
+
+                        # Valid masks (track where each input actually had data)
+                        self.valid_mask = np.zeros((_target, _target), dtype=bool)
+                        _y0s, _y1s = max(0, _scy-1), min(_target, _scy-1 + _sci_hdu.data.shape[0])
+                        _x0s, _x1s = max(0, _scx-1), min(_target, _scx-1 + _sci_hdu.data.shape[1])
+                        self.valid_mask[_y0s:_y1s, _x0s:_x1s] = True
+                        self.ref_valid_mask = np.zeros((_target, _target), dtype=bool)
+                        _y0r, _y1r = max(0, _rcy-1), min(_target, _rcy-1 + _ref_hdu.data.shape[0])
+                        _x0r, _x1r = max(0, _rcx-1), min(_target, _rcx-1 + _ref_hdu.data.shape[1])
+                        self.ref_valid_mask[_y0r:_y1r, _x0r:_x1r] = True
+
+                        self.sp_logger.info(info_g + f' [force] Padded sci+ref to '
+                                                     f'common {_target}x{_target} frame: '
+                                                     f'sci@COMIN=({_scx},{_scy}) '
+                                                     f'ref@COMIN=({_rcx},{_rcy})')
+                        self.sp_logger.info(info_g + f' [force] Sci valid: '
+                                                     f'{100*self.valid_mask.mean():.1f}% | '
+                                                     f'Ref valid: {100*self.ref_valid_mask.mean():.1f}%')
+                        self.image_size = _target
+                        self.align_success = True
+                        continue
+                    except Exception as _e_force:
+                        self.sp_logger.warning(warn_y + f' [force] pad-to-target failed '
+                                                       f'({_e_force}); falling back to shrink-and-retry')
+
                 self.min_align_size = np.min([np.shape(fits.open(self.sci_ali_name)[0].data),np.shape(fits.open(self.ref_ali_name)[0].data)])
                 self.sp_logger.warning(warn_y+' Trying image size of '+str(self.min_align_size)+'x'+str(self.min_align_size)+' pixels')
                 self.image_size=self.min_align_size
@@ -4064,6 +4159,20 @@ class subtracted_phot(subphot_data):
         
         self.files_to_clean.append(path+f"config_files/sci_asterr_{self.rand_nums_string}.cat"),self.files_to_clean.append(path+f"config_files/ref_asterr_{self.rand_nums_string}.cat")
         self.sci_sources,self.ref_sources = self.sci_sources[self.sci_sources['FLAGS']==0],self.ref_sources[self.ref_sources['FLAGS']==0]
+
+        # If either image yields zero clean SExtractor detections, the
+        # match_to_catalog_sky() call below crashes with
+        # "catalog cannot be a scalar or length-0".  Skip the diagnostic
+        # gracefully rather than aborting the whole reduction.
+        if len(self.sci_sources) == 0 or len(self.ref_sources) == 0:
+            self.sp_logger.warning(warn_y + f' Astrometric-error skipped: '
+                                            f'sci sources={len(self.sci_sources)}, '
+                                            f'ref sources={len(self.ref_sources)}')
+            self.ra_error = float('nan')
+            self.dec_error = float('nan')
+            self.matched_sources = None
+            return
+
         # print(self.sci_sources.columns)
         self.sci_sc = SkyCoord(ra=self.sci_sources['ALPHA_J2000'],dec=self.sci_sources['DELTA_J2000'],unit=(u.deg,u.deg))
         self.ref_sc = SkyCoord(ra=self.ref_sources['ALPHA_J2000'],dec=self.ref_sources['DELTA_J2000'],unit=(u.deg,u.deg))

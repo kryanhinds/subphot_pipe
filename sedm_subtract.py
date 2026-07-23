@@ -125,6 +125,13 @@ parser.add_argument('--user_zp_sci','-zp_sci',default=None,
 parser.add_argument('--user_zp_ref','-zp_ref',default=None,
                     help="User supplied zeropoint, default is None")
 
+parser.add_argument('--force_image_size','-fis',default=None,type=int,
+                    help="Force SWarp output IMAGE_SIZE to this many pixels per side, "
+                    "and pad sci+ref into that frame instead of shrinking to the "
+                    "smaller resamp shape. Use when the transient is offset from the "
+                    "science image centre and the default shrink-and-retry loop "
+                    "crops it out. Typical SEDM values: 1000 or larger.")
+
 parser.add_argument('--web_page','-web',action='store_true',default=False,
                     help="Create webpage, default is off")
 

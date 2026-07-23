@@ -2,6 +2,8 @@
 from astropy.wcs import WCS
 import astroscrappy
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from astropy import wcs
 from astropy.io import fits
 from astropy.io.votable import parse_single_table
@@ -581,11 +583,169 @@ def sdss_query(ra_deg, dec_deg, rad_deg):
                 catmag.append(float(row[9]))
                 data.append([float(row[7]),float(row[8]),float(row[9])])
 
-    print(info_g+" Catalog SDSS dr16; length:",len(catra))       
+    print(info_g+" Catalog SDSS dr16; length:",len(catra))
     cat_table = pd.DataFrame(data=data,columns=['ra','dec','mag'])
     # print(cat_table)
     #return catra,catdec,catmag
     return cat_table
+
+##################################
+# LEGACY SURVEY (DECaLS) DOWNLOAD
+def download_legacy_survey_fits(ra, dec, band='g', output_dir='ref_imgs',
+                                size=800, pixscale=0.262, layer='ls-dr9', logger=None, obj_name=None):
+    """
+    Download Legacy Survey (DECaLS) FITS cutout image via web API
+
+    Parameters:
+    -----------
+    ra : float
+        Right ascension in degrees
+    dec : float
+        Declination in degrees
+    band : str
+        Filter band: 'g', 'r', 'i', or 'z' (can combine: 'gr', 'gri', etc.)
+    output_dir : str
+        Directory to save FITS file
+    size : int
+        Image size in pixels (default 800)
+    pixscale : float
+        Pixel scale in arcsec/pixel (default 0.262)
+    layer : str
+        Legacy Survey data release (default 'ls-dr9')
+    logger : logging.Logger, optional
+        Logger object
+    obj_name : str, optional
+        Object name to include in filename (default: uses generic name)
+
+    Returns:
+    --------
+    str : Path to FITS file if successful, None if failed
+    """
+    import gzip
+    import shutil
+    from pathlib import Path
+
+    # Ensure output directory exists
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    if obj_name:
+        output_name = f"{obj_name}_legacysurvey_{band}.fits"
+    else:
+        output_name = f"legacysurvey_{band}.fits"
+    output_path = Path(output_dir) / output_name
+
+    # Check if file already exists and is valid
+    if output_path.exists():
+        try:
+            hdul = fits.open(output_path)
+            data = hdul[0].data
+            shape = data.shape
+            hdul.close()
+            msg = f"✓ Legacy Survey already cached: {output_path} (shape {shape})"
+            if logger:
+                logger.info(info_b + msg)
+            else:
+                print(info_b + msg)
+            return str(output_path)
+        except Exception as e:
+            msg = f"⚠ Legacy Survey file corrupted, re-downloading"
+            if logger:
+                logger.warning(warn_r + msg)
+            else:
+                print(warn_r + msg)
+
+    # URL for Legacy Survey FITS cutout using viewer API
+    url = (f"https://www.legacysurvey.org/viewer/cutout.fits?"
+           f"ra={ra:.6f}&dec={dec:.6f}&"
+           f"layer={layer}&"
+           f"bands={band}&"
+           f"size={size}&"
+           f"pixscale={pixscale}")
+
+    log_msg = f"Downloading {band}-band Legacy Survey ({size}x{size} px)"
+    if logger:
+        logger.info(info_g + log_msg)
+    else:
+        print(info_g + log_msg)
+
+    if logger:
+        logger.debug(info_b + f"Legacy Survey URL: {url}")
+
+    try:
+        # A single float timeout only bounds the connect step and each individual
+        # socket read, not the total request duration — a server that trickles
+        # bytes slowly (LS's on-the-fly cutout renderer under load) can hang far
+        # past 300s without ever raising. Use an explicit (connect, read) timeout
+        # so a stalled read actually times out, plus retries with backoff for
+        # transient server errors instead of hanging or failing outright.
+        _session = requests.Session()
+        _retry = Retry(total=3, backoff_factor=2, status_forcelist=[500, 502, 503, 504])
+        _session.mount('https://', HTTPAdapter(max_retries=_retry))
+        _session.mount('http://', HTTPAdapter(max_retries=_retry))
+        response = _session.get(url, timeout=(10, 60))
+        response.raise_for_status()
+
+        # Check if response is gzipped
+        if response.headers.get('content-encoding') == 'gzip' or 'gzip' in response.headers.get('content-type', ''):
+            import io
+            with gzip.open(io.BytesIO(response.content), 'rb') as f:
+                with open(output_path, 'wb') as out_f:
+                    out_f.write(f.read())
+        else:
+            # Save directly (already uncompressed)
+            with open(output_path, 'wb') as f:
+                f.write(response.content)
+
+        # Verify FITS file
+        hdul = fits.open(output_path)
+        data = hdul[0].data
+        if data is None:
+            hdul.close()
+            # Delete corrupted file so it can be re-downloaded
+            try:
+                output_path.unlink()
+            except:
+                pass
+            msg = f"✗ Legacy Survey FITS file is empty or corrupted"
+            if logger:
+                logger.warning(warn_r + msg)
+            else:
+                print(warn_r + msg)
+            return None
+        shape = data.shape
+        min_val = data.min()
+        max_val = data.max()
+        hdul.close()
+
+        msg = f"✓ Legacy Survey downloaded: {output_path} (shape {shape}, range [{min_val:.2f}, {max_val:.2f}])"
+        if logger:
+            logger.info(info_g + msg)
+        else:
+            print(info_g + msg)
+
+        return str(output_path)
+
+    except requests.exceptions.Timeout:
+        msg = f"✗ Legacy Survey download timed out (check internet connection)"
+        if logger:
+            logger.warning(warn_r + msg)
+        else:
+            print(warn_r + msg)
+        return None
+    except requests.exceptions.HTTPError as e:
+        msg = f"✗ Legacy Survey download failed: {e} (image may not exist for these coordinates)"
+        if logger:
+            logger.warning(warn_r + msg)
+        else:
+            print(warn_r + msg)
+        return None
+    except Exception as e:
+        msg = f"✗ Error downloading Legacy Survey: {e}"
+        if logger:
+            logger.warning(warn_r + msg)
+        else:
+            print(warn_r + msg)
+        return None
 
 # def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None):
 
@@ -692,32 +852,37 @@ def response_to_dataframe(response,filt='u'):
     # print(json.dumps(response, indent=2))
     return None
 
-def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None,lnks_done=[]): 
+def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None,lnks_done=[]):
 
 
     log.info(info_g+f" Querrying SDSS for reference imaging in {filt}-band ("+str(nx)+str(',')+str(ny)+f') ({ra_string:.2f},{dec_string:.2f})')
 
     image_links=[]
+    ref_path = None
 
     links_sql = submit_sql_query(ra_string,dec_string)
-    df,links = response_to_dataframe(links_sql,filt=filt)
+    result = response_to_dataframe(links_sql,filt=filt)
+    if result is None:
+        log.warning(warn_r+f' SDSS query failed for {filt}-band at ({ra_string:.2f},{dec_string:.2f})')
+        return None
+    df,links = result
     # print(links)
     if len(links)==0:
         log.warning(warn_r+f' Exiting... Not in the SDSS footprint, no {filt}-band!')
-        return
+        return None
     if all([lnk in lnks_done for lnk in links]):
         log.info(info_b+f' SDSS image already downloaded'+str((nx,ny)))
-        return
+        return None
     for link in links:
         image_links.append(link)
     # try:
     for image_link in image_links:
-        if filt=='i': 
+        if filt=='i':
             image_link = re.sub('irg','i',image_link)
             image_link = re.sub('.jpg','.fits.bz2',image_link)
             image_name = image_link.rsplit('/', 1)[-1]
             # sys.exit(1)
-        
+
         print(image_link)
         # sys.exit(1)
         image_name=image_link.rsplit('/', 1)[-1]
@@ -741,6 +906,9 @@ def sdss_query_image(ra_string,dec_string,filt,nx,ny,log=None,lnks_done=[]):
 
     #     return
     # sys.exit(1)
+    if ref_path is None:
+        log.warning(warn_r+f' Failed to download SDSS image for {filt}-band')
+        return None
     return ref_path, links
 
 
@@ -2059,17 +2227,145 @@ def get_borders(sci_hdu):
 
     return int(XL), int(XR), int(YL), int(YT)
 
-def new_cutout(sci_hdu):
+def trim_contaminated_edges(data, sn_x=None, sn_y=None, logger=None):
+    """Detect and return trim boundaries for edge columns/rows that contain
+    elevated noise or background glow (e.g. SEDM amplifier glow, scattered
+    light gradients in the lower-left corner).
+
+    Uses per-column and per-row sigma-clipped statistics compared against the
+    image interior.  Three safety checks are applied:
+
+    1. Never trims more than 15 % of the image width/height from any edge.
+    2. Never trims past the SN pixel position (requires >= 100 px clearance).
+    3. Relaxes the trim entirely if fewer than ~3 bright sources would remain
+       in the trimmed field (proxy: pixels > interior_median + 10*sigma).
+
+    Parameters
+    ----------
+    data   : 2-D numpy array  (raw science pixel data)
+    sn_x   : float or None    SN x-pixel (column), 0-indexed
+    sn_y   : float or None    SN y-pixel (row),    0-indexed
+    logger : logger or None   optional pipeline logger
+
+    Returns
+    -------
+    xl, xr, yl, yt : ints
+        Boundaries of the clean region: data[yl:yt, xl:xr] is uncontaminated.
+    """
+    from astropy.stats import sigma_clipped_stats
+
+    h, w = data.shape
+
+    # Interior reference: central 60 % of image
+    mx = max(int(w * 0.20), 60)
+    my = max(int(h * 0.20), 60)
+    interior = data[my:h - my, mx:w - mx]
+    _, int_med, int_std = sigma_clipped_stats(interior, sigma=3)
+
+    std_thresh  = 2.0 * int_std
+    med_thresh  = int_med + 3.0 * int_std
+
+    # Per-column and per-row sigma-clipped statistics
+    col_std = np.array([sigma_clipped_stats(data[:, c], sigma=3)[2] for c in range(w)])
+    col_med = np.array([sigma_clipped_stats(data[:, c], sigma=3)[1] for c in range(w)])
+    row_std = np.array([sigma_clipped_stats(data[r, :], sigma=3)[2] for r in range(h)])
+    row_med = np.array([sigma_clipped_stats(data[r, :], sigma=3)[1] for r in range(h)])
+
+    bad_col = (col_std > std_thresh) | (col_med > med_thresh)
+    bad_row = (row_std > std_thresh) | (row_med > med_thresh)
+
+    half_w, half_h = w // 2, h // 2
+
+    left_bad  = np.where(bad_col[:half_w])[0]
+    right_bad = np.where(bad_col[half_w:])[0]
+    bot_bad   = np.where(bad_row[:half_h])[0]
+    top_bad   = np.where(bad_row[half_h:])[0]
+
+    xl = int(left_bad.max())  + 1 if len(left_bad)  > 0 else 0
+    xr = half_w + int(right_bad.min()) if len(right_bad) > 0 else w
+    yl = int(bot_bad.max())   + 1 if len(bot_bad)   > 0 else 0
+    yt = half_h + int(top_bad.min())  if len(top_bad)  > 0 else h
+
+    # --- Safety cap: never exceed 15 % of image per edge ---
+    MAX_FRAC = 0.15
+    xl = min(xl, int(w * MAX_FRAC))
+    xr = max(xr, int(w * (1 - MAX_FRAC)))
+    yl = min(yl, int(h * MAX_FRAC))
+    yt = max(yt, int(h * (1 - MAX_FRAC)))
+
+    # --- Safety cap: never trim past SN (with 100 px clearance) ---
+    SN_MARGIN = 100
+    if sn_x is not None:
+        xl = min(xl, max(0,  int(float(sn_x)) - SN_MARGIN))
+        xr = max(xr, min(w,  int(float(sn_x)) + SN_MARGIN))
+    if sn_y is not None:
+        yl = min(yl, max(0,  int(float(sn_y)) - SN_MARGIN))
+        yt = max(yt, min(h,  int(float(sn_y)) + SN_MARGIN))
+
+    # --- Safety check: require at least ~3 bright sources remaining ---
+    trimmed_region = data[yl:yt, xl:xr]
+    n_bright_px    = int(np.sum(trimmed_region > int_med + 10 * int_std))
+    n_sources_approx = max(n_bright_px // 20, 0)   # ~20 px per source at typical SEDM FWHM
+    MIN_SOURCES = 3
+    if n_sources_approx < MIN_SOURCES:
+        msg = (f'[V2] trim_contaminated_edges: only ~{n_sources_approx} bright sources '
+               f'in proposed trimmed field — keeping original image boundary')
+        if logger: logger.warning(msg)
+        else: print(warn_y + msg)
+        return 0, w, 0, h
+
+    msg = (f'[V2] Noise-based edge trim: XL={xl}, XR={xr}, YL={yl}, YT={yt} '
+           f'(interior std={int_std:.1f}, thresholds: std>{std_thresh:.1f}, med>{med_thresh:.1f}) '
+           f'~{n_sources_approx} bright sources remain')
+    if logger: logger.info(msg)
+    else: print(info_g + msg)
+
+    return xl, xr, yl, yt
+
+
+def new_cutout(sci_hdu, sn_x=None, sn_y=None):
+    """Zero-mask image pixels outside the clean border region.
+
+    Combines two border-detection methods:
+    - get_borders: gradient + high-pixel methods (existing, catches SWarp padding)
+    - trim_contaminated_edges: noise-statistics method (catches edge glow/gradients)
+
+    The most conservative (largest inward trim) from each method is used.
+    """
     print(info_g+"Cutting out the image using the borders...")
-    XL, XR, YL, YT = get_borders(sci_hdu)
-    data = sci_hdu.data.astype(float)
-    header = sci_hdu.header.copy()
-    print(f"Cutting out image with borders: XL={XL}, XR={XR}, YL={YL}, YT={YT}")
+    XL_geo, XR_geo, YL_geo, YT_geo = get_borders(sci_hdu)
+
+    data   = sci_hdu.data.astype(float)
+    h, w   = data.shape
+
+    # Noise-statistics trim
+    XL_noise, XR_noise, YL_noise, YT_noise = trim_contaminated_edges(
+        data, sn_x=sn_x, sn_y=sn_y)
+
+    # Take the most conservative (largest inward) trim from either method
+    XL = max(XL_geo, XL_noise)
+    XR = min(XR_geo, XR_noise)
+    YL = max(YL_geo, YL_noise)
+    YT = min(YT_geo, YT_noise)
+
+    # Safety: never mask past the SN position (with clearance). The noise-based
+    # method already enforces this internally, but the geometric method
+    # (find_border_high) has hardcoded 150/850 fallback rows and can win the
+    # max/min combination above — slicing out the target and every star near
+    # that edge (seen on SEDM ACQ frames where the target sits at y~140).
+    SN_MARGIN = 100
+    if sn_x is not None:
+        XL = min(XL, max(0, int(float(sn_x)) - SN_MARGIN))
+        XR = max(XR, min(w, int(float(sn_x)) + SN_MARGIN))
+    if sn_y is not None:
+        YL = min(YL, max(0, int(float(sn_y)) - SN_MARGIN))
+        YT = max(YT, min(h, int(float(sn_y)) + SN_MARGIN))
+
+    print(f"Cutting out image with borders: XL={XL}, XR={XR}, YL={YL}, YT={YT} "
+          f"(geometry: {XL_geo},{XR_geo},{YL_geo},{YT_geo}  "
+          f"noise: {XL_noise},{XR_noise},{YL_noise},{YT_noise})")
+
     blank = np.zeros_like(data)
     blank[int(YL):int(YT), int(XL):int(XR)] = data[int(YL):int(YT), int(XL):int(XR)]
 
-    trimmed_data = np.nan_to_num(blank)
-
-
-
-    return trimmed_data
+    return np.nan_to_num(blank)
