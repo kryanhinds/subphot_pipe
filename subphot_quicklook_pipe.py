@@ -1,5 +1,5 @@
 
-#!/Users/kryanhinds/miniconda/envs/sedm/bin python3
+#!/usr/bin/env python3
 # from drizzle import drizzle,doblot
 
 from skimage import transform
@@ -58,6 +58,41 @@ mpl.rc('font', family='serif')
 
 
 
+def normalise_telescope(header):
+    """Map raw TELESCOP header values onto the canonical header_kw keys.
+    LCOGT frames carry a per-unit TELESCOP (e.g. '1m0-01') so they are
+    identified via ORIGIN; the LDT still reports its old 'DCT' name."""
+    tel = str(header.get('TELESCOP','')).strip()
+    if str(header.get('ORIGIN','')).strip()=='LCOGT' or tel.lower().startswith(('0m4','1m0','2m0')):
+        return 'LCOGT'
+    if tel in ('DCT','LDT'):
+        return 'LDT'
+    return tel
+
+def flatten_multiext_fits(path_in, out_dir):
+    """Return a path to a simple single-HDU FITS copy of *path_in*.
+    fpack-compressed (.fz) and multi-extension files keep their image in a
+    later HDU, which the pipeline's fits.open(...)[0] accesses would miss.
+    If the primary HDU already holds data the input path is returned unchanged."""
+    hdul = fits.open(path_in)
+    try:
+        if hdul[0].data is not None:
+            return path_in
+        for hdu in hdul[1:]:
+            if getattr(hdu,'is_image',False) and hdu.data is not None:
+                base = os.path.basename(path_in)
+                for suf in ('.fits.fz','.fits.gz','.fz','.fits'):
+                    if base.endswith(suf):
+                        base = base[:-len(suf)]
+                        break
+                if not os.path.exists(out_dir): os.makedirs(out_dir)
+                out = os.path.join(out_dir, base+'_flat.fits')
+                fits.PrimaryHDU(data=hdu.data, header=hdu.header.copy()).writeto(out, overwrite=True)
+                return out
+        return path_in
+    finally:
+        hdul.close()
+
 def get_image(args):
     nx, ny,sci_c,sci_filt,log,lnks_done = args
     return sdss_query_image(sci_c.ra.deg+(nx*0.1), 
@@ -66,10 +101,10 @@ def get_image(args):
                                 
 
 def estimate_seeing(filename):
-    sp_print(info_g+f' Estimating the seeing based on the mode of the FWHM of point sources in the field')
+    print(info_g+f' Estimating the seeing based on the mode of the FWHM of point sources in the field')
     sextracted = sextract(filename,0, 0, 3, 12, maxellip=0.7, saturation=-1,delete=True)
     see = mode([sex.fwhm for sex in sextracted])
-    sp_print(info_g+f' Estimated seeing: '+str(see ))
+    print(info_g+f' Estimated seeing: '+str(see ))
     return see
 
 def check_seeing(ims,s=5,sp_logger=None):
@@ -100,7 +135,7 @@ def check_seeing(ims,s=5,sp_logger=None):
                 try:
                     seeing = im[0].header['ESO TEL AMBI FWHM END']
                 except:
-                    sp_print(warn_r+f" Seeing keywords not found in "+str(ims[i])+", estimating based of FWHM mode")
+                    print(warn_r+f" Seeing keywords not found in "+str(ims[i])+", estimating based of FWHM mode")
                     seeing=estimate_seeing(ims[i])
         if seeing < s:
             good_seeing.append(ims[i][:-5])
@@ -666,6 +701,12 @@ def _trim_center_psf(psf_arr, measured_fwhm, logger=None, mult=6.0):
 
     # 1. Trim: mult × FWHM window (minimum 11 px, always odd)
     _trim = max(int(np.ceil(mult * measured_fwhm)), 11)
+    # never expand beyond the input stamp — padding a small PSFEx stamp out to a
+    # large window creates a mostly-zero kernel that poisons the convolution
+    _max_trim = min(psf_arr.shape)
+    if _max_trim % 2 == 0:
+        _max_trim -= 1
+    _trim = min(_trim, _max_trim)
     if _trim % 2 == 0:
         _trim += 1
     _half = _trim // 2
@@ -848,7 +889,9 @@ class subtracted_phot(subphot_data):
         self.year,self.month,self.dayy = self.t.strftime("%Y"),self.t.strftime("%m"),self.t.strftime("%d")
         self.today = Time(f'{self.year}-{self.month}-{self.dayy} {self.TIME}')
         self.TODAY = self.t.strftime("%Y%m%d") #todays date in YYYYMMDD format
-        self.apo = Observer.at_site("lapalma")
+        # observing site from the telescope facility flag: Palomar for SEDM/P60, La Palma otherwise
+        self.obs_site = "palomar" if self.args.telescope_facility in SEDM else "lapalma"
+        self.apo = Observer.at_site(self.obs_site)
         self.sun_set_today = self.apo.sun_set_time(self.today, which="nearest") #sun set on day of observing
         self.time_suns_today = "{0.iso}".format(self.sun_set_today)[-12:]
         self.sun_set_tomorrow = self.apo.sun_set_time(self.today,which="next")
@@ -882,6 +925,26 @@ class subtracted_phot(subphot_data):
         self.if_stacked=False
         self.MJD,self.files_to_clean = [],[]
         self.rand_nums_string = ''.join(random.choice(string.digits) for i in range(5))
+
+        # flatten fpack-compressed / multi-extension inputs (e.g. LCOGT BANZAI .fz)
+        for _k in range(len(self.ims)):
+            for _p in (str(self.ims[_k]), str(self.ims[_k])+'.fits', self.path+str(self.ims[_k])):
+                if os.path.exists(_p):
+                    try:
+                        _needs_flat = _p.endswith(('.fz','.fits.gz')) or fits.getheader(_p,0).get('NAXIS',0)==0
+                    except Exception:
+                        _needs_flat = False
+                    if _needs_flat:
+                        try:
+                            _flat = flatten_multiext_fits(_p, self.path+'trimmed_sci_imgs')
+                        except Exception as _fe:
+                            print(warn_y+f' Could not flatten {_p}: {_fe}')
+                            _flat = _p
+                        if _flat != _p:
+                            print(info_g+f' Flattened multi-extension input {_p} -> {_flat}')
+                            self.ims[_k] = _flat
+                            self.files_to_clean.append(_flat)
+                    break
         
 
 
@@ -932,9 +995,10 @@ class subtracted_phot(subphot_data):
                 # print(info_g+' Single image to subtract:',self.name)
 
                 if self.args.telescope_facility not in SEDM:
-                    if '_' in self.name: 
+                    # provisional guess from LT-style filenames; telescope branches below refine it
+                    try:
                         self.folder = re.sub('_1','',self.name.split('/')[-1].split('_')[2])
-                    else:
+                    except (IndexError,Exception):
                         self.folder = self.DATE
 
                 if self.path not in self.name and self.name.startswith('/')==False:
@@ -944,7 +1008,7 @@ class subtracted_phot(subphot_data):
                 self.sci_path = self.name
                 print(self.name)
                 self.sci_img_hdu=fits.open(self.name.replace('.fits.fits','.fits'))[0]
-                self.telescope = self.sci_img_hdu.header['TELESCOP']
+                self.telescope = normalise_telescope(self.sci_img_hdu.header)
 
                 if self.telescope in SEDM:self.telescope,self.sci_int='SEDM-P60','P60'
 
@@ -1079,14 +1143,14 @@ class subtracted_phot(subphot_data):
                         self.sci_inst='SEDM-P60'
                         self.sci_prop=None
 
-                        if 'rc' in self.sci_path.split("/")[-1]:
-                            self.folder=self.sci_path.split('rc')[1][2:10]
-                        elif self.sci_path.split('/')[-1].startswith('20') and any(self.sci_path.split('/')[-1].endswith(strn) for strn in ['p.fits','p_trimmed.fits']):
-                            self.folder=self.sci_path.split('/')[-1][:8]
-                        else:
-                            self.folder=self.sci_path.split('/')[-1].split('_')[2]
-
-                        # print(self.folder)
+                        # folder = UTC date of observation (a full Palomar night shares one UTC date)
+                        try:
+                            self.folder = re.sub('-','',self.sci_img_hdu.header[self.DATE_kw].split('T')[0])
+                        except Exception:
+                            if 'rc' in self.sci_path.split("/")[-1]:
+                                self.folder=self.sci_path.split('rc')[1][2:10]
+                            else:
+                                self.folder=self.sci_path.split('/')[-1][:8]
 
                     elif self.telescope=='SLT':
                         self.sci_filt=self.sci_img_hdu.header['FILTER'][0]
@@ -1111,8 +1175,20 @@ class subtracted_phot(subphot_data):
                         self.sci_inst='MEIA3'
                         self.folder=str(re.sub('-','',self.sci_img_hdu.header['DATE-OBS']))
 
+                    else:
+                        # generic telescope: everything comes from its header_kw entry
+                        _filt_raw = str(self.sci_img_hdu.header[self.FILT_kw]).strip()
+                        self.sci_filt = next((c for c in _filt_raw.lower() if c in 'ugriz'), _filt_raw[:1].lower())
+                        try:self.sci_inst = str(self.sci_img_hdu.header[self.INST_kw])
+                        except Exception:self.sci_inst = self.telescope
+                        self.sci_prop = None
+                        try:self.folder = str(re.sub('-','',self.sci_img_hdu.header[self.DATE_kw].split('T')[0]))
+                        except Exception:self.folder = self.DATE
+                        # pad DATE-OBS strings lacking fractional seconds (name-building slices assume them)
+                        if len(str(self.sci_img_hdu.header.get(self.DATE_kw,'')))==19:
+                            self.sci_img_hdu.header[self.DATE_kw] = str(self.sci_img_hdu.header[self.DATE_kw])+'.000'
+                        print(info_g+f' Generic telescope handling for {self.telescope}: filter={self.sci_filt}, instrument={self.sci_inst}')
 
-    
                 else:
                     print(warn_r+' This script is not designed for '+self.telescope)
                     print(warn_r+' Please add the header keywords for '+self.telescope+' to the header_kw dictionary in the script')
@@ -1122,24 +1198,27 @@ class subtracted_phot(subphot_data):
 
 
                 # sys.exit()
-                #check if ONTARGET in header is True
-                if self.sci_inst in SEDM and self.sci_img_hdu.header['ONTARGET']!=True:
-                    print(warn_r+' This image is not on target, please check images, passing on this image')
-                    self.sys_exit=True
-                    return
-                self.sci_inst='SEDM-P60'
-                self.sci_prop=None
+                # SEDM-only: on-target check, instrument label and UTC-date folder.
+                # Other telescopes keep the sci_inst/folder set in their branches above;
+                # if a branch didn't set an instrument, fall back to the header keyword.
+                if self.telescope in SEDM:
+                    if self.sci_img_hdu.header['ONTARGET']!=True:
+                        print(warn_r+' This image is not on target, please check images, passing on this image')
+                        self.sys_exit=True
+                        return
+                    self.sci_inst='SEDM-P60'
+                    self.sci_prop=None
+                    try:
+                        self.folder = re.sub('-','',self.sci_img_hdu.header[self.DATE_kw].split('T')[0])
+                    except Exception:
+                        if 'rc' in self.sci_path.split("/")[-1]:
+                            self.folder=self.sci_path.split('rc')[1][2:10]
+                        else:
+                            self.folder=self.sci_path.split('/')[-1][:8]
+                elif getattr(self,'sci_inst',None) is None and self.INST_kw not in (None,'-'):
+                    try:self.sci_inst=self.sci_img_hdu.header[self.INST_kw]
+                    except Exception:pass
                 self.sci_obj=self.sci_img_hdu.header[self.OBJ_kw]
-                if self.sci_obj=='2024afav':
-                    self.sci_img_hdu.header[self.RA_kw] = "12:49:12.10"
-                    self.sci_img_hdu.header[self.DEC_kw] = "-18:06:13.20"
-
-                if 'rc' in self.sci_path.split("/")[-1]:
-                    self.folder=self.sci_path.split('rc')[1][2:10]
-                elif self.sci_path.split('/')[-1].startswith('20') and any(self.sci_path.split('/')[-1].endswith(strn) for strn in ['p.fits','p_trimmed.fits']):
-                    self.folder=self.sci_path.split('/')[-1][:8]
-                else:
-                    self.folder=self.sci_path.split('/')[-1].split('_')[2]
 
                 
                 print(info_g+f' Single filter: '+'\033[1m'+self.sci_filt+'\033[0m')
@@ -1152,7 +1231,10 @@ class subtracted_phot(subphot_data):
                 if self.ra_dec_pos=='header':
                     self.sci_ra=self.sci_img_hdu.header[self.RA_kw]
                     self.sci_dec=self.sci_img_hdu.header[self.DEC_kw]
-                    # print(self.sci_ra,self.sci_dec)
+                    # space-separated sexagesimal (e.g. LOT '14 37 16.14') -> colons
+                    if isinstance(self.sci_ra,str) and ':' not in self.sci_ra and len(self.sci_ra.split())>=3:
+                        self.sci_ra=':'.join(self.sci_ra.split())
+                        self.sci_dec=':'.join(str(self.sci_dec).split())
                 else:
                     print(info_g+f' RA & Dec specified by user (J2000): '+'\033[1m'+self.ra_dec_pos[0]+'\033[0m'+'\033[1m'+self.ra_dec_pos[1]+'\033[0m')
                     print(info_g+f' Catlog RA & Dec from header (J2000): '+'\033[1m'+self.sci_img_hdu.header[self.RA_kw]+'\033[0m'+'\033[1m'+self.sci_img_hdu.header[self.DEC_kw]+'\033[0m')
@@ -1219,11 +1301,8 @@ class subtracted_phot(subphot_data):
 
             
                 self.sci_obj, self.sep, self.tail = self.sci_obj.partition('_') #tail should be the request id from marshal triggering if there is one
-                if self.sci_obj=='ZTFaaqousn':self.sci_obj='ZTF25aaqousn'
-                
                 if ' ' in self.sci_obj:
                     self.sci_obj=self.sci_obj.split(' ')[0]
-                if self.sci_obj=='2023vyl':self.sci_obj='ZTF23abnprwj'
                 if 'ACQ-' in self.sci_obj:self.sci_obj=self.sci_obj.split('ACQ-')[1]
                 
                 self.sci_img_name=self.sci_obj+'_'+self.sci_filt+'comb.fits'
@@ -1254,7 +1333,11 @@ class subtracted_phot(subphot_data):
                 else:
                     if type(self.PIX_kw)!=str: self.sci_ps=float(self.PIX_kw)
                     else:self.sci_ps=self.sci_img_hdu.header[self.PIX_kw]
-                self.sci_mjd = self.sci_img_hdu.header[self.MJD_kw]
+                try:
+                    self.sci_mjd = self.sci_img_hdu.header[self.MJD_kw]
+                except Exception:
+                    self.sci_mjd = float(Time(str(self.sci_img_hdu.header[self.DATE_kw]).strip()).mjd)
+                    print(info_g+f' No MJD keyword ({self.MJD_kw}); computed MJD {self.sci_mjd:.6f} from {self.DATE_kw}')
 
                 if self.sci_mjd>400000:
                     self.sci_jd=self.sci_mjd
@@ -1290,7 +1373,7 @@ class subtracted_phot(subphot_data):
             for k in range(len(self.name)):
                 if not self.name[k].startswith(self.path): self.name[k]=self.path+self.name[k]
             self.sci_img_hdu = fits.open(self.name[0])[0]
-            self.telescope = self.sci_img_hdu.header['TELESCOP']
+            self.telescope = normalise_telescope(self.sci_img_hdu.header)
 
             if self.telescope=='GTC':
                 if self.sci_img_hdu.header['INSTRUME']=='HIPERCAM':self.telescope='GTC-HIPERCAM'
@@ -1357,6 +1440,18 @@ class subtracted_phot(subphot_data):
                     self.sci_inst='MEIA3'
                     self.folder=str(re.sub('-','',self.sci_img_hdu.header['DATE-OBS']))
 
+                else:
+                    # generic telescope: everything comes from its header_kw entry
+                    _filt_raw = str(self.sci_img_hdu.header[self.FILT_kw]).strip()
+                    self.sci_filt = next((c for c in _filt_raw.lower() if c in 'ugriz'), _filt_raw[:1].lower())
+                    try:self.sci_inst = str(self.sci_img_hdu.header[self.INST_kw])
+                    except Exception:self.sci_inst = self.telescope
+                    self.sci_prop = None
+                    try:self.folder = str(re.sub('-','',self.sci_img_hdu.header[self.DATE_kw].split('T')[0]))
+                    except Exception:self.folder = self.DATE
+                    if len(str(self.sci_img_hdu.header.get(self.DATE_kw,'')))==19:
+                        self.sci_img_hdu.header[self.DATE_kw] = str(self.sci_img_hdu.header[self.DATE_kw])+'.000'
+                    print(info_g+f' Generic telescope handling for {self.telescope}: filter={self.sci_filt}, instrument={self.sci_inst}')
 
             else:
                 print(warn_r+' This script is not designed for '+self.telescope)
@@ -1391,14 +1486,6 @@ class subtracted_phot(subphot_data):
                 self.name_joined=' '.join(self.name)
                 self.sci_img_hdu=fits.open(self.name[0])[0]
                 self.sci_obj=self.sci_img_hdu.header[self.OBJ_kw]
-                if self.sci_obj=='2023vyl':self.sci_obj='ZTF23abnprwj'
-                if self.sci_obj=='ZTFaaqousn':self.sci_obj='ZTF25aaqousn'
-
-
-                if self.sci_obj=='2024afav':
-                    self.sci_img_hdu.header[self.RA_kw] = "12:49:12.10"
-                    self.sci_img_hdu.header[self.DEC_kw] = "-18:06:13.20"
-
 
                 if self.ra_dec_pos=='header':
                     print(info_g+' RA & Dec specified by header')
@@ -1485,7 +1572,6 @@ class subtracted_phot(subphot_data):
                     self.sci_jd = self.sci_mjd+2400000.5
                     self.sci_jd=np.mean([fits.open(s)[0].header[self.MJD_kw]+2400000.5 for s in self.name])
                 
-                if self.sci_obj=='ZTFaaqousn':self.sci_obj='ZTF25aaqousn'
                 self.sci_img_name=self.sci_obj+'_'+self.sci_filt+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]),seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'.fits'
                 
                 # plt.figure(figsize=(10,10))
@@ -1666,11 +1752,8 @@ class subtracted_phot(subphot_data):
 
         if self.forced_phot in ['cat','fits','head',]:
             self.forced_phot = [self.sci_ra,self.sci_dec]
-        if self.sci_obj in ['SN2023ixf','ZTF23aaklqou','2023ixf','23aaklqou'] or self.special_case!=None:
-            self.special_case='SN2023ixf'
+        if self.special_case!=None:
             print(info_g+' Special case: '+self.special_case)
-        else:
-            self.special_case=self.special_case
 
         
 
@@ -1746,6 +1829,11 @@ class subtracted_phot(subphot_data):
         # sys.exit(1)
         # self.image_name=self.sci_obj+f'_ref.fits'
         # self.ref_path=self.path+'ref_imgs/'+self.image_name
+        if len(self.sdss_images)==0:
+            print(warn_r+f' No SDSS imaging available at this position (outside SDSS footprint?) — '
+                  f'cannot build a {sdss_filt}-band reference. Provide one with -refimg.')
+            self.sys_exit=True
+            return
         if not os.path.exists(self.ref_path):
             self.sdss_images = list(dict.fromkeys(self.sdss_images))
             with open(self.path+f'ref_imgs/{self.sci_obj}_sdss_list_{sdss_filt}.txt', 'w') as f:
@@ -2383,11 +2471,6 @@ class subtracted_phot(subphot_data):
         else:
             self.image_size=1500
 
-        if self.sci_obj=='ZTF25aasjeza':# and self.sci_filt=='z':
-            self.image_size=900
-        if self.sci_obj=='ZTF24abdiwwv': #02:22:10.96 -20:23:21.01
-            # self.image_size=1500
-            self.image_size=1650
             # self.image_size=1300
 
         # [override] --force_image_size N : see swarp_ref_align in
@@ -2554,6 +2637,10 @@ class subtracted_phot(subphot_data):
                         break
             # print(glob.glob(self.ref_path))
             # print(self.ref_path)
+            if len(glob.glob(self.ref_path))==0:
+                print(warn_r+f' Reference image {self.ref_path} not found/created — cannot align. Provide one with -refimg.')
+                self.sys_exit=True
+                return
             self.ref_img_name=glob.glob(self.ref_path)[0]
             self.ref_img_hdu=fits.open(self.ref_img_name)[0]
             self.ref_img=self.ref_img_hdu.data[0:self.ref_img_hdu.header['NAXIS2'],0:self.ref_img_hdu.header['NAXIS1']] 
@@ -2600,7 +2687,8 @@ class subtracted_phot(subphot_data):
             os.makedirs(self.path+'aligned_images')
 
         
-        wcs_command='python3 '+self.path+'subphot_align_quick.py'+" "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+"  -m relative -r 100"
+        # use the same interpreter as the pipeline so the subprocess sees the same env
+        wcs_command=sys.executable+' '+self.path+'subphot_align_quick.py'+" "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+"  -m relative -r 100"
         # wcs_command='python3 '+self.path+'subphot_align_quick.py'+" "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" "+self.ref_img_name+"  -m relative -r 30 -a "+self.ra_string+" "+self.dec_string
         # print(wcs_command)
 
@@ -2808,8 +2896,7 @@ class subtracted_phot(subphot_data):
                         warn_y + f' [V2] PS1 alignment catalog load failed: {_cat_e}')
 
             if _align_cat_sky is not None:
-                _fwhm_for_dao = max(3.0, (self.sci_seeing / self.sci_ps
-                                          if self.sci_seeing is not None else 5.0))
+                _fwhm_for_dao = max(3.0, self._fwhm_px_guess())
                 _ps1_result = _ps1_catalog_shift(
                     self.sci_img_hdu.data.astype(np.float64),
                     WCS(self.sci_img_hdu.header),
@@ -3674,6 +3761,10 @@ class subtracted_phot(subphot_data):
             self.ref_path = glob.glob(self.ref_path)[0]
             # print(glob.glob(self.ref_path))
             # print(self.ref_path)
+            if len(glob.glob(self.ref_path))==0:
+                print(warn_r+f' Reference image {self.ref_path} not found/created — cannot align. Provide one with -refimg.')
+                self.sys_exit=True
+                return
             self.ref_img_name=glob.glob(self.ref_path)[0]
             self.ref_img_hdu=fits.open(self.ref_img_name)[0]
             self.ref_img=self.ref_img_hdu.data[0:self.ref_img_hdu.header['NAXIS2'],0:self.ref_img_hdu.header['NAXIS1']] 
@@ -3704,7 +3795,7 @@ class subtracted_phot(subphot_data):
         if not os.path.exists(self.path+'aligned_images'):
             os.makedirs(self.path+'aligned_images')
 
-        wcs_command='python3 '+self.path+'subphot_align.py'+" -sci "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" -ref "+self.ref_img_name+"  -m relative -r 100"
+        wcs_command=sys.executable+' '+self.path+'subphot_align.py'+" -sci "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" -ref "+self.ref_img_name+"  -m relative -r 100"
 
 
         self.align_success=False
@@ -3993,7 +4084,7 @@ class subtracted_phot(subphot_data):
             print(info_g+' Attempting ePSF fallback (build_psf) for science image …')
             try:
                 from build_psf import build_psf_from_fits as _build_epsf
-                _fwhm_guess = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+                _fwhm_guess = self._fwhm_px_guess()
                 _epsf_res = _build_epsf(
                     self.sci_ali_name,
                     fwhm_guess      = max(1.5, _fwhm_guess),
@@ -4005,7 +4096,7 @@ class subtracted_phot(subphot_data):
                 )
                 _epsf_fwhm_limit_sci = max(15.0, 3.0 * _fwhm_guess)
                 _epsf_sci_ok = (
-                    _epsf_res['elongation'] <= 1.5 and
+                    _epsf_res['elongation'] <= 1.7 and
                     _epsf_res['fwhm'] <= _epsf_fwhm_limit_sci and
                     _epsf_res['fwhm'] >= 1.0
                 )
@@ -4023,7 +4114,7 @@ class subtracted_phot(subphot_data):
                         warn_y +
                         f' ePSF science fallback rejected (unphysical):'
                         f' FWHM={_epsf_res["fwhm"]:.2f} px (limit {_epsf_fwhm_limit_sci:.1f})'
-                        f'  elong={_epsf_res["elongation"]:.2f} (limit 1.5)'
+                        f'  elong={_epsf_res["elongation"]:.2f} (limit 1.7)'
                         f' — using PSFEx kernel instead'
                     )
             except Exception as _epsf_e:
@@ -4063,7 +4154,7 @@ class subtracted_phot(subphot_data):
             # [v2] Trim and re-centre the PSFEx kernel to remove noisy outer wings
             # and correct sub-pixel centroid offsets that cause dipole residuals.
             try:
-                _psfex_fwhm_sci = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+                _psfex_fwhm_sci = self._fwhm_px_guess()
                 self.kernel_sci = _trim_center_psf(self.kernel_sci, _psfex_fwhm_sci, self.sp_logger)
             except Exception as _trim_e:
                 print(warn_y+f' [V2] PSF kernel trim skipped (sci): {_trim_e}')
@@ -4224,7 +4315,7 @@ class subtracted_phot(subphot_data):
                 print(info_g+' Attempting ePSF fallback (build_psf) for reference image …')
                 try:
                     from build_psf import build_psf_from_fits as _build_epsf
-                    _fwhm_guess = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+                    _fwhm_guess = self._fwhm_px_guess()
                     _epsf_ref_res = _build_epsf(
                         self.ref_ali_name,
                         fwhm_guess      = max(1.5, _fwhm_guess),
@@ -4236,7 +4327,7 @@ class subtracted_phot(subphot_data):
                     )
                     _epsf_fwhm_limit_ref = max(15.0, 3.0 * _fwhm_guess)
                     _epsf_ref_ok = (
-                        _epsf_ref_res['elongation'] <= 1.5 and
+                        _epsf_ref_res['elongation'] <= 1.7 and
                         _epsf_ref_res['fwhm'] <= _epsf_fwhm_limit_ref and
                         _epsf_ref_res['fwhm'] >= 1.0
                     )
@@ -4254,7 +4345,7 @@ class subtracted_phot(subphot_data):
                             warn_y +
                             f' ePSF reference fallback rejected (unphysical):'
                             f' FWHM={_epsf_ref_res["fwhm"]:.2f} px (limit {_epsf_fwhm_limit_ref:.1f})'
-                            f'  elong={_epsf_ref_res["elongation"]:.2f} (limit 1.5)'
+                            f'  elong={_epsf_ref_res["elongation"]:.2f} (limit 1.7)'
                             f' — using PSFEx kernel instead'
                         )
                 except Exception as _epsf_ref_e:
@@ -4269,7 +4360,7 @@ class subtracted_phot(subphot_data):
                 self.kernel_ref = self.psf_ref_image[0].data[0]
                 # [v2] Trim and re-centre the reference PSFEx kernel
                 try:
-                    _psfex_fwhm_ref = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+                    _psfex_fwhm_ref = self._fwhm_px_guess()
                     self.kernel_ref = _trim_center_psf(self.kernel_ref, _psfex_fwhm_ref, self.sp_logger)
                 except Exception as _trim_e:
                     print(warn_y+f' [V2] PSF kernel trim skipped (ref): {_trim_e}')
@@ -4348,7 +4439,7 @@ class subtracted_phot(subphot_data):
         self.sci_ali_psf_built = False
         try:
             from psf_measure import measure_psf as _measure_psf
-            _fwhm_guess = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+            _fwhm_guess = self._fwhm_px_guess()
             _sci_data = self.sci_ali_hdu.data.astype(float)
             if self.valid_mask is not None and not np.all(self.valid_mask):
                 _sci_data = _sci_data.copy()
@@ -4379,7 +4470,7 @@ class subtracted_phot(subphot_data):
             print(warn_y+f" Unable to build empirical science PSF — falling back to Gaussian PSF from seeing estimate")
             try:
                 from astropy.convolution import Gaussian2DKernel
-                _fwhm_pix = self.sci_seeing / self.sci_ps
+                _fwhm_pix = self._fwhm_px_guess()
                 _sigma    = _fwhm_pix / (2.0 * np.sqrt(2.0 * np.log(2.0)))
                 _gauss    = Gaussian2DKernel(_sigma, x_size=31, y_size=31)
                 self.sci_ali_psf = _gauss.array / _gauss.array.sum()
@@ -4409,7 +4500,7 @@ class subtracted_phot(subphot_data):
                 print(info_g+' Measuring PSF of reference image...')
                 try:
                     from psf_measure import measure_psf as _measure_psf
-                    _fwhm_ref = getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37)
+                    _fwhm_ref = self._fwhm_px_guess()
                     _ref_data = self.ref_ali_hdu.data.astype(float)
                     if self.ref_valid_mask is not None and not np.all(self.ref_valid_mask):
                         _ref_data = _ref_data.copy()
@@ -4430,7 +4521,7 @@ class subtracted_phot(subphot_data):
                     print(warn_y+f" Unable to build empirical reference PSF — falling back to Gaussian PSF")
                     try:
                         from astropy.convolution import Gaussian2DKernel
-                        _fwhm_pix = self.sci_seeing / self.sci_ps
+                        _fwhm_pix = self._fwhm_px_guess()
                         _sigma    = _fwhm_pix / (2.0 * np.sqrt(2.0 * np.log(2.0)))
                         _gauss    = Gaussian2DKernel(_sigma, x_size=31, y_size=31)
                         self.ref_ali_psf = _gauss.array / _gauss.array.sum()
@@ -4887,7 +4978,17 @@ class subtracted_phot(subphot_data):
         try:
             _s = sci_data.astype(np.float64).copy()
             _r = ref_data.astype(np.float64).copy()
-            _m = valid_mask.astype(bool)
+            _m = valid_mask.astype(bool).copy()
+
+            # [V2] Robustness: saturated stars / artefacts near the borders can
+            # carry ~1e5-1e6 counts and dominate the global correlation sums,
+            # reporting NCC~0 for perfectly aligned images.  Trim a border margin
+            # and clip both images to their 0.5-99.5 percentile range first.
+            _bw = max(10, int(0.02*min(_m.shape)))
+            _m[:_bw,:]=False; _m[-_bw:,:]=False; _m[:,:_bw]=False; _m[:,-_bw:]=False
+            if _m.sum() > 100:
+                _lo,_hi = np.percentile(_s[_m],[0.5,99.5]); _s = np.clip(_s,_lo,_hi)
+                _lo,_hi = np.percentile(_r[_m],[0.5,99.5]); _r = np.clip(_r,_lo,_hi)
 
             # Restrict to valid pixels and high-pass filter to suppress sky gradient
             _s[~_m] = 0.0
@@ -4904,6 +5005,24 @@ class subtracted_phot(subphot_data):
                 return np.nan
 
             ncc = float(np.sum(_s * _r) / np.sqrt(_ss * _rr))
+
+            # [V2] Also evaluate the central 40% box: the target sits at/near the
+            # centre, and frames with radially degrading PSFs (field aberration)
+            # or bright edge artefacts legitimately decorrelate in the outskirts
+            # while the science-relevant region is perfectly aligned.
+            try:
+                _ny,_nx = _s.shape
+                _cy,_cx = slice(int(0.3*_ny),int(0.7*_ny)), slice(int(0.3*_nx),int(0.7*_nx))
+                _sc,_rc = _s[_cy,_cx],_r[_cy,_cx]
+                _ssc,_rrc = np.sum(_sc*_sc),np.sum(_rc*_rc)
+                if _ssc>0 and _rrc>0:
+                    _ncc_c = float(np.sum(_sc*_rc)/np.sqrt(_ssc*_rrc))
+                    if _ncc_c > ncc:
+                        print(info_g+f' [V2] Central-region NCC={_ncc_c:.3f} (global {ncc:.3f}) — using central value')
+                        ncc = _ncc_c
+            except Exception:
+                pass
+
             if ncc < ncc_bad:
                 print(
                     warn_r+f' [V2] POOR ALIGNMENT: NCC={ncc:.3f} (< {ncc_bad}) — '
@@ -4923,6 +5042,23 @@ class subtracted_phot(subphot_data):
             print(warn_y+f' [V2] Alignment quality check failed: {_e}')
             return np.nan
 
+
+    def _fwhm_px_guess(self):
+        """Best-guess stellar FWHM in PIXELS, robust to seeing units.
+        sci_seeing is arcsec for telescopes with a proper seeing keyword but is
+        PIXELS when it came from estimate_seeing (SExtractor FWHM mode).  A
+        naive seeing/pixscale then explodes (e.g. 5.5px/0.21 -> 26px) and
+        poisons PSF trimming and ePSF star selection.  If the converted value
+        is implausibly large but the raw value is plausible as pixels, use the
+        raw value; always clamp to [1.5, 15] px."""
+        try:
+            _see = float(self.sci_seeing)
+            _g = _see/float(self.sci_ps)
+        except Exception:
+            return 5.0
+        if _g > 15.0 and _see <= 15.0:
+            _g = _see
+        return float(max(1.5, min(_g, 15.0)))
 
     def cutout_psf(self,data,psf_array,xpos,ypos):
         all_cutouts=[]
@@ -5171,8 +5307,14 @@ class subtracted_phot(subphot_data):
                             # count_lim+=5000
 
                     c+=1
-                self.matched_star_coords_pix = np.array(self.matched_new_pix)
-                self.matched_catalog_mag = np.array(self.matched_new_mag)
+                if len(self.matched_new_pix)==0:
+                    # deep/stacked images can push every star past the fixed count
+                    # limit — rejecting all of them guarantees failure downstream,
+                    # so keep the original list and let the RSQ cuts sort it out
+                    print(warn_y+' [V2] Saturation check rejected ALL stars (deep/stacked image?) — keeping original star list')
+                else:
+                    self.matched_star_coords_pix = np.array(self.matched_new_pix)
+                    self.matched_catalog_mag = np.array(self.matched_new_mag)
 
                 print(info_g+' Number of stars after saturation check: '+str(len(self.matched_star_coords_pix)))
 
@@ -5373,7 +5515,7 @@ class subtracted_phot(subphot_data):
             print(warn_y+' [V2] Attempting aperture-photometry zeropoint fallback...')
             try:
                 from photutils.aperture import CircularAperture, aperture_photometry
-                _aper_r_pix = max(3.0, getattr(self, 'sci_seeing', 2.0) / getattr(self, 'sci_ps', 0.37))
+                _aper_r_pix = max(3.0, self._fwhm_px_guess())
                 _sci_ali_hdu = fits.open(self.sci_ali_name)[0]
                 _ref_ali_hdu = fits.open(self.ref_ali_name)[0]  # read once, not per-star
                 _aper_zp_sci, _aper_zp_ref = [], []
@@ -5383,11 +5525,11 @@ class subtracted_phot(subphot_data):
                         _phot_sci = aperture_photometry(_sci_ali_hdu.data, _ap)
                         _flux_sci = float(_phot_sci['aperture_sum'][0])
                         if _flux_sci > 0:
-                            _aper_zp_sci.append(self.matched_star_mags[_i] + 2.5*np.log10(_flux_sci))
+                            _aper_zp_sci.append(self.matched_catalog_mag[_i] + 2.5*np.log10(_flux_sci))
                         _phot_ref = aperture_photometry(_ref_ali_hdu.data, _ap)
                         _flux_ref = float(_phot_ref['aperture_sum'][0])
                         if _flux_ref > 0:
-                            _aper_zp_ref.append(self.matched_star_mags[_i] + 2.5*np.log10(_flux_ref))
+                            _aper_zp_ref.append(self.matched_catalog_mag[_i] + 2.5*np.log10(_flux_ref))
                     except Exception:
                         continue
                 if len(_aper_zp_sci) >= 1 and len(_aper_zp_ref) >= 1:
@@ -6402,11 +6544,27 @@ class subtracted_phot(subphot_data):
         self.data = {"filter":f"sdss{self.sci_filt}","magerr": self.mag_all_err,"obj_id": self.sci_obj,
                     "mag":self.mag[0],"limiting_mag": self.mag[3],"mjd": self.sci_mjd,"magsys": "ab","group_ids":'all'}
         # return 
-        self.data['instrument_id'],self.data['origin']='2','SEDM_SUBPHOT_KPIPE'
-        # elif self.telescope in ['SLT','Lulin','slt','lulin']:self.data['instrument_id'],self.data['origin']='1104','SLT_SUBPHOT_KPIPE'
-        # elif self.telescope in ['TJO','tjo','MEIA3','meia3']:self.data['instrument_id'],self.data['origin']='1103','TJO_SUBPHOT_KPIPE'
-        # elif self.telescope in ['OSIRIS','osiris','GTC-OSIRIS','gtc-osiris']:self.data['instrument_id'],self.data['origin']='37','OSIRIS_SUBPHOT_KPIPE'
-        # elif self.telescope in ['HIPERCAME','hipercame','GTC-HIPERCAM','gtc-hipercam']:self.data['instrument_id'],self.data['origin']='1105','HIPERCAM_SUBPHOT_KPIPE'
+        # Instrument & origin from the telescope. SEDM stays at Fritz instrument id 2;
+        # for LT (IO:O) the id is looked up on Fritz by instrument name at upload time.
+        # Any failure falls back to SEDM's id so uploads never silently break.
+        self.fritz_instrument_id,self.fritz_origin = 2,'SEDM_SUBPHOT_KPIPE'
+        if self.telescope not in SEDM:
+            _inst_name = {'Liverpool Telescope':'IOO','SLT':'SLT','TJO':'MEIA3',
+                          'GTC-OSIRIS':'OSIRIS','GTC-HIPERCAM':'HiPERCAM'}.get(self.telescope)
+            if _inst_name is not None:
+                try:
+                    _r = requests.get('https://fritz.science/api/instrument',
+                                      headers={'Authorization': f'token {token}'})
+                    _match = [i for i in _r.json()['data'] if i['name']==_inst_name]
+                    if len(_match)>0:
+                        self.fritz_instrument_id = int(_match[0]['id'])
+                        self.fritz_origin = f'{_inst_name}_SUBPHOT_KPIPE'
+                        print(info_g+f' Fritz instrument auto-detected: {_inst_name} (id {self.fritz_instrument_id})')
+                    else:
+                        print(warn_y+f' Instrument {_inst_name} not found on Fritz; defaulting to SEDM (id 2)')
+                except Exception as _e:
+                    print(warn_y+f' Fritz instrument lookup failed ({_e}); defaulting to SEDM (id 2)')
+        self.data['instrument_id'],self.data['origin']=str(self.fritz_instrument_id),self.fritz_origin
         self.upload_new=True
         self.data['altdata'] = {}
         if self.if_stacked==True:self.data['altdata']['stacked'],self.data['altdata']['no_in_stack']= True,self.no_stacked
@@ -6448,7 +6606,7 @@ class subtracted_phot(subphot_data):
                 
                 # return 
                 self.all_fritz_data = self.SN_data_phot(self.name)
-                self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==2 and self.all_fritz_data['filter'].iloc[ind]==self.data['filter'] and self.all_fritz_data['origin'].iloc[ind]=='SEDM_SUBPHOT_KPIPE']
+                self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==self.fritz_instrument_id and self.all_fritz_data['filter'].iloc[ind]==self.data['filter'] and self.all_fritz_data['origin'].iloc[ind]==self.fritz_origin]
 
                 self.on_fritz_mjd = [np.round(self.all_fritz_data['mjd'].iloc[ind],6) for ind in self.fritz_ind]
                 self.on_fritz_id = [self.all_fritz_data['id'].iloc[ind] for ind in self.fritz_ind]
@@ -6467,8 +6625,8 @@ class subtracted_phot(subphot_data):
                         self.upload_new=True
 
                 if self.upload_new==True:
-                    self.data = {'filter':f"sdss{self.sci_filt}",'mag':None,'magerr':None,'mjd':self.sci_mjd,'limiting_mag_nsigma':5,'obj_id':self.sci_obj,'origin':'SEDM_SUBPHOT_KPIPE',
-                                        'magsys':'ab','group_ids':'all','limiting_mag':self.mag[3],'instrument_id':'2',}
+                    self.data = {'filter':f"sdss{self.sci_filt}",'mag':None,'magerr':None,'mjd':self.sci_mjd,'limiting_mag_nsigma':5,'obj_id':self.sci_obj,'origin':self.fritz_origin,
+                                        'magsys':'ab','group_ids':'all','limiting_mag':self.mag[3],'instrument_id':str(self.fritz_instrument_id),}
                     self.data['altdata'] = {}
 
 
@@ -6521,7 +6679,7 @@ class subtracted_phot(subphot_data):
             # print(self.all_fritz_data)
             # if len(self.all_fritz_data)==0:
             #     self.all_fritz_data = self.SN_data_phot(self.name[2:])
-            self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==2 and self.all_fritz_data['filter'].iloc[ind]==self.data['filter'] and self.all_fritz_data['origin'].iloc[ind]=='SEDM_SUBPHOT_KPIPE']
+            self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==self.fritz_instrument_id and self.all_fritz_data['filter'].iloc[ind]==self.data['filter'] and self.all_fritz_data['origin'].iloc[ind]==self.fritz_origin]
 
             self.on_fritz_mjd = [np.round(self.all_fritz_data['mjd'].iloc[ind],6) for ind in self.fritz_ind]
             self.on_fritz_id = [self.all_fritz_data['id'].iloc[ind] for ind in self.fritz_ind]
@@ -6543,7 +6701,7 @@ class subtracted_phot(subphot_data):
 
                         #update the photometry downloadeds
                         self.all_fritz_data = self.SN_data_phot(self.name)
-                        self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==2 and self.all_fritz_data['filter'].iloc[ind]==self.data['filter']  and self.all_fritz_data['origin'].iloc[ind]=='SEDM_SUBPHOT_KPIPE']
+                        self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==self.fritz_instrument_id and self.all_fritz_data['filter'].iloc[ind]==self.data['filter'] and self.all_fritz_data['origin'].iloc[ind]==self.fritz_origin]
 
                         self.on_fritz_mjd = [np.round(self.all_fritz_data['mjd'].iloc[ind],6) for ind in self.fritz_ind]
                         self.on_fritz_id = [self.all_fritz_data['id'].iloc[ind] for ind in self.fritz_ind]

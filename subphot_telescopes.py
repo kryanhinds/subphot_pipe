@@ -31,8 +31,28 @@ header_kw = {
     'ESO-NTT':          { 'filter':'ESO INS FILT1 NAME','object':'OBJECT','ra':'RA','dec':'DEC','airmass':'ESO TEL AIRM END','utstart':'DATE-OBS','propid':'-','instrument':'INSTRUME',
                             'exptime':'EXPTIME','date':'DATE-OBS','mjd':'MJD-OBS',
                             'seeing':'ESO TEL AMBI FWHM END','est_seeing':'-','pixscale':0.12,'gain':'ESO DET OUT1 GAIN','bkg_med':'-','bkg_mean':'-','-':None},
-                            
-                            
+
+    # NOT/ALFOSC imaging (TELESCOP='NOT'); RA/DEC keywords are in decimal degrees.
+    # No MJD keyword — the pipeline computes it from DATE-OBS when 'mjd' is '-'.
+    'NOT':                { 'filter':'SEQID','object':'OBJECT','ra':'RA','dec':'DEC','airmass':'AIRMASS','utstart':'-','propid':'PROPID','instrument':'INSTRUME',
+                            'exptime':'EXPTIME','date':'DATE-OBS','mjd':'-','seeing':'-','est_seeing':'-','pixscale':0.2139,'gain':'GAIN','bkg_med':'-','bkg_mean':'-'},
+
+    # LCOGT 1m/2m network (TELESCOP varies per site e.g. '1m0-01'; normalised to
+    # 'LCOGT' via ORIGIN='LCOGT'). BANZAI .fz files are flattened on input.
+    'LCOGT':              { 'filter':'FILTER','object':'OBJECT','ra':'CAT-RA','dec':'CAT-DEC','airmass':'AIRMASS','utstart':'UTSTART','propid':'PROPID','instrument':'INSTRUME',
+                            'exptime':'EXPTIME','date':'DATE-OBS','mjd':'MJD-OBS','seeing':'L1FWHM','est_seeing':'-','pixscale':'PIXSCALE','gain':'GAIN','bkg_med':'L1MEDIAN','bkg_mean':'L1MEAN'},
+
+    # Lowell Discovery Telescope / LMI (TELESCOP='DCT', normalised to 'LDT');
+    # SCALE keyword gives the binned pixel scale.
+    'LDT':                { 'filter':'FILTER','object':'OBJECT','ra':'OBJRA','dec':'OBJDEC','airmass':'-','utstart':'-','propid':'-','instrument':'INSTRUME',
+                            'exptime':'EXPTIME','date':'DATE-OBS','mjd':'MJD-OBS','seeing':'-','est_seeing':'-','pixscale':'SCALE','gain':'GAIN','bkg_med':'-','bkg_mean':'-'},
+
+    # Lulin One-metre Telescope / SOPHIA (TELESCOP='LOT'); RA/DEC are
+    # space-separated sexagesimal (normalised to colons by the pipeline).
+    'LOT':                { 'filter':'FILTER','object':'OBJECT','ra':'RA','dec':'DEC','airmass':'AIRMASS','utstart':'UT','propid':'-','instrument':'-',
+                            'exptime':'EXPTIME','date':'DATE-OBS','mjd':'MJD-OBS','seeing':'FWHM','est_seeing':'-','pixscale':0.3843,'gain':'GAIN','bkg_med':'-','bkg_mean':'-'},
+
+
                             }
 
 SEDM = ['SEDM-P60','P60','SEDM','sedm-p60','p60','sedm','SEDM-p60','sedm-P60','60']

@@ -170,8 +170,8 @@ parser.add_argument('--position','-pos',default='header',nargs='+',
 parser.add_argument('--use_psfex','-psfex',action='store_false',default=True,
                     help="Use PSFEx for PSF modelling (default True). Pass -psfex to disable and use the Python fallback instead.")
 
-parser.add_argument('--telescope_facility','-tel',default='SEDM',
-                    help="Telescope facility, default is SEDM. LT, HCT and others are also supported.")
+parser.add_argument('--telescope_facility','-tel',default='auto',
+                    help="Telescope facility. Default 'auto' detects it from the TELESCOP keyword of the first input FITS; pass LT, SEDM, HCT, SLT etc. to override.")
 
 parser.add_argument('--redo_astrometry','-reastrom',default=False,action='store_true',
                     help="Redo astrometry, default is True, set to False if you want to use the astrometry from the header")
@@ -268,6 +268,57 @@ if args.list_fits!=None:
 # print(args.use_psfex)
 # print(args.use_swarp)
 args.telescope_facility = args.telescope_facility.upper()
+
+def _detect_telescope_facility():
+    """Detect the telescope facility from the TELESCOP keyword of the first
+    readable input FITS (from -i or -f). Returns None if nothing is readable."""
+    import glob as _glob
+    candidates = []
+    if len(args.ims) > 0:
+        candidates += list(args.ims)
+    if args.folder not in ('', None, []):
+        for _fold in args.folder:
+            for _base in (_fold, path+_fold, data1_path+_fold):
+                if os.path.isdir(_base):
+                    candidates += sorted(_glob.glob(os.path.join(_base, '*.fits*')))[:5]
+                    break
+    for _cand in candidates:
+        for _p in (_cand, _cand+'.fits', path+_cand, path+_cand+'.fits'):
+            if not os.path.exists(_p):
+                continue
+            # TELESCOP can live in a later HDU (e.g. LCOGT .fz compressed files)
+            _tel,_origin = None,''
+            try:
+                _hdul = fits.open(_p)
+                for _h in _hdul:
+                    if 'TELESCOP' in _h.header:
+                        _tel = _h.header['TELESCOP']
+                        _origin = str(_h.header.get('ORIGIN','')).strip()
+                        break
+                _hdul.close()
+            except Exception:
+                break
+            if _tel is None:
+                break
+            _tel = str(_tel).strip()
+            if _tel in SEDM: return 'SEDM'
+            if _tel == 'Liverpool Telescope': return 'LT'
+            if _origin=='LCOGT' or _tel.lower().startswith(('0m4','1m0','2m0')): return 'LCOGT'
+            if _tel in ('DCT','LDT'): return 'LDT'
+            if 'NTT' in _tel.upper() or 'EFOSC' in _tel.upper(): return 'NTT'
+            if _tel in ('HCT','SLT','TJO','GTC','NOT','LOT'): return _tel
+            return _tel.upper()
+    return None
+
+if args.telescope_facility in ('AUTO',''):
+    _detected = _detect_telescope_facility()
+    if _detected is not None:
+        args.telescope_facility = _detected
+        print(info_g+f' Telescope facility auto-detected from FITS header: {_detected}')
+    else:
+        args.telescope_facility = 'SEDM'
+        print(warn_y+' Could not auto-detect telescope facility (no readable FITS given); defaulting to SEDM')
+
 # sys.exit(1)
 seeing_limit =5
 
@@ -278,7 +329,7 @@ TIME = datetime.datetime.now().strftime("%H:%M:%S")
 year,month,dayy = t.strftime("%Y"),t.strftime("%m"),t.strftime("%d")
 today = Time(f'{year}-{month}-{dayy} {TIME}')
 TODAY = t.strftime("%Y%m%d") #todays date in YYYYMMDD format
-apo = Observer.at_site("lapalma")
+apo = Observer.at_site("palomar" if args.telescope_facility in SEDM else "lapalma")
 sun_set_today = apo.sun_set_time(today, which="nearest") #sun set on day of observing
 time_suns_today = "{0.iso}".format(sun_set_today)[-12:]
 sun_set_tomorrow = apo.sun_set_time(today,which="next")
@@ -354,7 +405,8 @@ if args.make_log!=False:
     else:out_dir=args.output.split('/')[-1]
 
 
-    if args.output!='by_name' and not os.path.exists(data1_path+out_dir):os.mkdir(data1_path+out_dir)
+    # 'by_obs_date' is a keyword, not a directory — its outputs/logs live in photometry_date/
+    if args.output not in ('by_name','by_obs_date') and not os.path.exists(data1_path+out_dir):os.mkdir(data1_path+out_dir)
 
     if not os.path.exists(data1_path+log_dest):os.mkdir(data1_path+log_dest)
     if log_dest=='night_log':log_name = f"{data1_path}night_log/{DATE}_night_log.log"
@@ -362,7 +414,8 @@ if args.make_log!=False:
     if log_dest=='0':
         log_dest=out_dir
         if out_dir=='by_obs_date':
-            log_name = f"{data1_path}{out_dir}/{DATE}_log.log"
+            if not os.path.exists(data1_path+'photometry_date'):os.mkdir(data1_path+'photometry_date')
+            log_name = f"{data1_path}photometry_date/{DATE}_log.log"
         else:
             log_name = f"{data1_path}{out_dir}/{out_dir}_log.log"
     
@@ -794,7 +847,17 @@ if len(args.ims)>0:
     # print('gfefd',args.ims)
     final_phot=[]
     ims = args.ims
-    # print(args.ims)
+    # flatten fpack-compressed / multi-extension inputs (e.g. LCOGT .fz) before any
+    # name munging — downstream code assumes simple single-HDU files named *.fits
+    for _k,_im in enumerate(ims):
+        if str(_im).endswith(('.fz','.fits.gz')):
+            _src = _im if os.path.exists(_im) else data1_path+str(_im)
+            try:
+                _flat = flatten_multiext_fits(_src, data1_path+'trimmed_sci_imgs')
+                ims[_k] = os.path.relpath(_flat, data1_path)
+                print(info_g+f' Flattened compressed input {_im} -> {ims[_k]}')
+            except Exception as _e:
+                print(warn_y+f' Could not flatten {_im}: {_e}')
     ims_path = '/'.join(ims[0].split('/')[:-1])
         
     if args.stack==False:
@@ -817,7 +880,11 @@ if len(args.ims)>0:
                 image=ims_path+'/'+re.sub('.fits','',ims_file)
 
             fits_hdu = fits.open(data1_path+image+'.fits')[0].header
-            fits_filt,fits_obj = fits_hdu['FILTER'],fits_hdu['OBJECT']
+            # filter keyword differs per telescope — use the header_kw entry when known
+            _fac_key = {'LT':'Liverpool Telescope','SEDM':'SEDM-P60','NTT':'ESO-NTT'}.get(args.telescope_facility,args.telescope_facility)
+            _filt_kw = header_kw.get(_fac_key,{}).get('filter','FILTER')
+            fits_filt = str(fits_hdu.get(_filt_kw,fits_hdu.get('FILTER','?')))
+            fits_obj  = str(fits_hdu.get('OBJECT','?'))
 
             if args.bands==['All'] and args.sci_names == ['All']:
                 pass
