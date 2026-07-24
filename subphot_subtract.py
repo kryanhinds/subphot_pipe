@@ -33,6 +33,131 @@ import argparse
 from subphot_quicklook_pipe import *
 from subphot_telescopes import header_kw,SEDM
 from astropy.time import Time
+
+# ---------------------------------------------------------------------------
+# Optional pinned progress bar (-pb/--progress).  See _PinnedBar below: it
+# reserves the terminal's last line with a scroll region, which is the only
+# approach that survives output from os.system() subprocesses (SWarp,
+# SExtractor, PSFEx) that write straight to the terminal.
+# ---------------------------------------------------------------------------
+_PBAR = None
+
+class _PinnedBar:
+    """Progress bar pinned to the terminal's bottom line.
+
+    Uses a DECSTBM scroll region so that EVERYTHING else — pipeline prints,
+    logging records on stderr, and the output of os.system() subprocesses such
+    as SWarp/SExtractor/PSFEx, which write straight to the terminal and cannot
+    be intercepted by redirecting sys.stdout — scrolls in the region above the
+    reserved final line.  The bar therefore stays put without needing to
+    capture or proxy any of that output.
+
+    Falls back to plain periodic lines when stdout/stderr is not a terminal
+    (e.g. redirected to a log file), so batch runs still record progress.
+    """
+
+    def __init__(self, total, desc='reducing'):
+        self.total, self.n, self.desc = int(total), 0, desc
+        self.t0, self.postfix, self.rows = time.time(), '', None
+        try:
+            self.tty = open('/dev/tty', 'w')
+            self.enabled = self.tty.isatty()
+        except Exception:
+            self.tty, self.enabled = sys.stderr, False
+        if self.enabled:
+            self._reserve()
+            self.draw()
+
+    # -- terminal plumbing ---------------------------------------------------
+    def _reserve(self):
+        """Reserve the bottom line: scroll region = rows 1..rows-1."""
+        self.rows = shutil.get_terminal_size((80, 24)).lines
+        self.tty.write('\n')                       # make room for the bar line
+        self.tty.write(f'\x1b[1;{self.rows-1}r')   # DECSTBM scroll region
+        self.tty.write(f'\x1b[{self.rows-1};1H')   # put the cursor inside it
+        self.tty.flush()
+
+    def _release(self):
+        self.tty.write('\x1b[r')                   # restore full-screen scrolling
+        self.tty.write(f'\x1b[{self.rows};1H\x1b[2K')  # clear the bar line
+        self.tty.flush()
+
+    # -- rendering -----------------------------------------------------------
+    @staticmethod
+    def _fmt(sec):
+        sec = int(max(0, sec)); h, m, s = sec//3600, (sec % 3600)//60, sec % 60
+        return f'{h:d}:{m:02d}:{s:02d}' if h else f'{m:02d}:{s:02d}'
+
+    def _text(self, cols):
+        frac = (self.n/self.total) if self.total else 0.0
+        el = time.time()-self.t0
+        eta = (el/self.n)*(self.total-self.n) if self.n else 0.0
+        head = f'{self.desc} '
+        tail = f' {self.n}/{self.total} [{self._fmt(el)}<{self._fmt(eta)}]'
+        if self.postfix:
+            tail += f' {self.postfix}'
+        width = max(10, cols - len(head) - len(tail) - 3)
+        filled = int(round(frac*width))
+        bar = '█'*filled + '─'*(width-filled)
+        return (head + '|' + bar + '|' + tail)[:cols]
+
+    def draw(self):
+        if not self.enabled:
+            return
+        size = shutil.get_terminal_size((80, 24))
+        if size.lines != self.rows:                # terminal was resized
+            self._reserve()
+        self.tty.write('\x1b7')                    # save cursor
+        self.tty.write(f'\x1b[{self.rows};1H\x1b[2K')
+        self.tty.write(self._text(size.columns))
+        self.tty.write('\x1b8')                    # restore cursor
+        self.tty.flush()
+
+    # -- public API ----------------------------------------------------------
+    def update(self, n=1, **postfix):
+        if postfix:
+            self.postfix = ' '.join(f'{k}={v}' for k, v in postfix.items())
+        self.n = min(self.n + n, self.total)
+        if self.enabled:
+            self.draw()
+        elif n:                                    # non-tty: one line per item
+            print(f'[PROGRESS] {self.n}/{self.total} '
+                  f'({100*self.n/max(self.total,1):.0f}%) {self.postfix}', flush=True)
+
+    def set(self, n):
+        self.n = max(0, min(int(n), self.total))
+        if self.enabled:
+            self.draw()
+
+    def close(self):
+        if self.enabled:
+            self._release()
+            try: self.tty.close()
+            except Exception: pass
+
+
+def progress_start(total, desc='reducing'):
+    """Create the pinned bar. No-op unless -pb/--progress was given."""
+    global _PBAR
+    if not getattr(args, 'progress', False) or total <= 0:
+        return None
+    _PBAR = _PinnedBar(total, desc)
+    return _PBAR
+
+def progress_update(n=1, **postfix):
+    if _PBAR is not None:
+        _PBAR.update(n, **postfix)
+
+def progress_set(n):
+    """Set the bar to an absolute position (robust when a loop body may 'continue')."""
+    if _PBAR is not None:
+        _PBAR.set(n)
+
+def progress_close():
+    global _PBAR
+    if _PBAR is not None:
+        _PBAR.close(); _PBAR = None
+
 # from mpi4py import MPI
 
 parser = argparse.ArgumentParser()
@@ -75,8 +200,26 @@ parser.add_argument('--make_log','-log',default='0',
 parser.add_argument('--output','-o',default='by_name',#'by_obs_date',
                     help="Dest. for output photometry files, default creates a folder for photometry by observation date e.g. for h_e_20220206_***_1_1.fits output photometry dest will be photometry_data/20220206")
 
+parser.add_argument('--wcs_match_min','-wcsmin',type=float,default=0.15,
+                    help="Reject frames from a stack when fewer than this fraction of their detected sources match the reference catalogue (default 0.15; 0 disables). Catches frames whose WCS was never solved, which otherwise dilute the stack.")
+
+parser.add_argument('--trans_max','-transmax',type=float,default=0.75,
+                    help="Reject frames from a stack whose transparency is more than this many magnitudes below the best frame in the group (default 0.75; 0 disables). Catches cloud-affected frames, which the seeing check cannot.")
+
+parser.add_argument('--stack_headers','-stkh',action='store_true',default=False,
+                    help="Group images for stacking from FITS HEADERS (object+filter+time) instead of filename patterns. Telescope-agnostic; use for any facility, and for datasets with missing/irregular exposure numbering.")
+
+parser.add_argument('--stack_gap','-stkgap',type=float,default=10.0,
+                    help="With -stkh: start a new stack when consecutive exposures are separated by more than this many minutes (default 10, which reproduces per-sequence grouping). Use a large value (e.g. 1440) to stack a whole night together.")
+
+parser.add_argument('--progress','-pb',action='store_true',default=False,
+                    help="Show a progress bar pinned to the bottom line; all other output scrolls above it. Requires tqdm.")
+
 parser.add_argument('--ref_img','-refimg',default='auto',
-                    help="Name of reference image, default will be to automatically downloading from PS1/SDSS")
+                    help="Name of reference image, default will be to automatically downloading from PS1/SDSS. "
+                         "May contain a {filt} placeholder to select a per-filter reference, e.g. "
+                         "'ref_imgs/DEEP_PS1{filt}_ZTF26aakjzdt_wcsfix.fits'; if the substituted file is "
+                         "missing the pipeline falls back to the automatic PS1/SDSS download for that filter.")
 
 parser.add_argument('--ref_cat','-refcat',default='auto',
                     help="Name of reference catalog, default will be to automatically downloading from PS1/SDSS")
@@ -504,8 +647,56 @@ class multi_subtract():
         # print(self.all_in_dir)
         # sys.exit(1)
 
+        # Header-based grouping: build stack groups from OBJECT/FILTER/time in the
+        # FITS headers rather than from filename patterns.  Telescope-agnostic and
+        # immune to missing or irregular exposure numbering.
+        if getattr(args, 'stack_headers', False):
+            _recs = []
+            for _f in sorted(os.listdir(f"{self.data1_path}{self.FOLDER}")):
+                if not _f.endswith('.fits') or _f.startswith('.') or 'tpv' in _f:
+                    continue
+                try:
+                    _h = fits.open(f"{self.data1_path}{self.FOLDER}/{_f}")[0].header
+                except Exception as _e:
+                    print(warn_y+f' Skipping unreadable {_f}: {_e}')
+                    continue
+                _obj = str(_h.get('OBJECT','?')).split('_')[0].split(' ')[0].strip()
+                _filt = str(_h.get('FILTER1', _h.get('FILTER','?'))).strip()
+                _mjd = None
+                for _kw in ('MJD','MJD-OBS','MJD_OBS'):
+                    if _kw in _h:
+                        try: _mjd = float(_h[_kw]); break
+                        except Exception: pass
+                if _mjd is None:
+                    try: _mjd = float(Time(str(_h['DATE-OBS']).strip()).mjd)
+                    except Exception: _mjd = float('inf')
+                if _mjd > 2400000:      # JD supplied instead of MJD
+                    _mjd -= 2400000.5
+                _recs.append((_mjd, _f, _obj, _filt))
+
+            _groups, _gap_d = {}, float(getattr(args,'stack_gap',10.0))/1440.0
+            for _mjd,_f,_obj,_filt in sorted(_recs):
+                _key = (_obj,_filt)
+                _bucket = _groups.setdefault(_key, [])
+                if _bucket and (_mjd - _bucket[-1][-1][0]) <= _gap_d:
+                    _bucket[-1].append((_mjd,_f))       # same run
+                else:
+                    _bucket.append([(_mjd,_f)])          # start a new run
+            _ngroups = 0
+            for (_obj,_filt),_runs in sorted(_groups.items()):
+                for _run in _runs:
+                    _names = [re.sub(r'\.fits$','',_x[1]) for _x in _run]
+                    if args.stack==False and len(_names)>1:
+                        for _n in _names:                # stacking off: one entry per image
+                            self.fits_files.append([[_n],1,f"{_n}.fits"]); _ngroups += 1
+                    else:
+                        self.fits_files.append([_names,len(_names),f"{_names[0]}.fits"]); _ngroups += 1
+            print(info_g+f' Header grouping: {len(_recs)} images -> {_ngroups} '
+                  f'{"stack group(s)" if args.stack else "entry(s)"} '
+                  f'(gap {getattr(args,"stack_gap",10.0):.0f} min)')
+
         # Stack all mode: create single entry with all files in directory
-        if hasattr(args, 'stack_all') and args.stack_all:
+        elif hasattr(args, 'stack_all') and args.stack_all:
             all_files = [f for f in os.listdir(f"{self.data1_path}{self.FOLDER}")
                         if f.endswith('.fits') and not f.startswith('.') and 'tpv' not in f]
             if all_files:
@@ -709,6 +900,7 @@ def run_subtraction(data_dict):
         print(warn_y+f' No fits files found in filter: {filter_}')
         return final_phot
 
+    progress_start(len(fits_files), desc=f'{FOLDER}')
     for file_idx, file_array in enumerate(fits_files, 1):
             # Show progress bar if requested (output to stderr to avoid stdout interference)
             if args.progress_bar:
@@ -771,10 +963,16 @@ def run_subtraction(data_dict):
             if store_lc_ims:
                 lc_path = f'{data1_path}entire_lc_imgs/{name}/'
                 os.makedirs(lc_path, exist_ok=True)
+                _grp_dir = os.path.dirname(sub_file[0])
                 for fit in sub_file:
                     if not fit.endswith('.fits'):
                         fit = fit + '.fits'
-                    dst = lc_path + fit.split('/')[-1]
+                    # only sub_file[0] carries the full path; the other members of a
+                    # stack group are bare basenames, so resolve them against the
+                    # group's folder instead of the (unrelated) working directory
+                    if not os.path.exists(fit) and _grp_dir:
+                        fit = os.path.join(_grp_dir, os.path.basename(fit))
+                    dst = lc_path + os.path.basename(fit)
                     if not os.path.exists(dst):
                         try:
                             shutil.copy(fit, lc_path)
@@ -820,8 +1018,14 @@ def run_subtraction(data_dict):
                     final_phot.append(result)
                     remaining = len(fits_files) - file_idx
                     print(colored(f'✓ COMPLETED: {file_idx}/{len(fits_files)} | {remaining} remaining', 'green'))
+                    try: progress_update(0, last=f"{result['filt']}={result['mag']:.2f}")
+                    except Exception: pass
             except Exception as e:
                 print(warn_r+f' Unhandled exception on {sub_file[0]}: {e}')
+            finally:
+                progress_update(1)
+
+    progress_close()
 
     f_time_end = time.time()
     f_time_total = f_time_end - f_time_start
@@ -873,7 +1077,9 @@ if len(args.ims)>0:
         # sys.exit()
 
         # print(ims)
+        progress_start(len(ims), desc='images')
         for i, ims_file in enumerate(ims, 1):
+            progress_set(i-1)
 
             image = re.sub('.fits','',ims_file)
             if ims_path not in ims_file:
@@ -935,6 +1141,8 @@ if len(args.ims)>0:
                     pass
                 else:
 
+                    if args.redo_astrometry and sub_obj.telescope not in SEDM:
+                        sub_obj.resolve_astrometry()
                     sub_obj.bkg_subtract()
                     sys_exit=sub_obj.sys_exit
                     if sys_exit==True:
@@ -995,6 +1203,8 @@ if len(args.ims)>0:
                                                     else:
                                                         remaining = len(ims) - i
                                                         print(colored(f'✓ COMPLETED: {i}/{len(ims)} | {remaining} remaining', 'green'))
+                                                        try: progress_update(0, last=f"{final_phot[-1]['filt']}={final_phot[-1]['mag']:.2f}")
+                                                        except Exception: pass
 
                                                         if args.upfritz==True or args.upfritz_f==True:
                                                             sub_obj.upload_phot()
@@ -1005,6 +1215,7 @@ if len(args.ims)>0:
                     
 
         #sp_logger.info a table of the photometry
+        progress_set(len(ims)); progress_close()
         if len(final_phot)>0: print(pd.DataFrame(final_phot,columns=final_phot[0].keys()).sort_values(by=['obj','mjd']))                                          
 
                     
@@ -1075,6 +1286,8 @@ if len(args.ims)>0:
                 pass
             else:
 
+                if args.redo_astrometry and sub_obj.telescope not in SEDM:
+                    sub_obj.resolve_astrometry()
                 sub_obj.bkg_subtract()
                 sys_exit=sub_obj.sys_exit
                 if sys_exit==True:

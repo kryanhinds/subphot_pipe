@@ -100,6 +100,111 @@ def get_image(args):
                                 sci_filt, nx=nx, ny=ny,log=log,lnks_done=lnks_done)
                                 
 
+def measure_relative_transparency(files, logger=None, ntop=20):
+    """Relative atmospheric transparency of each frame, in magnitudes.
+
+    Seeing says nothing about cloud: a frame can have 1.2" seeing and still have
+    lost magnitudes of throughput behind cirrus.
+
+    Deliberately WCS-FREE: sources are detected independently in each frame and
+    only their own fluxes are compared.  An earlier version transferred source
+    positions between frames through their WCS, which meant a frame with a bad
+    astrometric solution (a real failure mode here — some LT frames are ~10"
+    off) was misreported as opaque.  Detected fluxes cannot be affected by a
+    wrong WCS, so this separates transparency from astrometry cleanly.
+
+    Returns magnitude offsets, 0.0 for the most transparent frame and positive
+    for frames that lost throughput; None if it cannot be measured.
+    """
+    try:
+        from photutils.detection import DAOStarFinder
+        from astropy.stats import sigma_clipped_stats
+    except ImportError:
+        return None
+    try:
+        vals = []
+        for f in files:
+            h = fits.open(f)[0]
+            d = np.nan_to_num(h.data.astype(float))
+            expt = float(h.header.get('EXPTIME', 1.0)) or 1.0
+            _, _med, _std = sigma_clipped_stats(d, sigma=3.0, maxiters=5)
+            src = DAOStarFinder(fwhm=5.0, threshold=10*_std)(d - _med)
+            if src is None or len(src) < 5:
+                vals.append(np.nan); continue
+            flux = np.sort(np.array(src['flux']))[::-1][:ntop]
+            vals.append(float(np.median(flux))/expt)
+        vals = np.array(vals, dtype=float)
+        if not np.any(np.isfinite(vals)):
+            return None
+        best = np.nanmax(vals)
+        with np.errstate(invalid='ignore', divide='ignore'):
+            dmag = -2.5*np.log10(vals/best)
+        dmag = np.where(np.isfinite(dmag), dmag, 99.0)
+        if logger is not None:
+            logger.info(info_g+' Relative transparency (mag below best): '
+                        + ', '.join(f'{v:.2f}' for v in dmag))
+        return list(dmag)
+    except Exception as _e:
+        if logger is not None:
+            logger.warning(warn_y+f' Transparency check failed: {_e}')
+        return None
+
+
+def measure_wcs_quality(files, ra_deg, dec_deg, rad_deg, logger=None, tol_arcsec=2.0, ntop=80):
+    """Fraction of each frame's detected sources that land on a catalogue star.
+
+    A frame whose WCS was never refined (some LT frames carry only the nominal
+    telescope pointing, ~10" off) cannot be aligned by SWarp, so it contributes
+    no flux at the target position and simply dilutes the stack:
+    two dead frames out of eight bias the epoch faint by 2.5*log10(8/6) = 0.31 mag.
+
+    Returns a list of match fractions (0-1), or None if the catalogue is
+    unavailable.  Good frames score ~0.6-0.7 here; unsolved frames score ~0.0.
+    """
+    try:
+        from photutils.detection import DAOStarFinder
+        from astropy.stats import sigma_clipped_stats
+        from scipy.spatial import cKDTree
+    except ImportError:
+        return None
+    try:
+        cat = panstarrs_query(ra_deg=round(ra_deg,6), dec_deg=round(dec_deg,6),
+                              rad_deg=round(rad_deg,6))
+        cra = np.asarray(cat['raMean'], dtype=float)
+        cdec = np.asarray(cat['decMean'], dtype=float)
+        good = np.isfinite(cra) & np.isfinite(cdec)
+        cra, cdec = cra[good], cdec[good]
+        if len(cra) < 10:
+            return None
+        cosd = np.cos(np.radians(dec_deg))
+        tree = cKDTree(np.column_stack([cra*cosd, cdec]))
+    except Exception as _e:
+        if logger is not None:
+            logger.warning(warn_y+f' WCS check: catalogue query failed ({_e})')
+        return None
+
+    fracs = []
+    for f in files:
+        try:
+            h = fits.open(f)[0]
+            d = np.nan_to_num(h.data.astype(float))
+            w = WCS(h.header)
+            _, _med, _std = sigma_clipped_stats(d, sigma=3.0, maxiters=5)
+            src = DAOStarFinder(fwhm=5.0, threshold=8*_std)(d - _med)
+            if src is None or len(src) < 10:
+                fracs.append(np.nan); continue
+            src.sort('flux'); src = src[::-1][:ntop]
+            sky = w.pixel_to_world(np.array(src['xcentroid']), np.array(src['ycentroid']))
+            q = np.column_stack([sky.ra.deg*cosd, sky.dec.deg])
+            fracs.append(float((tree.query(q, k=1)[0] < tol_arcsec/3600.).mean()))
+        except Exception:
+            fracs.append(np.nan)
+    if logger is not None:
+        logger.info(info_g+' WCS match fraction per frame: '
+                    + ', '.join('nan' if not np.isfinite(v) else f'{v:.2f}' for v in fracs))
+    return fracs
+
+
 def estimate_seeing(filename):
     print(info_g+f' Estimating the seeing based on the mode of the FWHM of point sources in the field')
     sextracted = sextract(filename,0, 0, 3, 12, maxellip=0.7, saturation=-1,delete=True)
@@ -1478,6 +1583,66 @@ class subtracted_phot(subphot_data):
                         self.names_final.append(self.name[n])
             
                 self.name = self.names_final
+
+            # Transparency (cloud) rejection — seeing alone cannot detect cirrus.
+            _tmax = float(getattr(self.args, 'trans_max', 0.75) or 0)
+            if _tmax > 0 and len(self.name) > 1:
+                _dmag = measure_relative_transparency(
+                    [n if n.endswith('.fits') else n+'.fits' for n in self.name], logger=None)
+                if _dmag is not None:
+                    _keep = [self.name[k] for k in range(len(self.name)) if _dmag[k] <= _tmax]
+                    for k in range(len(self.name)):
+                        if _dmag[k] > _tmax:
+                            print(warn_y+f' {self.name[k]} is {_dmag[k]:.2f} mag less transparent '
+                                  f'than the best frame (>{_tmax:.2f}) — rejecting from stack')
+                    if len(_keep) == 0:
+                        print(warn_y+' All frames fail the transparency cut — keeping them all '
+                              '(epoch is uniformly cloud-affected; treat its photometry with care)')
+                    else:
+                        if len(_keep) < len(self.name):
+                            print(info_g+f' Transparency cut: keeping {len(_keep)}/{len(self.name)} frames')
+                        self.name = _keep
+
+            # WCS validation — reject frames whose astrometry cannot be trusted.
+            # SWarp aligns by WCS, so an unsolved frame lands ~10" off and adds
+            # no flux at the target, biasing the stacked magnitude faint.
+            _wmin = float(getattr(self.args, 'wcs_match_min', 0.15) or 0)
+            if _wmin > 0 and len(self.name) > 1:
+                _files = [n if n.endswith('.fits') else n+'.fits' for n in self.name]
+                # self.sci_c / self.sci_ps are not populated yet at this point in
+                # __init__, so derive the field centre and radius from the header
+                _fr = None
+                try:
+                    _h0 = fits.open(_files[0])[0].header
+                    _w0 = WCS(_h0)
+                    _ps0 = 3600.*np.sqrt(abs(np.linalg.det(_w0.pixel_scale_matrix)))
+                    _rad = float(_h0.get('NAXIS2', 2048))*_ps0/3600./2.
+                    try:
+                        _rastr, _decstr = str(_h0[self.RA_kw]).strip(), str(_h0[self.DEC_kw]).strip()
+                        if ':' in _rastr:
+                            _c0 = SkyCoord(_rastr, _decstr, unit=(u.hourangle, u.deg), frame='fk5')
+                        else:
+                            _c0 = SkyCoord(float(_rastr), float(_decstr), unit=(u.deg, u.deg), frame='fk5')
+                    except Exception:
+                        _c0 = _w0.pixel_to_world(_h0.get('NAXIS1',2048)/2., _h0.get('NAXIS2',2048)/2.)
+                    _fr = measure_wcs_quality(_files, _c0.ra.deg, _c0.dec.deg, _rad, logger=None)
+                except Exception as _we:
+                    print(warn_y+f' WCS check skipped: {_we}')
+                if _fr is not None:
+                    _ok = [k for k in range(len(self.name))
+                           if np.isfinite(_fr[k]) and _fr[k] >= _wmin]
+                    for k in range(len(self.name)):
+                        if k not in _ok:
+                            print(warn_y+f' {self.name[k]}: only '
+                                  f'{0.0 if not np.isfinite(_fr[k]) else _fr[k]:.0%} of sources match the '
+                                  f'catalogue (<{_wmin:.0%}) — unusable WCS, rejecting from stack')
+                    if len(_ok) == 0:
+                        print(warn_r+' No frame in this group has a usable WCS — skipping epoch')
+                        self.sys_exit = True
+                        return
+                    if len(_ok) < len(self.name):
+                        print(info_g+f' WCS cut: keeping {len(_ok)}/{len(self.name)} frames')
+                        self.name = [self.name[k] for k in _ok]
             # print(self.name)
 
             if len(self.name)>0:
@@ -1581,23 +1746,23 @@ class subtracted_phot(subphot_data):
                 # sys.exit()
 
             
+                # SWarp geometry/centre — defined before the branch so the cache-rebuild
+                # path below can reuse it as well as the initial-build path
+                self.ra_string="%.6f" % round(self.sci_c.ra.deg, 6)
+                if self.sci_c.dec.deg>0:
+                    self.dec_string="+"+"%.6f" % round(self.sci_c.dec.deg, 6)
+                elif str(self.sci_c.dec)[0]=='-':
+                    self.dec_string="%.6f" % round(self.sci_c.dec.deg, 6)
+                else:
+                    self.dec_string='-'+"%.6f" % round(self.sci_c.dec.deg, 6)
+                if self.sci_img_name.startswith(' '):self.sci_img_name = self.sci_img_name[1:]
+                self.img_size1,self.img_size2 = self.sci_img_hdu.header['NAXIS1']*0.9999,self.sci_img_hdu.header['NAXIS2']*0.9999
+                self.comb_centre = str(self.sci_img_hdu.header['CRVAL1'])+" "+str(self.sci_img_hdu.header['CRVAL2'])
+
                 if not os.path.exists(self.path+'combined_imgs/'+self.sci_img_name):
 
                     print(info_g+' Combining '+str(len(self.ims))+' '+self.sci_filt+' images...')
                     print(info_g+f" Stacking {self.sci_obj} {self.sci_filt} images with Swarp")
-
-                    self.ra_string="%.6f" % round(self.sci_c.ra.deg, 6)
-                    # print(str(self.sci_c.dec)[0]=='-')
-                    if self.sci_c.dec.deg>0:
-                        self.dec_string="+"+"%.6f" % round(self.sci_c.dec.deg, 6)
-                    elif str(self.sci_c.dec)[0]=='-':
-                        self.dec_string="%.6f" % round(self.sci_c.dec.deg, 6)
-                    else:
-                        self.dec_string='-'+"%.6f" % round(self.sci_c.dec.deg, 6)
-                    # print(self.ra_string,self.dec_string)
-                    if self.sci_img_name.startswith(' '):self.sci_img_name = self.sci_img_name[1:]
-                    self.img_size1,self.img_size2 = self.sci_img_hdu.header['NAXIS1']*0.9999,self.sci_img_hdu.header['NAXIS2']*0.9999
-                    self.comb_centre = str(self.sci_img_hdu.header['CRVAL1'])+" "+str(self.sci_img_hdu.header['CRVAL2'])
 
                     swarp_command=swarp_path+" "+self.name_joined+" -c "+self.path+"config_files/config_comb.swarp -COPY_KEYWORDS DATE-OBS -CENTER '"+self.comb_centre+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET -IMAGEOUT_NAME "+self.path+"combined_imgs"+'/'+self.sci_img_name+" -RESAMPLE Y -RESAMPLE_DIR '"+self.path+"' -COMBINE Y -IMAGE_SIZE '"+str(self.img_size1)+","+str(self.img_size2)+"'"
                     # print(swarp_command)
@@ -1610,7 +1775,12 @@ class subtracted_phot(subphot_data):
                     
                     # self.status=os.system(swarp_command)
 
-                    print(info_g+' Combined '+str(len(self.ims))+' '+self.sci_filt+' images!')
+                    print(info_g+' Combined '+str(len(self.name))+' '+self.sci_filt+' images!')
+                    try:
+                        with fits.open(self.path+'combined_imgs/'+self.sci_img_name, mode='update') as _hh:
+                            _hh[0].header['NCOMBINE'] = (len(self.name), 'frames combined by subphot')
+                    except Exception:
+                        pass
                     self.sci_img_hdu=fits.open(self.path+'combined_imgs/'+self.sci_img_name)[0]
                     self.sci_img=self.sci_img_hdu.data
                     self.sci_path = self.path+'combined_imgs/'+self.sci_img_name
@@ -1618,8 +1788,30 @@ class subtracted_phot(subphot_data):
                     self.name=self.sci_path
         
                 elif os.path.exists(self.path+'combined_imgs/'+self.sci_img_name):
-
-                    print(info_b+' Images: '+self.sci_filt+' already combined')
+                    # The cache key is object+filter+first-frame timestamp, which does NOT
+                    # change when the group membership changes (e.g. a different -stkgap).
+                    # Verify the cached stack was built from the same number of frames and
+                    # rebuild if not, otherwise a stale shallower stack is silently reused.
+                    try:
+                        _cached_n = int(fits.open(self.path+'combined_imgs/'+self.sci_img_name)[0]
+                                        .header.get('NCOMBINE', -1))
+                    except Exception:
+                        _cached_n = -1
+                    if _cached_n != len(self.name):
+                        print(warn_y+f' Cached stack has NCOMBINE={_cached_n} but this group has '
+                              f'{len(self.name)} frames — rebuilding')
+                        os.remove(self.path+'combined_imgs/'+self.sci_img_name)
+                        os.system(swarp_path+" "+' '.join(n if n.endswith('.fits') else n+'.fits'
+                                                          for n in self.name)
+                                  +" -c "+self.path+"config_files/config_comb.swarp -COPY_KEYWORDS DATE-OBS"
+                                  +" -CENTER '"+self.comb_centre+"' -SUBTRACT_BACK N -VERBOSE_TYPE QUIET"
+                                  +" -IMAGEOUT_NAME "+self.path+"combined_imgs/"+self.sci_img_name
+                                  +" -RESAMPLE Y -RESAMPLE_DIR '"+self.path+"' -COMBINE Y -IMAGE_SIZE '"
+                                  +str(self.img_size1)+","+str(self.img_size2)+"'")
+                        with fits.open(self.path+'combined_imgs/'+self.sci_img_name, mode='update') as _hh:
+                            _hh[0].header['NCOMBINE'] = (len(self.name), 'frames combined by subphot')
+                    else:
+                        print(info_b+' Images: '+self.sci_filt+' already combined')
                     self.sci_img_hdu=fits.open(self.path+'combined_imgs/'+self.sci_img_name)[0]
                     print(self.sci_img_hdu)
                     # print(1)
@@ -1857,6 +2049,86 @@ class subtracted_phot(subphot_data):
 
 
 
+
+    def resolve_astrometry(self):
+        """Re-solve the science WCS with autoastrometry.py.
+
+        Some frames arrive with a WCS that is ~10" off (verified against PS1:
+        0/58 detected sources matched for one LT frame, versus 40/60 and 0.30"
+        for a good frame).  Catalogue stars then land on blank sky, every PSF
+        fit returns noise and the zeropoint collapses to one or two junk stars.
+        autoastrometry re-solves from the image itself, which fixes it.
+
+        Runs on the stacked/science image in place; on failure the original WCS
+        is kept and the reduction continues.
+        """
+        try:
+            from autoastrometry import autoastrometry
+        except Exception as _e:
+            print(warn_y+f' Could not import autoastrometry ({_e}) — keeping header WCS')
+            return False
+
+        _in = self.sci_path if self.sci_path.endswith('.fits') else self.sci_path+'.fits'
+        _out = _in.replace('.fits', '_astrom.fits')
+        # USNO-B2 first: it is all-sky, whereas SDSS has no coverage for many
+        # fields (this one at Dec +71.8 returns 0 objects).  Fall back through
+        # the others if a query comes back empty.
+        _cats = ['ub2', 'sdss', 'tmc']
+        print(info_g+f' Re-solving astrometry with autoastrometry: {_in}')
+        # autoastrometry drops sex.config/sex.conv/temp.param/temp.cat into the CWD
+        # and only regenerates sex.config when it is absent — a stale one in the
+        # repo root points at a temp.param that no longer exists and SExtractor
+        # then fails.  Run in a private scratch directory so it always builds a
+        # matching, self-consistent set and never touches the user's configs.
+        from autoastrometry import writeparfile, writeconfigfile
+        _cwd = os.getcwd()
+        _tmp = os.path.join(self.path, 'temp_config_files', f'astrom_{self.rand_nums_string}')
+        try:
+            os.makedirs(_tmp, exist_ok=True)
+            os.chdir(_tmp)
+            writeparfile()
+            writeconfigfile(55000.)
+            shutil.copy(os.path.join(self.path, 'config_files', 'sex.conv'), 'sex.conv')
+            _res = None
+            for _cat in _cats:
+                if os.path.exists(_out):
+                    os.remove(_out)
+                _res = autoastrometry(_in, pixelscale=float(self.sci_ps),
+                                      userra=float(self.sci_c.ra.deg),
+                                      userdec=float(self.sci_c.dec.deg),
+                                      catalog=_cat, outfile=_out, quiet=True)
+                if isinstance(_res, tuple) and len(_res) >= 6 and os.path.exists(_out):
+                    print(info_g+f' Astrometric catalogue used: {_cat}')
+                    break
+                print(warn_y+f' {_cat} catalogue gave no solution — trying next')
+        except Exception as _e:
+            print(warn_y+f' autoastrometry raised {_e} — keeping header WCS')
+            return False
+        finally:
+            os.chdir(_cwd)
+            shutil.rmtree(_tmp, ignore_errors=True)
+
+        if isinstance(_res, tuple) and len(_res) >= 6 and os.path.exists(_out):
+            _nmatch, _, _, _dra, _ddec, _std = _res
+            print(info_g+f' autoastrometry: {_nmatch} matches, offset applied '
+                  f'({_dra:.2f}", {_ddec:.2f}"), scatter {_std:.2f}"')
+            if _nmatch is None or _nmatch < 5:
+                print(warn_y+f' Only {_nmatch} astrometric matches — keeping original WCS')
+                return False
+            self.sci_path = _out
+            self.name = _out
+            self.sci_img_hdu = fits.open(_out)[0]
+            self.sci_img = self.sci_img_hdu.data
+            self.files_to_clean.append(_out)
+            # target pixel position moves with the corrected WCS
+            self.coords_sn_sci = wcs_to_pixels(
+                self.sci_path, np.column_stack((self.sci_c.ra.deg, self.sci_c.dec.deg)))[0]
+            self.coords_sn_sci_x, self.coords_sn_sci_y = self.coords_sn_sci
+            print(info_g+f' Astrometry updated; target now at '
+                  f'({int(self.coords_sn_sci_x)},{int(self.coords_sn_sci_y)})')
+            return True
+        print(warn_y+' autoastrometry did not produce a solution — keeping header WCS')
+        return False
 
     def bkg_subtract(self,sigma=3.):
         print(info_g+f" Subtracting background")
@@ -2457,9 +2729,32 @@ class subtracted_phot(subphot_data):
 
 
 
+    def _resolve_ref_placeholder(self):
+        """Substitute {filt} in the user-supplied reference image/catalogue paths.
+
+        Lets one command cover every band, e.g.
+            -refimg 'ref_imgs/DEEP_PS1{filt}_ZTF26aakjzdt_wcsfix.fits'
+        If the substituted file does not exist we fall back to 'auto' for that
+        band so a missing deep reference degrades to the normal PS1/SDSS
+        download instead of crashing the whole run."""
+        for _attr in ('auto_ref','auto_cat'):
+            _val = getattr(self, _attr, 'auto')
+            if not isinstance(_val, str) or '{filt}' not in _val:
+                continue
+            _sub = _val.replace('{filt}', str(self.sci_filt))
+            _cand = _sub if os.path.exists(_sub) else self.path+_sub
+            if os.path.exists(_cand):
+                setattr(self, _attr, _cand)
+                print(info_g+f' Using per-filter reference for {self.sci_filt}-band: {_cand}')
+            else:
+                setattr(self, _attr, 'auto')
+                print(warn_y+f' No {self.sci_filt}-band reference at {_sub} — '
+                      f'falling back to automatic download for this image')
+
     def swarp_ref_align(self,image_size=image_size):
 
         # prepsexfile(gain=self.sci_gain)
+        self._resolve_ref_placeholder()
 
         # Check if using Legacy Survey (needed for SEDM SWarp decision)
         survey_name = self.survey.lower() if hasattr(self, 'survey') else ''
@@ -3717,7 +4012,8 @@ class subtracted_phot(subphot_data):
     
     # def py_ref_aa_align(self,image_size=image_size):
     def py_ref_align(self,image_size=image_size):
-    
+
+        self._resolve_ref_placeholder()    
 
         if image_size==1500:
             self.image_size=image_size
