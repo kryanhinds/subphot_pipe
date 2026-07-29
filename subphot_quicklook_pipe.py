@@ -90,7 +90,7 @@ def flatten_multiext_fits(path_in, out_dir):
                     if base.endswith(suf):
                         base = base[:-len(suf)]
                         break
-                if not os.path.exists(out_dir): os.makedirs(out_dir)
+                if not os.path.exists(out_dir): os.makedirs(out_dir, exist_ok=True)
                 out = os.path.join(out_dir, base+'_flat.fits')
                 fits.PrimaryHDU(data=hdu.data, header=hdu.header.copy()).writeto(out, overwrite=True)
                 return out
@@ -1025,21 +1025,21 @@ class subtracted_phot(subphot_data):
 
         
 
-        if not os.path.exists(self.path+'phot_fits_info'):os.mkdir(self.path+'phot_fits_info')
-        if not os.path.exists(self.path+'combined_imgs'):os.mkdir(self.path+'combined_imgs')
-        if not os.path.exists(self.path+'out'):os.mkdir(self.path+'out')
-        if not os.path.exists(self.path+'temp_config_files'):os.mkdir(self.path+'temp_config_files')
-        if not os.path.exists(self.path+'aligned_images'):os.mkdir(self.path+'aligned_images')
-        if not os.path.exists(self.path+'ref_imgs'):os.mkdir(self.path+'ref_imgs')
-        if not os.path.exists(self.path+'bkg_subtracted_science'):os.mkdir(self.path+'bkg_subtracted_science')
-        if not os.path.exists(self.path+'scaled_subtracted_imgs'):os.mkdir(self.path+'scaled_subtracted_imgs')
-        if not os.path.exists(self.path+'convolved_sci'):os.mkdir(self.path+'convolved_sci')
-        if not os.path.exists(self.path+'convolved_ref'):os.mkdir(self.path+'convolved_ref')
-        if not os.path.exists(self.path+'convolved_psf'):os.mkdir(self.path+'convolved_psf')
-        if not os.path.exists(self.path+'trimmed_sci_imgs'):os.mkdir(self.path+'trimmed_sci_imgs')
-        if not os.path.exists(self.path+'photometry_data'):os.mkdir(self.path+'photometry_data')
-        if not os.path.exists(self.path+'photometry'):os.mkdir(self.path+'photometry')
-        if not os.path.exists(self.path+'ps_catalogs'):os.mkdir(self.path+'ps_catalogs')
+        if not os.path.exists(self.path+'phot_fits_info'):os.makedirs(self.path+'phot_fits_info', exist_ok=True)
+        if not os.path.exists(self.path+'combined_imgs'):os.makedirs(self.path+'combined_imgs', exist_ok=True)
+        if not os.path.exists(self.path+'out'):os.makedirs(self.path+'out', exist_ok=True)
+        if not os.path.exists(self.path+'temp_config_files'):os.makedirs(self.path+'temp_config_files', exist_ok=True)
+        if not os.path.exists(self.path+'aligned_images'):os.makedirs(self.path+'aligned_images', exist_ok=True)
+        if not os.path.exists(self.path+'ref_imgs'):os.makedirs(self.path+'ref_imgs', exist_ok=True)
+        if not os.path.exists(self.path+'bkg_subtracted_science'):os.makedirs(self.path+'bkg_subtracted_science', exist_ok=True)
+        if not os.path.exists(self.path+'scaled_subtracted_imgs'):os.makedirs(self.path+'scaled_subtracted_imgs', exist_ok=True)
+        if not os.path.exists(self.path+'convolved_sci'):os.makedirs(self.path+'convolved_sci', exist_ok=True)
+        if not os.path.exists(self.path+'convolved_ref'):os.makedirs(self.path+'convolved_ref', exist_ok=True)
+        if not os.path.exists(self.path+'convolved_psf'):os.makedirs(self.path+'convolved_psf', exist_ok=True)
+        if not os.path.exists(self.path+'trimmed_sci_imgs'):os.makedirs(self.path+'trimmed_sci_imgs', exist_ok=True)
+        if not os.path.exists(self.path+'photometry_data'):os.makedirs(self.path+'photometry_data', exist_ok=True)
+        if not os.path.exists(self.path+'photometry'):os.makedirs(self.path+'photometry', exist_ok=True)
+        if not os.path.exists(self.path+'ps_catalogs'):os.makedirs(self.path+'ps_catalogs', exist_ok=True)
 
 
 
@@ -1279,7 +1279,7 @@ class subtracted_phot(subphot_data):
                             # recover this mask from the processed images.
                             self.sci_trim_zero_mask = (self.sci_trimmed_img == 0)
                             # self.sci_trimmed_img.data = np.nan_to_num(self.sci_trimmed_img.data)
-                            # if not os.path.exists(self.path+'trimmed_sci_imgs'):os.makedirs(self.path+'trimmed_sci_imgs')
+                            # if not os.path.exists(self.path+'trimmed_sci_imgs'):os.makedirs(self.path+'trimmed_sci_imgs', exist_ok=True)
                             self.sci_path = self.path+'trimmed_sci_imgs/'+self.sci_path.split('/')[-1]
                             self.sci_path_o = self.sci_path
                             fits.writeto(self.sci_path.replace('.fits','_trimmed.fits'),self.sci_trimmed_img,overwrite=True,header=self.sci_img_hdu.header)
@@ -1936,65 +1936,65 @@ class subtracted_phot(subphot_data):
             self.out_dir='photometry/'
             if not os.path.exists(self.path+self.out_dir):
                 print(info_g+' Creating photometry directory: '+self.path+self.out_dir)
-                os.mkdir(self.path+self.out_dir)
+                os.makedirs(self.path+self.out_dir, exist_ok=True)
             
             #folder is for easy way to display photometry by date of observation
             if os.path.exists(self.path+'photometry_date')==False:
                 print(info_g+' Creating photometry_date directory: '+self.path+'photometry_date')
-                os.mkdir(self.path+'photometry_date')
+                os.makedirs(self.path+'photometry_date', exist_ok=True)
             if not os.path.exists(self.path+f'photometry_date/{self.folder}'):
                 print(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}')
-                os.mkdir(self.path+f'photometry_date/{self.folder}')  
+                os.makedirs(self.path+f'photometry_date/{self.folder}', exist_ok=True)  
 
             if self.morning_round_up!=False:
                 if not os.path.exists(self.path+f'photometry_date/{self.folder}/morning_rup'):
                     print(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}/morning_rup')
-                    os.mkdir(self.path+f'photometry_date/{self.folder}/morning_rup')
+                    os.makedirs(self.path+f'photometry_date/{self.folder}/morning_rup', exist_ok=True)
 
             if self.cutout_tf!=False:
                 if not os.path.exists(self.path+f'photometry_date/{self.folder}/cut_outs'):
                     print(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}/cut_outs')
-                    os.mkdir(self.path+f'photometry_date/{self.folder}/cut_outs')
+                    os.makedirs(self.path+f'photometry_date/{self.folder}/cut_outs', exist_ok=True)
 
         if self.out_dir=='by_obs_date' or self.morning_round_up!=False:
             self.out_dir='photometry/'
             # self.folder = self.sci_obj
             if not os.path.exists(self.path+self.out_dir):
                 print(info_g+' Creating photometry directory: '+self.path+self.out_dir)
-                os.mkdir(self.path+self.out_dir)
+                os.makedirs(self.path+self.out_dir, exist_ok=True)
             
             #folder is for easy way to display photometry by date of observation
             if os.path.exists(self.path+'photometry_date')==False:
                 print(info_g+' Creating photometry_date directory: '+self.path+'photometry_date')
-                os.mkdir(self.path+'photometry_date')
+                os.makedirs(self.path+'photometry_date', exist_ok=True)
             if not os.path.exists(self.path+f'photometry_date/{self.folder}'):
                 print(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}')
-                os.mkdir(self.path+f'photometry_date/{self.folder}')  
+                os.makedirs(self.path+f'photometry_date/{self.folder}', exist_ok=True)  
 
             if self.morning_round_up!=False:
                 if not os.path.exists(self.path+f'photometry_date/{self.folder}/morning_rup'):
                     print(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}/morning_rup')
-                    os.mkdir(self.path+f'photometry_date/{self.folder}/morning_rup')
+                    os.makedirs(self.path+f'photometry_date/{self.folder}/morning_rup', exist_ok=True)
 
             if self.cutout_tf!=False:
                 if not os.path.exists(self.path+f'photometry_date/{self.folder}/cut_outs'):
                     print(info_g+' Creating photometry_date directory: '+self.path+f'photometry_date/{self.folder}/cut_outs')
-                    os.mkdir(self.path+f'photometry_date/{self.folder}/cut_outs')
+                    os.makedirs(self.path+f'photometry_date/{self.folder}/cut_outs', exist_ok=True)
         else:
             self.out_dir=str(self.out_dir)+'/'
             if not os.path.exists(self.path+self.out_dir):
                 print(info_g+' Creating photometry directory: '+self.path+self.out_dir)
-                os.mkdir(self.path+self.out_dir)
+                os.makedirs(self.path+self.out_dir, exist_ok=True)
 
             if self.morning_round_up!=False:
                 if not os.path.exists(self.path+self.out_dir+'morning_rup'):
                     print(info_g+' Creating photometry directory: '+self.path+self.out_dir+'morning_rup')
-                    os.mkdir(self.path+self.out_dir+'morning_rup')
+                    os.makedirs(self.path+self.out_dir+'morning_rup', exist_ok=True)
             
             if self.cutout_tf!=False:
                 if not os.path.exists(self.path+f'{self.out_dir}cut_outs'):
                     print(info_g+' Creating photometry directory: '+self.path+f'{self.out_dir}cut_outs')
-                    os.mkdir(self.path+f'{self.out_dir}cut_outs')
+                    os.makedirs(self.path+f'{self.out_dir}cut_outs', exist_ok=True)
 
 
         if ':' in str(self.sci_ra):self.sci_c=SkyCoord(self.sci_ra,self.sci_dec,unit=(u.hourangle, u.deg),frame='fk5')
@@ -2216,7 +2216,7 @@ class subtracted_phot(subphot_data):
             #  Background subtraction
         #################################
         if not os.path.exists(self.path+'bkg_subtracted_science'):
-            os.makedirs(self.path+'bkg_subtracted_science')
+            os.makedirs(self.path+'bkg_subtracted_science', exist_ok=True)
 
         self.sig_clip = SigmaClip(sigma=sigma)
         self.bkg_estimator = SExtractorBackground(self.sig_clip)
@@ -2570,7 +2570,7 @@ class subtracted_phot(subphot_data):
         # sys.exit()
         # save_to_reg=False
         # if save_to_reg:
-        #     if not os.path.exists(self.path+'region_files'):os.makedirs(self.path+'region_files')
+        #     if not os.path.exists(self.path+'region_files'):os.makedirs(self.path+'region_files', exist_ok=True)
         #     self.files_to_clean.append(self.path+'region_files/'+self.sci_obj+'_sci_all_sky.reg')
         #     self.files_to_clean.append(self.path+'region_files/'+self.sci_obj+'_ref_all_sky.reg')
         #     with open(self.path+'region_files/'+self.sci_obj+'_sci_all_sky.reg','w') as f:
@@ -2659,7 +2659,7 @@ class subtracted_phot(subphot_data):
 
         save_to_reg = False
         if save_to_reg: 
-            if not os.path.exists(self.path+'region_files'):os.makedirs(self.path+'region_files')
+            if not os.path.exists(self.path+'region_files'):os.makedirs(self.path+'region_files', exist_ok=True)
             self.files_to_clean.append(self.path+'region_files/'+self.sci_obj+'_sci.reg')
             self.files_to_clean.append(self.path+'region_files/'+self.sci_obj+'_ref.reg')
             with open(self.path+'region_files/'+self.sci_obj+'_sci.reg','w') as f:
@@ -2794,7 +2794,7 @@ class subtracted_phot(subphot_data):
             
 
 
-            if not os.path.exists(self.path+'poly_comps/'):os.mkdir(self.path+'poly_comps/')
+            if not os.path.exists(self.path+'poly_comps/'):os.makedirs(self.path+'poly_comps/', exist_ok=True)
             fig_poly_coll.savefig(self.path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf',bbox_inches='tight')
             print(info_g+f" Saved image comparing polynomial orders 1 and 2 as "+self.path+'poly_comps/'+self.sci_img_name[:-11]+'_poly_collage.pdf') 
             # fig_sci_ali.savefig(self.path+'sedm_comps2/'+self.sci_img_name[:-11]+'_sci.pdf')
@@ -3058,7 +3058,7 @@ class subtracted_phot(subphot_data):
 
 
         if not os.path.exists(self.path+'aligned_images'):
-            os.makedirs(self.path+'aligned_images')
+            os.makedirs(self.path+'aligned_images', exist_ok=True)
 
         
         # use the same interpreter as the pipeline so the subprocess sees the same env
@@ -3419,7 +3419,7 @@ class subtracted_phot(subphot_data):
 
             self.ref_ali_hdu = fits.PrimaryHDU(self.ref_masked, header=self.sci_img_hdu.header)
             if not os.path.exists(self.path+'aligned_images/'):
-                os.makedirs(self.path+'aligned_images/')
+                os.makedirs(self.path+'aligned_images/', exist_ok=True)
             self.sci_ali_name = self.path+'aligned_images/'+self.sci_img_name[:-5]+'.aa.fits'
             self.ref_ali_name = self.path+'aligned_images/'+self.ref_img_name[:-5].split('/')[-1]+'.aa.fits'
             self.ref_ali_hdu.writeto(self.ref_ali_name, overwrite=True)
@@ -4126,7 +4126,7 @@ class subtracted_phot(subphot_data):
 
 
         if not os.path.exists(self.path+'aligned_images'):
-            os.makedirs(self.path+'aligned_images')
+            os.makedirs(self.path+'aligned_images', exist_ok=True)
 
         wcs_command=sys.executable+' '+self.path+'subphot_align.py'+" -sci "+self.path+'bkg_subtracted_science/'+self.sci_img_name+" -ref "+self.ref_img_name+"  -m relative -r 100"
 
@@ -4324,13 +4324,13 @@ class subtracted_phot(subphot_data):
         print(info_g+' Beginning to convolve images with SeXtractor and PSFEx')
 
         if not os.path.exists(self.path+'convolved_sci'):
-            os.makedirs(self.path+'convolved_sci')
+            os.makedirs(self.path+'convolved_sci', exist_ok=True)
 
         if not os.path.exists(self.path+'convolved_ref'):
-            os.makedirs(self.path+'convolved_ref')
+            os.makedirs(self.path+'convolved_ref', exist_ok=True)
 
         if not os.path.exists(self.path+'out'):
-            os.makedirs(self.path+'out')
+            os.makedirs(self.path+'out', exist_ok=True)
 
         try:
             self.sci_conv_name=self.path+"convolved_sci/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'sci_convolved.fits'
@@ -4638,9 +4638,9 @@ class subtracted_phot(subphot_data):
         print(info_g+f" Beginning cross convolutions of PSFs and images")
 
         if not os.path.exists(self.path+'convolved_sci'):
-            os.makedirs(self.path+'convolved_sci')
+            os.makedirs(self.path+'convolved_sci', exist_ok=True)
         if not os.path.exists(self.path+'convolved_ref'):
-            os.makedirs(self.path+'convolved_ref')
+            os.makedirs(self.path+'convolved_ref', exist_ok=True)
 
         try:
             self.sci_conv_name=self.path+"convolved_sci/"+self.sci_obj+'_'+self.sci_filt+'_'+self.sci_img_hdu.header[self.DATE_kw][:-13]+'_'+str(datetime.timedelta(hours=int(self.sci_img_hdu.header[self.DATE_kw][11:13]), minutes=int(self.sci_img_hdu.header[self.DATE_kw][14:16]), seconds=float(self.sci_img_hdu.header[self.DATE_kw][17:21])).seconds)+'sci_convolved.fits'
@@ -5154,7 +5154,7 @@ class subtracted_phot(subphot_data):
         #  Combine science PSF with reference PSF, flatten PSF to 1D and gaussian fit
 
         if not os.path.exists(self.path+'convolved_psf'):
-            os.makedirs(self.path+'convolved_psf')
+            os.makedirs(self.path+'convolved_psf', exist_ok=True)
         
         # try:
         #     if os.path.exists(self.path+'convolved_psf'):
@@ -6265,7 +6265,7 @@ class subtracted_phot(subphot_data):
                     
                 else:
                     if not os.path.exists(self.path+'zeropoints/'+self.folder):
-                        os.mkdir(self.path+'zeropoints/'+self.folder)
+                        os.makedirs(self.path+'zeropoints/'+self.folder, exist_ok=True)
                     self.zp_name = re.sub(f'data/IOO_Stands/{self.folder}_1/','',self.name)
                     self.zp_file_name = self.path+"zeropoints/"+self.folder+f"/{re.sub('.fits','',self.zp_name)}zpts_{self.sci_filt}.txt"
                 self.zp_file = open(self.zp_file_name,"w")

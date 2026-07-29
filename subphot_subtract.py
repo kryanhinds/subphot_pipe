@@ -35,6 +35,90 @@ from subphot_telescopes import header_kw,SEDM
 from astropy.time import Time
 
 # ---------------------------------------------------------------------------
+# [SRV] Path hygiene — must run before ANY directory is created.
+#
+# Three failure modes seen on the minar cron installation:
+#   * an unexpanded '~' in path/data1_path makes os.makedirs() create a
+#     LITERAL '~' directory tree under the current working directory;
+#   * a missing trailing slash silently concatenates ('.../pipeentire_lc_imgs');
+#   * a relative path (or tools that write relative to CWD) drops artefacts
+#     wherever cron happened to start, which is '/' for most cron daemons.
+# Normalising here fixes all three for every downstream 'path + name' string.
+# ---------------------------------------------------------------------------
+def _norm_root(p, label):
+    try:
+        _p = str(p)
+    except Exception:
+        return p
+    _q = os.path.abspath(os.path.expanduser(os.path.expandvars(_p)))
+    if not _q.endswith(os.sep):
+        _q += os.sep
+    if _q != _p:
+        print(f'[INFO]    :: [SRV] {label} normalised: {_p!r} -> {_q!r}')
+    return _q
+
+path = _norm_root(path, 'path')
+data1_path = _norm_root(data1_path, 'data1_path')
+
+# Anchor the process in the pipeline directory.  All user-supplied image and
+# folder arguments are already resolved against data1_path (not CWD), so this
+# is behaviour-preserving, and it stops SExtractor/SWarp/PSFEx scratch files
+# from landing in '/' or '~' when cron starts us elsewhere.
+try:
+    if os.path.isdir(path) and os.path.realpath(os.getcwd()) != os.path.realpath(path):
+        os.chdir(path)
+        print(f'[INFO]    :: [SRV] working directory set to {path}')
+except Exception as _cd_e:
+    print(f'[WARNING] :: [SRV] could not chdir to {path}: {_cd_e}')
+
+
+def rel_to_data1(p):
+    """Express a user-supplied path RELATIVE to data1_path.
+
+    The pipeline concatenates 'data1_path + <arg>' in many places, so an
+    absolute argument (which is what a cron wrapper naturally passes, e.g.
+    -i /data/sedmdrp/redux/.../image.fits) produced a doubled path like
+    '/data/.../subphot_pipe//data/sedmdrp/...' and a FileNotFoundError.
+    Absolute paths inside the data root are rewritten as relative; absolute
+    paths outside it are returned unchanged and handled by the callers'
+    os.path.exists() checks.
+    """
+    try:
+        _p = str(p)
+    except Exception:
+        return p
+    if not os.path.isabs(_p):
+        return _p
+    _abs = os.path.abspath(os.path.expanduser(_p))
+    _root = os.path.abspath(data1_path)
+    if _abs.startswith(_root + os.sep):
+        return os.path.relpath(_abs, _root)
+    return _p
+
+
+def safe_makedirs(target, label=''):
+    """Create a directory, but never outside the pipeline root.
+
+    Guards against the '~'/'/' pollution above: anything resolving outside
+    `path`/`data1_path` is refused with a warning instead of being created.
+    Uses exist_ok=True so concurrent cron jobs cannot race each other.
+    """
+    try:
+        _t = os.path.abspath(os.path.expanduser(os.path.expandvars(str(target))))
+        _roots = [os.path.realpath(path), os.path.realpath(data1_path)]
+        _extra = os.environ.get('SUBPHOT_EXTRA_OUTPUT_ROOTS', '')
+        _roots += [os.path.realpath(r) for r in _extra.split(':') if r]
+        if not any(os.path.realpath(_t).startswith(r) for r in _roots):
+            print(f'[WARNING] :: [SRV] refusing to create {label or "directory"} '
+                  f'outside the pipeline root: {_t}')
+            return None
+        os.makedirs(_t, exist_ok=True)
+        return _t
+    except Exception as _mk_e:
+        print(f'[WARNING] :: [SRV] could not create {label or "directory"} {target}: {_mk_e}')
+        return None
+
+# ---------------------------------------------------------------------------
 # Optional pinned progress bar (-pb/--progress).  See _PinnedBar below: it
 # reserves the terminal's last line with a scroll region, which is the only
 # approach that survives output from os.system() subprocesses (SWarp,
@@ -346,6 +430,22 @@ parser.add_argument('--pros_job_id','-pid',default=None,
                     help="Prospero job ID, default is None")
 args = parser.parse_args()
 
+# [SRV] Normalise user-supplied paths so absolute arguments (what a cron
+# wrapper naturally passes) work everywhere the code does 'data1_path + arg'.
+for _pa in ('ims', 'folder', 'list_fits'):
+    _v = getattr(args, _pa, None)
+    if isinstance(_v, (list, tuple)):
+        setattr(args, _pa, [rel_to_data1(_x) for _x in _v])
+    elif isinstance(_v, str) and _v:
+        setattr(args, _pa, rel_to_data1(_v))
+# -o must stay a bare directory name: 'path + out_dir' is concatenated
+# downstream, so an absolute value would escape the pipeline root.
+if isinstance(getattr(args, 'output', None), str) and os.path.isabs(args.output):
+    _o = args.output.rstrip('/').split('/')[-1]
+    print(f'[WARNING] :: [SRV] -o must be a directory NAME, not a path; '
+          f'using {_o!r} under {data1_path}')
+    args.output = _o
+
 # Enable stacking if stack_all is requested
 if hasattr(args, 'stack_all') and args.stack_all:
     args.stack = True
@@ -504,9 +604,64 @@ if args.mroundup!=False:
     
 
 try:
-    if store_lc_ims and not os.path.exists(data1_path+'entire_lc_imgs'):os.makedirs(data1_path+'entire_lc_imgs')
+    if store_lc_ims:
+        safe_makedirs(data1_path+'entire_lc_imgs', 'entire_lc_imgs')
 except Exception as e:
     print(warn_r+f' Could not create entire_lc_imgs directory at {data1_path}entire_lc_imgs: {e}')
+
+
+def archive_lc_images(files, name, base_dir=None):
+    """[SRV] Copy the raw science frames of an epoch into
+    entire_lc_imgs/<object>/ so the full light-curve image set accumulates.
+
+    Previously this lived inline in the folder (-f) branch only, so the
+    single-image (-i) mode the server uses for each new source archived
+    NOTHING.  Both paths now call this.
+
+    files    : list of paths/basenames for the epoch (a stack group or one file)
+    name     : object name (directory under entire_lc_imgs/)
+    base_dir : folder to resolve bare basenames against (stack members carry
+               no path); defaults to the directory of the first entry.
+    """
+    if not store_lc_ims or not name:
+        return 0
+    _clean = re.sub(r'[^\w.+-]', '_', str(name).strip())
+    if not _clean:
+        return 0
+    lc_path = os.path.join(data1_path + 'entire_lc_imgs', _clean) + os.sep
+    if safe_makedirs(lc_path, 'entire_lc_imgs/<object>') is None:
+        return 0
+    if base_dir is None:
+        base_dir = os.path.dirname(str(files[0])) if files else ''
+    n_done = 0
+    for fit in files:
+        fit = str(fit)
+        if not fit.endswith('.fits'):
+            fit += '.fits'
+        # resolve in turn against: as-given, the group's folder, data1_path
+        if not os.path.exists(fit):
+            for _cand in ([os.path.join(base_dir, os.path.basename(fit))] if base_dir else []) + \
+                         [data1_path + fit.lstrip('/'),
+                          os.path.join(data1_path, base_dir.lstrip('/'), os.path.basename(fit))
+                          if base_dir else None]:
+                if _cand and os.path.exists(_cand):
+                    fit = _cand
+                    break
+        if not os.path.exists(fit):
+            print(warn_y + f' Could not archive {fit} — file not found')
+            continue
+        dst = os.path.join(lc_path, os.path.basename(fit))
+        if os.path.exists(dst):
+            n_done += 1
+            continue
+        try:
+            shutil.copy(fit, dst)
+            n_done += 1
+        except Exception as e:
+            print(warn_r + f' Could not archive {fit} to {lc_path}: {e}')
+    if n_done:
+        print(info_g + f' Archived {n_done} image(s) to {lc_path}')
+    return n_done
 
 
 if args.termoutp!='quiet':
@@ -593,38 +748,106 @@ if args.make_log!=False:
                 # print(args.folder[k])
                 if '/' in args.folder[k]:out_dir=args.folder[k].split('/')[-1]
                 else:out_dir=args.folder[k]
-                if not os.path.exists(data1_path+out_dir):os.mkdir(data1_path+out_dir)
+                safe_makedirs(data1_path+out_dir, 'output directory')
         else:
             out_dir='photometry'
     else:out_dir=args.output.split('/')[-1]
 
 
     # 'by_obs_date' is a keyword, not a directory — its outputs/logs live in photometry_date/
-    if args.output not in ('by_name','by_obs_date') and not os.path.exists(data1_path+out_dir):os.mkdir(data1_path+out_dir)
+    if args.output not in ('by_name','by_obs_date'):
+        safe_makedirs(data1_path+out_dir, 'output directory')
 
-    if not os.path.exists(data1_path+log_dest):os.mkdir(data1_path+log_dest)
+    # [SRV] '0' is the DEFAULT value of --make_log (meaning "log beside the
+    # output"), not a directory name — mkdir'ing it created a stray '0/'
+    # folder in the pipeline root on every single run.
+    if log_dest not in ('0', 0, '', None):
+        safe_makedirs(data1_path+str(log_dest), 'log directory')
     if log_dest=='night_log':log_name = f"{data1_path}night_log/{DATE}_night_log.log"
     else:log_name = f"{data1_path}{log_dest}/{out_dir}_log.log"
     if log_dest=='0':
         log_dest=out_dir
         if out_dir=='by_obs_date':
-            if not os.path.exists(data1_path+'photometry_date'):os.mkdir(data1_path+'photometry_date')
+            safe_makedirs(data1_path+'photometry_date', 'photometry_date')
             log_name = f"{data1_path}photometry_date/{DATE}_log.log"
         else:
             log_name = f"{data1_path}{out_dir}/{out_dir}_log.log"
-    
+
     if args.pros_job_id!=None:
-        if not os.path.exists(f'/mnt/aridata1/users/arikhind/phot_data/nightly_routine_logs/{DATE}'):os.mkdir(f'/mnt/aridata1/users/arikhind/phot_data/nightly_routine_logs/{DATE}')
-        log_name = f'/mnt/aridata1/users/arikhind/phot_data/nightly_routine_logs/{DATE}/SPNR_{args.pros_job_id}_py.log'
+        # nightly-routine logs live outside the pipeline root by design
+        _nr_dir = f'/mnt/aridata1/users/arikhind/phot_data/nightly_routine_logs/{DATE}'
+        try:
+            os.makedirs(_nr_dir, exist_ok=True)
+            log_name = f'{_nr_dir}/SPNR_{args.pros_job_id}_py.log'
+        except Exception as _nr_e:
+            print(f'[WARNING] :: [SRV] nightly-routine log dir unavailable ({_nr_e}); '
+                  f'falling back to {log_name}')
 
 
     if args.mroundup!=False:
         log_name = f"{data1_path}{log_dest}/{DATE}_night_log.log"
 
+    # [SRV] The log file used to receive only the handful of sp_logger.*
+    # calls — everything else in the pipeline uses print(), so a run that
+    # emitted ~4800 console lines wrote 43 to disk, and those carried raw
+    # ANSI colour codes.  Tee stdout/stderr into the log instead, stripping
+    # escapes, so the file is a faithful, greppable record of the run.
+    safe_makedirs(os.path.dirname(log_name), 'log directory')
+
+    class _Tee:
+        _ANSI = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
+
+        def __init__(self, stream, fh):
+            self._stream, self._fh = stream, fh
+
+        def write(self, data):
+            try:
+                self._stream.write(data)
+            except Exception:
+                pass
+            try:
+                self._fh.write(self._ANSI.sub('', data))
+                self._fh.flush()
+            except Exception:
+                pass
+            return len(data)
+
+        def flush(self):
+            for _o in (self._stream, self._fh):
+                try:
+                    _o.flush()
+                except Exception:
+                    pass
+
+        def isatty(self):
+            return getattr(self._stream, 'isatty', lambda: False)()
+
+        def fileno(self):
+            return self._stream.fileno()
+
+    try:
+        _log_fh = open(log_name, 'a', encoding='utf-8', buffering=1)
+        _log_fh.write(f'\n{"="*70}\n'
+                      f'RUN {datetime.datetime.now().isoformat(timespec="seconds")}  '
+                      f'cwd={os.getcwd()}\n'
+                      f'argv: {" ".join(sys.argv)}\n{"="*70}\n')
+        sys.stdout = _Tee(sys.stdout, _log_fh)
+        sys.stderr = _Tee(sys.stderr, _log_fh)
+    except Exception as _lg_e:
+        print(f'[WARNING] :: [SRV] could not open log file {log_name}: {_lg_e}')
+
     sp_logger = logging
-    sp_logger.basicConfig(level=logging.INFO,encoding='utf-8',handlers=[
-      logging.StreamHandler(),logging.FileHandler(log_name,encoding='utf-8')],format='%(message)s')
-    
+    # force=True: basicConfig is a no-op if any import already configured the
+    # root logger, which silently produced empty logs.
+    try:
+        sp_logger.basicConfig(level=logging.INFO, encoding='utf-8',
+                              handlers=[logging.StreamHandler(sys.stdout)],
+                              format='%(message)s', force=True)
+    except TypeError:      # python < 3.8 has no force=
+        sp_logger.basicConfig(level=logging.INFO, encoding='utf-8',
+                              handlers=[logging.StreamHandler(sys.stdout)],
+                              format='%(message)s')
+
     print(info_g+f' Logging to {log_name}')
     args.sp_logger=sp_logger
 else:args.sp_logger=None
@@ -1024,24 +1247,7 @@ def run_subtraction(data_dict):
                 continue
 
             # Optionally archive raw images for the full LC
-            if store_lc_ims:
-                lc_path = f'{data1_path}entire_lc_imgs/{name}/'
-                os.makedirs(lc_path, exist_ok=True)
-                _grp_dir = os.path.dirname(sub_file[0])
-                for fit in sub_file:
-                    if not fit.endswith('.fits'):
-                        fit = fit + '.fits'
-                    # only sub_file[0] carries the full path; the other members of a
-                    # stack group are bare basenames, so resolve them against the
-                    # group's folder instead of the (unrelated) working directory
-                    if not os.path.exists(fit) and _grp_dir:
-                        fit = os.path.join(_grp_dir, os.path.basename(fit))
-                    dst = lc_path + os.path.basename(fit)
-                    if not os.path.exists(dst):
-                        try:
-                            shutil.copy(fit, lc_path)
-                        except Exception as e:
-                            print(warn_r+f' Could not archive {fit} to {lc_path}: {e}')
+            archive_lc_images(sub_file, name, base_dir=os.path.dirname(sub_file[0]))
 
             if len(sub_file) > 1:
                 args.stack = True
@@ -1193,7 +1399,17 @@ if len(args.ims)>0:
             print(colored(f'  ⭐ PROCESSING FILE {i} OF {len(ims)} [{i}/{len(ims)}]', 'cyan'))
             print(info_g+f' Performing image subtraction on {image}, {fits_filt} filter, {fits_obj}')
             print(colored('════════════════════════════════════════════════════════════════════════════════════════════════','magenta'))
-            # continue
+
+            # [SRV] archive the raw frame for the full LC — the single-image
+            # path (used per new source on the server) never did this before
+            _arch_name = fits_obj
+            if args.telescope_facility in SEDM or str(fits_hdu.get('TELESCOP','')).strip() in SEDM:
+                if 'ACQ-' in _arch_name:
+                    _arch_name = _arch_name.split('-', 1)[1]
+                _arch_name = _arch_name.split(' ')[0]
+            archive_lc_images([data1_path+image+'.fits'], _arch_name,
+                              base_dir=os.path.dirname(data1_path+image))
+
             sub_obj = subtracted_phot(ims=[image],args=args)
             sys_exit=sub_obj.sys_exit
 
