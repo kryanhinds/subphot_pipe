@@ -6205,6 +6205,21 @@ class subtracted_phot(subphot_data):
                 sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
                 print(warn_y+" New magnitude = %.3f"%sn_mag)
 
+        if self.forced_phot==False:
+            # [SN-fix] Latch guard: a centroid shift should REFINE the flux,
+            # never create it.  If the shifted fit finds >1.5x the flux of a
+            # forced fit at the known position, chi2_shift latched onto a
+            # nearby subtraction residual (max-statistics bias on faint
+            # sources; a real <=1px WCS error costs <~15% flux, never 50%).
+            _ns_fit = self.psf_fit_noshift([self.sn_cutout], psf_array=psf)[0]
+            _sh_flux, _ns_flux = float(self.main_sn_psf_fit[0]), float(_ns_fit[0])
+            if _sh_flux > 0 and (_ns_flux <= 0 or _sh_flux > 1.5 * _ns_flux):
+                print(warn_y+f' [SN-fix] Shifted PSF-fit flux {_sh_flux:.1f} vs forced-position '
+                             f'{_ns_flux:.1f} — shift latched onto a residual; using forced fit')
+                self.main_sn_psf_fit = _ns_fit
+                sn_flux = _ns_flux
+                sn_mag = (-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)) if sn_flux > 0 else 99.0
+
         psf_size=np.shape(psf)[0]+1
         #chose num number of coordinates to calculate the magnitude error within the image size but outside the psf
         x=np.linspace(-num*psf_size,num*psf_size,(num*2)+1)
