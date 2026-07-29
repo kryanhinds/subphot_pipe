@@ -825,8 +825,10 @@ class multi_subtract():
                 self.fits_obj = self.fits_obj.split(' ')
                 self.fits_obj,self._f  = self.fits_obj[0],self.fits_obj[-1]
 
+                # canonical_filter above may already have produced the
+                # canonical name — only remap raw single-letter values
                 self.fits_filt = {'r':'SDSS-R','g':'SDSS-G','i':'SDSS-I','u':'SDSS-U',
-                                'B':'Bessell-B','V':'Bessell-V','R':'Bessell-R','I':'Bessell-I'}[self.fits_filt]
+                                'B':'Bessell-B','V':'Bessell-V','R':'Bessell-R','I':'Bessell-I'}.get(self.fits_filt, self.fits_filt)
 
                                 #   }[self.fits_filt]
                 # print(self.fits_obj,self.fits_filt)
