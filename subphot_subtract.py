@@ -1046,12 +1046,18 @@ def run_subtraction(data_dict):
             if len(sub_file) > 1:
                 args.stack = True
 
-            # Build the expected output filename to support new_only mode
-            _dt = datetime.timedelta(
-                hours=int(date_obs[11:13]),
-                minutes=int(date_obs[14:16]),
-                seconds=float(date_obs[17:31]))
-            final_name = f'{name}_{filts[filt]}{date_obs[:-13]}_{_dt.seconds}_photometry.txt'
+            # Build the expected output filename to support new_only mode.
+            # Some facilities (e.g. TJO stacks) carry a date-only DATE-OBS —
+            # treat a missing time part as midnight instead of crashing.
+            _ds = str(date_obs)
+            if len(_ds) >= 19 and _ds[10] in 'T ':
+                _dt = datetime.timedelta(
+                    hours=int(_ds[11:13]),
+                    minutes=int(_ds[14:16]),
+                    seconds=float(_ds[17:31]))
+            else:
+                _dt = datetime.timedelta(0)
+            final_name = f'{name}_{filts[filt]}{_ds[:10]}_{_dt.seconds}_photometry.txt'
             final_name_stk = final_name.replace('photometry', 'stacked_photometry')
 
             if new_only:
