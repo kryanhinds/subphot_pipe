@@ -441,7 +441,8 @@ def build_target_centered_wcs_header(header, target_coord, pixel_scale_arcsec,
                     f'ps={pixel_scale_arcsec:.4f}"/pix, shape=({naxis2},{naxis1})')
     return hdr
 
-def _matched_filter_shift(sci_data, ref_data, logger=None):
+def _matched_filter_shift(sci_data, ref_data, logger=None,
+                          hint=None, hint_window=12):
     """Estimate the (dx, dy) pixel shift of *ref_data* relative to *sci_data*
     via plain matched-filter FFT cross-correlation on log-stretched images.
 
@@ -467,6 +468,23 @@ def _matched_filter_shift(sci_data, ref_data, logger=None):
     _s = np.fft.fft2(_prep(sci_data))
     _r = np.fft.fft2(_prep(ref_data))
     _cc = np.fft.fftshift(np.fft.ifft2(_s * np.conj(_r)).real)
+    # [V2b] With a catalog-derived hint (pass-A offset that had too few strict
+    # inliers to use directly), restrict the peak search to a window around
+    # the predicted shift — on shallow frames the unconstrained global peak
+    # can be a spurious correlation of noise/artifacts.
+    if hint is not None and len(hint) == 2 and all(np.isfinite(hint)):
+        _cy = sci_data.shape[0] // 2 + int(round(hint[1]))
+        _cx = sci_data.shape[1] // 2 + int(round(hint[0]))
+        _mask = np.full(_cc.shape, -np.inf)
+        _y1, _y2 = max(0, _cy - hint_window), min(_cc.shape[0], _cy + hint_window + 1)
+        _x1, _x2 = max(0, _cx - hint_window), min(_cc.shape[1], _cx + hint_window + 1)
+        if _y2 > _y1 and _x2 > _x1:
+            _mask[_y1:_y2, _x1:_x2] = _cc[_y1:_y2, _x1:_x2]
+            _cc = _mask
+            if logger is not None:
+                print(info_g + f' [V2] matched-filter search windowed to '
+                               f'+/-{hint_window}px around catalog hint '
+                               f'({hint[0]:+.1f}, {hint[1]:+.1f}) px')
     _yb, _xb = np.unravel_index(np.argmax(_cc), _cc.shape)
     dy = float(_yb - sci_data.shape[0] // 2)
     dx = float(_xb - sci_data.shape[1] // 2)
@@ -600,7 +618,7 @@ def _star_match_shift(sci_data, ref_data, fwhm_px=5.0, thresh_sigma=5.0,
 
 def _ps1_catalog_shift(sci_data, sci_wcs, ps1_sky,
                        fwhm_px=5.0, thresh_sigma=5.0, match_radius_arcsec=3.0,
-                       min_stars=5, logger=None):
+                       min_stars=5, logger=None, hint_out=None):
     """Estimate pixel shift by matching science detections to PS1 catalog positions.
 
     This is the *primary* fine-registration method for the SEDM bypass path.
@@ -724,7 +742,45 @@ def _ps1_catalog_shift(sci_data, sci_wcs, ps1_sky,
     # absolute astrometry).
     _resid = np.sqrt((_dra_all - _med_dra)**2 + (_ddec_all - _med_ddec)**2)
     _inliers = _resid < match_radius_arcsec
-    if _inliers.sum() < min_stars:
+    _min_req = min_stars
+    # [V2b] Rescue for LARGE coherent WCS offsets: a shallow frame can measure
+    # a 9-10" offset from a handful of noisy pairs whose individual scatter
+    # exceeds the strict radius, leaving 0 "inliers" even though the median is
+    # right (and the target photometry then silently lands on blank sky).
+    # When the offset is much bigger than the radius, relax the gate and
+    # accept >=3 agreeing pairs — a coherent multi-arcsec offset cannot be
+    # produced by chance matches.
+    _off_mag = float(np.hypot(_med_dra, _med_ddec))
+    if _inliers.sum() < min_stars and _off_mag > 2.0 * match_radius_arcsec:
+        _rad2 = 2.0 * match_radius_arcsec
+        _in2 = _resid < _rad2
+        if _in2.sum() >= 3:
+            _inliers, _min_req = _in2, 3
+            if logger:
+                print(info_g + f' [V2] ps1_catalog_shift: relaxed inlier radius '
+                               f'to {_rad2:.1f}" for large coherent offset '
+                               f'({_off_mag:.1f}") → {_inliers.sum()} inliers')
+    if _inliers.sum() < _min_req:
+        # [V2b] Export the pass-A offset as a HINT for the FFT fallback even
+        # though it is too weakly confirmed to apply directly: convert the
+        # median sky offset to a pixel shift via the local WCS scale.
+        if hint_out is not None and _off_mag > match_radius_arcsec:
+            try:
+                _c0 = _sci_sky[0]
+                _x0, _y0 = sci_wcs.world_to_pixel(_c0)
+                from astropy.coordinates import SkyCoord as _SC
+                _c1 = _SC(ra=_c0.ra + (_med_dra / _cos_dec) * u.arcsec,
+                          dec=_c0.dec + _med_ddec * u.arcsec, frame=_c0.frame)
+                _x1, _y1 = sci_wcs.world_to_pixel(_c1)
+                # science source appears at the PS1-offset position -> the
+                # reference must be shifted by (sci - predicted) = -(x1-x0)
+                hint_out.extend([float(_x0 - _x1), float(_y0 - _y1)])
+                if logger:
+                    print(info_g + f' [V2] ps1_catalog_shift: exporting pass-A '
+                                   f'hint ({hint_out[0]:+.1f}, {hint_out[1]:+.1f}) px '
+                                   f'for the FFT fallback')
+            except Exception:
+                pass
         if logger:
             print(warn_y + f' [V2] ps1_catalog_shift: only {_inliers.sum()} inliers '
                            f'within {match_radius_arcsec}" of median '
@@ -757,8 +813,10 @@ def _ps1_catalog_shift(sci_data, sci_wcs, ps1_sky,
         print(info_g + f' [V2] ps1_catalog_shift (pass B): {_inliers.sum()} inliers → '
                     f'dx={dx:.3f}±{_mad_x:.3f} px, dy={dy:.3f}±{_mad_y:.3f} px')
 
-    # 6. Quality gate: large scatter means confusion or bad source detections
-    _MAD_THRESH = 2.0  # px
+    # 6. Quality gate: large scatter means confusion or bad source detections.
+    #    Scaled with the shift size — a 25 px offset measured to +/-3 px is
+    #    decisively better than leaving the frame 25 px misaligned.
+    _MAD_THRESH = max(2.0, 0.15 * float(np.hypot(dx, dy)))  # px
     if _mad_x > _MAD_THRESH or _mad_y > _MAD_THRESH:
         if logger:
             print(warn_y + f' [V2] ps1_catalog_shift: scatter too large '
@@ -3211,6 +3269,7 @@ class subtracted_phot(subphot_data):
                     print(
                         warn_y + f' [V2] PS1 alignment catalog load failed: {_cat_e}')
 
+            _ps1_hint = []
             if _align_cat_sky is not None:
                 _fwhm_for_dao = max(3.0, self._fwhm_px_guess())
                 _ps1_result = _ps1_catalog_shift(
@@ -3219,7 +3278,7 @@ class subtracted_phot(subphot_data):
                     _align_cat_sky,
                     fwhm_px=_fwhm_for_dao,
                     match_radius_arcsec=3.0,
-                    logger=self.sp_logger)
+                    logger=self.sp_logger, hint_out=_ps1_hint)
                 if _ps1_result is not None:
                     dx, dy = _ps1_result
                     _freg_method = 'ps1_catalog'
@@ -3247,7 +3306,8 @@ class subtracted_phot(subphot_data):
                     # ZTF26abfmmvq, while this recovers the true offset.
                     dx, dy = _matched_filter_shift(
                         self.sci_img_hdu.data, self.ref_resampled,
-                        logger=self.sp_logger)
+                        logger=self.sp_logger,
+                        hint=_ps1_hint if len(_ps1_hint) == 2 else None)
                     _freg_method = 'pcc'
                     print(info_g+f' [V2] FFT matched-filter fine reg: '
                                         f'dx={dx:.3f} px, dy={dy:.3f} px')
