@@ -1479,10 +1479,12 @@ class subtracted_phot(subphot_data):
 
             
                 self.sci_obj, self.sep, self.tail = self.sci_obj.partition('_') #tail should be the request id from marshal triggering if there is one
-                if ' ' in self.sci_obj:
-                    self.sci_obj=self.sci_obj.split(' ')[0]
-                if 'ACQ-' in self.sci_obj:self.sci_obj=self.sci_obj.split('ACQ-')[1]
-                
+                # [OBJ] one canonical rule for every facility: strips a leading
+                # 'ACQ-' and a trailing filter token, keeps hyphenated names,
+                # and no longer truncates 'AT 2026fgk' to 'AT'
+                self.sci_obj = clean_object_name(self.sci_obj) or self.sci_obj
+                self._check_wcs_flag()
+
                 self.sci_img_name=self.sci_obj+'_'+self.sci_filt+'comb.fits'
                 self.sci_exp_time=self.sci_img_hdu.header[self.EXPT_kw]
 
@@ -1763,9 +1765,9 @@ class subtracted_phot(subphot_data):
                 try:self.sci_utstart = self.sci_img_hdu.header[self.UTS_kw]
                 except:self.sci_utstart = self.sci_img_hdu.header[self.DATE_kw].split('T')[1]
                 self.sci_obj, self.sep, self.tail = self.sci_obj.partition('_')
-                if ' ' in self.sci_obj:
-                    self.sci_obj=self.sci_obj.split(' ')[0]
-                if 'ACQ-' in self.sci_obj:self.sci_obj=self.sci_obj.split('ACQ-')[1]
+                # [OBJ] canonical object name (see clean_object_name)
+                self.sci_obj = clean_object_name(self.sci_obj) or self.sci_obj
+                self._check_wcs_flag()
                 if self.GAIN_kw=='-':
                     self.sci_gain=1.5
                     print(info_g+f' No GAIN keyword found, using GAIN=1.5 as default')
@@ -5369,6 +5371,49 @@ class subtracted_phot(subphot_data):
         print(warn_y+f' [V2] Using Gaussian PSF for {label}: FWHM={_fwhm:.2f}px, {_n}x{_n} '
               f'(PSFEx and ePSF both unusable)')
         return _k / _k.sum()
+
+    def _check_wcs_flag(self):
+        """[WCS] Read the instrument's own 'astrometry solved?' header flag.
+
+        SEDM writes IQWCS (1 = solved, False = not solved); on the GRB260310A
+        set 15 of 235 frames were unsolved, and those carry only the telescope
+        pointing, so the target can be arcminutes from where the WCS claims.
+        Recording it here lets the alignment stage know the header position is
+        untrustworthy BEFORE it tries to register, instead of discovering it
+        from a failed cross-match.  Other facilities are checked for the
+        equivalent keywords; absence is not an error.
+        """
+        self.wcs_solved = None
+        self.wcs_flag_kw = None
+        try:
+            _hdr = self.sci_img_hdu.header
+        except Exception:
+            return
+        for _kw in ('IQWCS', 'WCSSOLVD', 'WCS_ERR', 'ASTRSOLV', 'PLTSOLVD'):
+            if _kw not in _hdr:
+                continue
+            _v = _hdr[_kw]
+            self.wcs_flag_kw = _kw
+            if isinstance(_v, bool):
+                self.wcs_solved = bool(_v)
+            elif isinstance(_v, (int, float)):
+                self.wcs_solved = bool(_v)
+            else:
+                self.wcs_solved = str(_v).strip().lower() not in ('f', 'false', 'no', '0', '')
+            break
+        if self.wcs_solved is False:
+            print(warn_y + f' [WCS] {self.wcs_flag_kw}={_hdr[self.wcs_flag_kw]!r}: astrometry '
+                           f'NOT solved for this frame — header WCS is the telescope '
+                           f'pointing only. Relying on catalog/FFT registration; '
+                           f'consider -reastrom if the subtraction looks poor.')
+            # the header position cannot be trusted, so let the alignment stage
+            # attempt a real plate solution rather than assuming small offsets
+            if getattr(self, 'redo_astrometry', False) is False and \
+                    getattr(self.args, 'redo_astrometry', False) is False:
+                self.redo_astrometry = True
+                print(info_g + ' [WCS] enabling astrometry re-solve for this frame')
+        elif self.wcs_solved is True and self.termoutp != 'quiet':
+            print(info_g + f' [WCS] {self.wcs_flag_kw}: astrometry solved')
 
     # ── [CUT] cutout panel rendering ─────────────────────────────────────────
     @staticmethod

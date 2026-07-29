@@ -31,7 +31,7 @@ import pandas as pd
 from subphot_functions import *
 import argparse
 from subphot_quicklook_pipe import *
-from subphot_telescopes import header_kw,SEDM
+from subphot_telescopes import header_kw,SEDM,clean_object_name
 from astropy.time import Time
 
 # ---------------------------------------------------------------------------
@@ -1040,13 +1040,12 @@ class multi_subtract():
                 print(warn_y+f' No usable FILTER/OBJECT in {self.fits_files[i][-1]} — skipping')
                 continue 
 
-            if ' ' and self.fits_hdu['TELESCOP']=='60': #specifically for P60
-                # print(self.fits_filt,self.fits_obj)
-                if 'ACQ-' in self.fits_obj: 
-                    self.fits_obj = self.fits_obj.split('-')[1]
-                # print(self.fits_obj.split(' '))
-                self.fits_obj = self.fits_obj.split(' ')
-                self.fits_obj,self._f  = self.fits_obj[0],self.fits_obj[-1]
+            if str(self.fits_hdu.get('TELESCOP','')).strip() in SEDM: #specifically for P60
+                # [OBJ] canonical: strips 'ACQ-' and the trailing filter token
+                # (the old split('-')[1] truncated hyphenated names)
+                self.fits_obj, self._f = clean_object_name(self.fits_obj, return_filter=True)
+                if self._f is None:
+                    self._f = self.fits_filt
 
                 # canonical_filter above may already have produced the
                 # canonical name — only remap raw single-letter values
@@ -1234,11 +1233,11 @@ def run_subtraction(data_dict):
                 continue
 
             # P60/SEDM-specific name and filter normalisation
-            if sci_hdr.get('TELESCOP') == '60':
-                if 'ACQ-' in name:
-                    name = name.split('-')[1]
-                name = name.split(' ')[0]
+            if str(sci_hdr.get('TELESCOP','')).strip() in SEDM:
+                name = clean_object_name(name) or name      # [OBJ] canonical
                 filt = p60_filt_map.get(filt, filt)
+            else:
+                name = clean_object_name(name) or name
 
             if 'p_Astrodon' in filt:
                 filt = FILTERS[filt.split('p_')[0]]
@@ -1402,11 +1401,7 @@ if len(args.ims)>0:
 
             # [SRV] archive the raw frame for the full LC — the single-image
             # path (used per new source on the server) never did this before
-            _arch_name = fits_obj
-            if args.telescope_facility in SEDM or str(fits_hdu.get('TELESCOP','')).strip() in SEDM:
-                if 'ACQ-' in _arch_name:
-                    _arch_name = _arch_name.split('-', 1)[1]
-                _arch_name = _arch_name.split(' ')[0]
+            _arch_name = clean_object_name(fits_obj) or fits_obj   # [OBJ] canonical
             archive_lc_images([data1_path+image+'.fits'], _arch_name,
                               base_dir=os.path.dirname(data1_path+image))
 

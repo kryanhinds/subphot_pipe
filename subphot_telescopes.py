@@ -57,3 +57,43 @@ header_kw = {
 
 SEDM = ['SEDM-P60','P60','SEDM','sedm-p60','p60','sedm','SEDM-p60','sedm-P60','60']
 
+# ---------------------------------------------------------------------------
+# Object-name canonicalisation
+# ---------------------------------------------------------------------------
+# FITS OBJECT values arrive in several shapes:
+#     'ZTF26aakjzdt  g'    SEDM: name + filter token
+#     'ACQ-ZTF26abgbpyv r' SEDM acquisition frame
+#     'AT 2026fgk'         TJO: a name that genuinely contains a space
+#     'GRB260310A'         NOT/LT
+# The pipeline previously handled these in five different places with three
+# different rules — split('-')[1] (truncates names containing a hyphen),
+# split('ACQ-')[1], and split(' ')[0] (which turned 'AT 2026fgk' into 'AT'
+# and 'GRB 260310A' into 'GRB', so those epochs were written under the wrong
+# object entirely).  One function now does it everywhere.
+_FILTER_TOKENS = {'u','g','r','i','z','y',
+                  'up','gp','rp','ip','zp','ys',
+                  'U','B','V','R','I','J','H','K',
+                  'sdssu','sdssg','sdssr','sdssi','sdssz'}
+
+
+def clean_object_name(raw, return_filter=False):
+    """Canonical object name from a FITS OBJECT/TARGET value.
+
+    Removes a leading 'ACQ-' acquisition prefix (case-insensitive, once) and a
+    trailing filter token, then joins any remaining whitespace so the same
+    target is named identically across facilities ('AT 2026fgk' -> 'AT2026fgk',
+    matching what LOT already writes).
+
+    return_filter=True also returns the filter token that was stripped (SEDM
+    encodes the filter in OBJECT), or None.
+    """
+    s = str(raw if raw is not None else '').strip()
+    if s.upper().startswith('ACQ-'):
+        s = s[4:].strip()
+    parts = s.split()
+    filt = None
+    if len(parts) > 1 and parts[-1] in _FILTER_TOKENS:
+        filt = parts[-1]
+        parts = parts[:-1]
+    return (''.join(parts), filt) if return_filter else ''.join(parts)
+
