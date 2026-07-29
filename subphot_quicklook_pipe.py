@@ -67,6 +67,11 @@ def normalise_telescope(header):
         return 'LCOGT'
     if tel in ('DCT','LDT'):
         return 'LDT'
+    # SEDM writes TELESCOP='60'; the single-image path mapped that to 'SEDM-P60'
+    # by hand but the stacking path did not, so stacked SEDM groups fell through
+    # to "not designed for 60". Normalise here so both paths agree.
+    if tel in SEDM:
+        return 'SEDM-P60'
     return tel
 
 def flatten_multiext_fits(path_in, out_dir):
@@ -1342,17 +1347,27 @@ class subtracted_phot(subphot_data):
                         self.sci_dec=':'.join(str(self.sci_dec).split())
                 else:
                     print(info_g+f' RA & Dec specified by user (J2000): '+'\033[1m'+self.ra_dec_pos[0]+'\033[0m'+'\033[1m'+self.ra_dec_pos[1]+'\033[0m')
-                    print(info_g+f' Catlog RA & Dec from header (J2000): '+'\033[1m'+self.sci_img_hdu.header[self.RA_kw]+'\033[0m'+'\033[1m'+self.sci_img_hdu.header[self.DEC_kw]+'\033[0m')
+                    print(info_g+f' Catlog RA & Dec from header (J2000): '+'\033[1m'+str(self.sci_img_hdu.header[self.RA_kw])+'\033[0m'+'\033[1m'+str(self.sci_img_hdu.header[self.DEC_kw])+'\033[0m')
                     self.sci_ra,self.sci_dec = self.ra_dec_pos[0],self.ra_dec_pos[1]
                     self.sci_c= SkyCoord(self.sci_ra,self.sci_dec, unit=(u.hourangle, u.deg),frame='fk5')
                     self.sci_ra_d,self.sci_dec_d = self.sci_c.ra.deg,self.sci_c.dec.deg
                     # print(info_g+' RA & Dec (deg):','\033[1m'+str(round(self.sci_ra_d,2))+'\033[0m','\033[1m'+str(round(self.sci_dec_d,2))+'\033[0m')
                     print(info_g+f' Checking if RA & Dec are within the image')
-                    self.X_pix_co = (self.sci_ra_d - self.crval1) / self.crdelt1 + self.crpix1
-                    self.X_in = 0<self.X_pix_co<self.naxis1
-
-                    self.Y_pix_co = (self.sci_dec_d - self.crval2) / self.crdelt2 + self.crpix2
-                    self.Y_in = 0<self.Y_pix_co<self.naxis2
+                    # Use the full WCS rather than CRVAL/CDELT arithmetic: many
+                    # telescopes (NOT, LT, ...) describe the scale with a CD matrix
+                    # and carry no CDELT keywords at all, which used to raise
+                    # AttributeError here and abort the epoch.
+                    try:
+                        _w = WCS(self.sci_img_hdu.header)
+                        self.X_pix_co, self.Y_pix_co = _w.world_to_pixel(self.sci_c)
+                        _nx = int(self.sci_img_hdu.header.get('NAXIS1', np.shape(self.sci_img_hdu.data)[1]))
+                        _ny = int(self.sci_img_hdu.header.get('NAXIS2', np.shape(self.sci_img_hdu.data)[0]))
+                    except Exception as _we:
+                        print(warn_y+f' Could not check target position against the WCS ({_we}) — continuing')
+                        self.X_pix_co = self.Y_pix_co = 0.0
+                        _nx = _ny = 1
+                    self.X_in = 0 < self.X_pix_co < _nx
+                    self.Y_in = 0 < self.Y_pix_co < _ny
 
                     if any([self.X_in,self.Y_in])==False:
                         print(warn_r+f' RA or Dec are outside the image')
@@ -1658,17 +1673,23 @@ class subtracted_phot(subphot_data):
                     self.sci_dec=self.sci_img_hdu.header[self.DEC_kw]
                 else:
                     print(info_g+' RA & Dec specified by user: '+'\033[1m'+self.ra_dec_pos[0]+'\033[0m'+'\033[1m'+self.ra_dec_pos[1]+'\033[0m')
-                    print(info_g+' Catlog RA & Dec from header (J2000): '+'\033[1m'+self.sci_img_hdu.header[self.RA_kw]+'\033[0m'+'\033[1m'+self.sci_img_hdu.header[self.DEC_kw]+'\033[0m')
+                    print(info_g+' Catlog RA & Dec from header (J2000): '+'\033[1m'+str(self.sci_img_hdu.header[self.RA_kw])+'\033[0m'+'\033[1m'+str(self.sci_img_hdu.header[self.DEC_kw])+'\033[0m')
                     self.sci_ra,self.sci_dec = self.ra_dec_pos[0],self.ra_dec_pos[1]
                     self.sci_c= SkyCoord(self.sci_ra,self.sci_dec, unit=(u.hourangle, u.deg),frame='fk5')
                     self.sci_ra_d,self.sci_dec_d = self.sci_c.ra.deg,self.sci_c.dec.deg
                     # print(info_g+' RA & Dec (deg):','\033[1m'+str(self.sci_ra_d)+'\033[0m','\033[1m'+str(self.sci_dec_d)+'\033[0m')
                     print(info_g+' Checking if RA & Dec are within the image')
-                    self.X_pix_co = (self.sci_ra_d - self.crval1) / self.crdelt1 + self.crpix1
-                    self.X_in = 0<self.X_pix_co<self.naxis1
-
-                    self.Y_pix_co = (self.sci_dec_d - self.crval2) / self.crdelt2 + self.crpix2
-                    self.Y_in = 0<self.Y_pix_co<self.naxis2
+                    try:
+                        _w = WCS(self.sci_img_hdu.header)
+                        self.X_pix_co, self.Y_pix_co = _w.world_to_pixel(self.sci_c)
+                        _nx = int(self.sci_img_hdu.header.get('NAXIS1', np.shape(self.sci_img_hdu.data)[1]))
+                        _ny = int(self.sci_img_hdu.header.get('NAXIS2', np.shape(self.sci_img_hdu.data)[0]))
+                    except Exception as _we:
+                        print(warn_y+f' Could not check target position against the WCS ({_we}) — continuing')
+                        self.X_pix_co = self.Y_pix_co = 0.0
+                        _nx = _ny = 1
+                    self.X_in = 0 < self.X_pix_co < _nx
+                    self.Y_in = 0 < self.Y_pix_co < _ny
 
                     if any([self.X_in,self.Y_in])==False:
                         print(warn_r+' RA or Dec are outside the image')
@@ -4317,143 +4338,75 @@ class subtracted_phot(subphot_data):
         prepsexfile()
         psfexfile()
 
-        # SExtractor command for the science image
-        # print(self.sci_ali_name)
-        # sys.exit(1)
-        MAGZP = 25.0
-        sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.path+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT"+" "+str(MAGZP)
-        print(info_g+f' Running SExtractor: {sextractor_command}')
-        print(info_g+' Creating PSFex catalog with SExtractor')
+        # ── [PSF-G] science kernel: measured PSF by default ─────────────────
+        # SExtractor+PSFEx run only with -psfex_prefer, and even then the
+        # stamp is kept only if it passes the _pick_kernel quality checks.
+        if getattr(self.args, 'psfex_prefer', False):
+            # SExtractor command for the science image
+            # print(self.sci_ali_name)
+            # sys.exit(1)
+            MAGZP = 25.0
+            sextractor_command=sex_path+" "+self.sci_ali_name+" -c "+self.path+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT"+" "+str(MAGZP)
+            print(info_g+f' Running SExtractor: {sextractor_command}')
+            print(info_g+' Creating PSFex catalog with SExtractor')
 
-        sex_status = os.system(sextractor_command)
-        print(info_g+' SExtractor status: '+str(sex_status))
+            sex_status = os.system(sextractor_command)
+            print(info_g+' SExtractor status: '+str(sex_status))
 
         
 
-        if os.path.exists(self.path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits'):
-            os.system('rm '+self.path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits')
-        self.files_to_clean.append(self.path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits')
-        self.files_to_clean.append(self.path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
-        self.files_to_clean.append(self.path+f'out/sci_resi_{self.rand_nums_string}.fits')
-        self.files_to_clean.append(self.path+f'out/sci_subsym_{self.rand_nums_string}.fits')
-        self.files_to_clean.append(self.path+f'out/sci_moffat_{self.rand_nums_string}.fits')
+            if os.path.exists(self.path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits'):
+                os.system('rm '+self.path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits')
+            self.files_to_clean.append(self.path+f'out/sci_proto_prepsfex_{self.rand_nums_string}.fits')
+            self.files_to_clean.append(self.path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
+            self.files_to_clean.append(self.path+f'out/sci_resi_{self.rand_nums_string}.fits')
+            self.files_to_clean.append(self.path+f'out/sci_subsym_{self.rand_nums_string}.fits')
+            self.files_to_clean.append(self.path+f'out/sci_moffat_{self.rand_nums_string}.fits')
 
-        print(info_g+' Running PSFex with SExtractor catalog: '+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
-        #check the catalog output by sextractor and change the stars matched to have a flag of 0
-
-
-        print(info_g+' Running PSFex with SExtractor catalog:'+" "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
-
-        psfex_status = os.system(psfex_path+" "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
-        print(info_g+' PSFex status: '+str(psfex_status))
-
-        self.files_to_clean.append(self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
-        # print(psfex.PSFEx(path+f'config_files/prepsfex_{self.rand_nums_string}.cat'))
-        # sys.exit(1)
+            print(info_g+' Running PSFex with SExtractor catalog: '+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+            #check the catalog output by sextractor and change the stars matched to have a flag of 0
 
 
-        self.psf_sci_image_name=self.path+f'out/proto_sci_prepsfex_{self.rand_nums_string}.fits'
-        print(info_g+ ' PSFEx science image created: '+self.psf_sci_image_name)
-        self.files_to_clean.append(self.path+f'out/proto_sci_prepsfex_{self.rand_nums_string}.fits')
-        self.psf_sci_image = fits.open(self.psf_sci_image_name)
+            print(info_g+' Running PSFex with SExtractor catalog:'+" "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
 
-        # print(self.psf_sci_image[0].data)
-        # fig = plt.figure(figsize=(12,8))
-        # plt.imshow(self.psf_sci_image[0].data[0])
-        # fig.savefig('ZTF21aceqrju_g_psf.png')
-        # plt.show()
+            psfex_status = os.system(psfex_path+" "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+            print(info_g+' PSFex status: '+str(psfex_status))
 
-        self.hdu_psf_model_sci= fits.open(self.path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
-        self.files_to_clean.append(self.path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
-        self.chi_sq_psf=self.hdu_psf_model_sci[1].header['CHI2']
-
-
-        print(info_g+' Reduced Chi^2 of science image PSF fit: '+"%.1f" % self.chi_sq_psf)
-        # ── ePSF fallback when PSFEx chi² is poor ────────────────────────────
-        # chi² > 3 indicates PSFEx struggled (no bright isolated stars, bad
-        # seeing, crowded field, etc.).  Build an EPSFBuilder kernel and store
-        # it; it gets used below in place of the PSFEx proto kernel.
-        self._epsf_sci_kernel = None
-        if self.chi_sq_psf>3:
-            # print(colored('Warning: PSF model may not be accurate','green'))
-            print(warn_y+' Warning: PSF model may not be accurate')
-            print(info_g+' Attempting ePSF fallback (build_psf) for science image …')
-            try:
-                from build_psf import build_psf_from_fits as _build_epsf
-                _fwhm_guess = self._fwhm_px_guess()
-                _epsf_res = _build_epsf(
-                    self.sci_ali_name,
-                    fwhm_guess      = max(1.5, _fwhm_guess),
-                    threshold_sigma = 4.0,
-                    min_snr         = 10,
-                    max_stars       = 40,
-                    min_stars       = 3,
-                    epsf_iters      = 3,
-                )
-                _epsf_fwhm_limit_sci = max(15.0, 3.0 * _fwhm_guess)
-                _epsf_sci_ok = (
-                    _epsf_res['elongation'] <= 1.7 and
-                    _epsf_res['fwhm'] <= _epsf_fwhm_limit_sci and
-                    _epsf_res['fwhm'] >= 1.0
-                )
-                if _epsf_sci_ok:
-                    self._epsf_sci_kernel = _epsf_res['kernel']
-                    print(
-                        info_g +
-                        f' ePSF science fallback OK: FWHM={_epsf_res["fwhm"]:.2f} px'
-                        f'  elong={_epsf_res["elongation"]:.2f}'
-                        f'  n_stars={_epsf_res["n_stars"]}'
-                        f'  scatter={_epsf_res["fwhm_scatter"]:.3f} px'
-                    )
-                else:
-                    print(
-                        warn_y +
-                        f' ePSF science fallback rejected (unphysical):'
-                        f' FWHM={_epsf_res["fwhm"]:.2f} px (limit {_epsf_fwhm_limit_sci:.1f})'
-                        f'  elong={_epsf_res["elongation"]:.2f} (limit 1.7)'
-                        f' — using PSFEx kernel instead'
-                    )
-            except Exception as _epsf_e:
-                print(warn_y + f' ePSF science fallback failed: {_epsf_e}')
-        if self.chi_sq_psf<1e-10:
-            print(warn_r+' Warning: PSF model is a perfect fit, may be overfitting')
-            print(warn_y+' Trying again with only the highest signal-to-noise stars')
-            # try:
-            self.sci_prepsfex_cat = fits.open(self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
-            self.sci_prepsfex_cat_tab = Table(self.sci_prepsfex_cat[2].data)
-            self.sci_prepsfex_cat_snr_min = 37#np.percentile(self.sci_prepsfex_cat_tab['SNR_WIN'],10)
-            # print(self.sci_prepsfex_cat_snr_min)
-            # print(np.min(self.sci_prepsfex_cat_tab['SNR_WIN']))
-            self.sci_prepsfex_cat[2].data = self.sci_prepsfex_cat[2].data[(self.sci_prepsfex_cat_tab['SNR_WIN']>self.sci_prepsfex_cat_snr_min)]#&(self.sci_prepsfex_cat_tab['ELONGATION']<1.2)]
-            # print(Table(self.sci_prepsfex_cat[2].data))
-            self.sci_prepsfex_cat.writeto(self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat",overwrite=True)
-            print(info_g+' Writing high SNR stars to '+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat")
-            print(info_g+' Running PSFex with only the highest signal-to-noise stars')
-            psfex_status = os.system(psfex_path+" "+self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}_highSNR.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET -SAMPLE_MINSN 10")
-            print(info_g+' High SNR PSFex status: '+str(psfex_status))
-            
-            self.hdu_psf_model_sci= fits.open(self.path+f'out/sci_prepsfex_{self.rand_nums_string}_highSNR.psf')
-            self.files_to_clean.append(self.path+f'out/sci_prepsfex_{self.rand_nums_string}_highSNR.psf')
-            self.chi_sq_psf=self.hdu_psf_model_sci[1].header['CHI2']
-            print(info_g+' Reduced Chi^2 of science image PSF fit with high SNR stars: '+"%.1f" % self.chi_sq_psf)
+            self.files_to_clean.append(self.path+f"temp_config_files/sci_prepsfex_{self.rand_nums_string}.cat")
+            # print(psfex.PSFEx(path+f'config_files/prepsfex_{self.rand_nums_string}.cat'))
             # sys.exit(1)
-            self.sys_exit=True
-            return
-        # sys.exit(1)
-        # Use ePSF fallback kernel if PSFEx chi² was bad, otherwise use the
-        # PSFEx proto kernel (trimmed and re-centred by _trim_center_psf).
-        if getattr(self, '_epsf_sci_kernel', None) is not None:
-            self.kernel_sci = self._epsf_sci_kernel
-            print(info_g+' Using ePSF kernel for science convolution (PSFEx chi² too high)')
+
+
+            self.psf_sci_image_name=self.path+f'out/proto_sci_prepsfex_{self.rand_nums_string}.fits'
+            print(info_g+ ' PSFEx science image created: '+self.psf_sci_image_name)
+            self.files_to_clean.append(self.path+f'out/proto_sci_prepsfex_{self.rand_nums_string}.fits')
+            self.psf_sci_image = fits.open(self.psf_sci_image_name)
+
+            # print(self.psf_sci_image[0].data)
+            # fig = plt.figure(figsize=(12,8))
+            # plt.imshow(self.psf_sci_image[0].data[0])
+            # fig.savefig('ZTF21aceqrju_g_psf.png')
+            # plt.show()
+
+            self.hdu_psf_model_sci= fits.open(self.path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
+            self.files_to_clean.append(self.path+f'out/sci_prepsfex_{self.rand_nums_string}.psf')
+            self.chi_sq_psf=self.hdu_psf_model_sci[1].header['CHI2']
+
+
+            print(info_g+' Reduced Chi^2 of science image PSF fit: '+"%.1f" % self.chi_sq_psf)
+            # ── [PSF-G] guaranteed PSF; PSFEx accepted by SHAPE, never by chi² ────
+            # PSFEx chi² inflates arbitrarily on resampled images (correlated
+            # noise), so it is a diagnostic only.  The PSFEx stamp is kept when
+            # its FWHM/elongation agree with the guaranteed measurement within
+            # 30%; otherwise the guaranteed kernel (subphot_psf) is used.  A
+            # chi²≈0 "perfect" fit means PSFEx overfit a degenerate star sample
+            # — the stamp is untrusted but the reduction continues.
+            self.kernel_sci = self._pick_kernel(
+                self._guaranteed_psf(self.sci_ali_name, 'science'),
+                self.psf_sci_image, self.chi_sq_psf, 'science')
         else:
-            self.kernel_sci = self.psf_sci_image[0].data[0]
-            # [v2] Trim and re-centre the PSFEx kernel to remove noisy outer wings
-            # and correct sub-pixel centroid offsets that cause dipole residuals.
-            try:
-                _psfex_fwhm_sci = self._fwhm_px_guess()
-                self.kernel_sci = _trim_center_psf(self.kernel_sci, _psfex_fwhm_sci, self.sp_logger)
-            except Exception as _trim_e:
-                print(warn_y+f' [V2] PSF kernel trim skipped (sci): {_trim_e}')
+            self.chi_sq_psf = None
+            self.kernel_sci = self._guaranteed_psf(self.sci_ali_name, 'science')['kernel']
 
         if self.to_subtract!=False:
         # Read the REFERENCE image and convolve it with the  kernel science
@@ -4466,200 +4419,152 @@ class subtracted_phot(subphot_data):
 
             print(info_g+' Convolving the science with the PSF of the reference image')
 
-            sextractor_command=sex_path+" "+self.ref_ali_name+" -c "+self.path+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
-            os.system(sextractor_command)
+            # ── [PSF-G] reference kernel: measured PSF by default ───────────
+            if getattr(self.args, 'psfex_prefer', False):
+                sextractor_command=sex_path+" "+self.ref_ali_name+" -c "+self.path+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
+                os.system(sextractor_command)
 
-            # [V2] Filter the reference SExtractor catalog to a clean stellar
-            # locus before PSFEx sees it.  The deep Legacy Survey reference
-            # picks up many galaxies, blends, and extended objects that the
-            # shallow SEDM science doesn't see, contaminating PSFEx's star
-            # sample and pushing reduced-chi² to 50–90.  Three light-touch
-            # cuts:
-            #   • SNR_WIN >= 20 (mirror of the science-side SNR>37 filter,
-            #     looser because the deep ref has fainter clean stars too),
-            #   • ELONGATION <= 1.3 (drops obvious galaxies/doubles),
-            #   • |FLUX_RADIUS − median| <= 0.25·median (drops clearly
-            #     non-stellar half-light radii — the stellar locus is a
-            #     narrow horizontal stripe in this plane).
-            # Intentionally not filtering by FWHM/MAG because PSFEx already
-            # does its own selection within whatever survives this cut.
-            try:
-                _ref_cat_path = self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat"
-                _ref_cat = fits.open(_ref_cat_path)
-                if len(_ref_cat) >= 3 and _ref_cat[2].data is not None and len(_ref_cat[2].data) > 5:
-                    _t = Table(_ref_cat[2].data)
-                    _n0 = len(_t)
-                    _keep = np.ones(_n0, dtype=bool)
-                    if 'SNR_WIN' in _t.colnames:
-                        _keep &= (_t['SNR_WIN'] >= 20.0)
-                    if 'ELONGATION' in _t.colnames:
-                        _keep &= (_t['ELONGATION'] <= 1.3)
-                    if 'FLUX_RADIUS' in _t.colnames and _keep.sum() >= 5:
-                        _med_fr = float(np.nanmedian(_t['FLUX_RADIUS'][_keep]))
-                        _keep &= (np.abs(_t['FLUX_RADIUS'] - _med_fr) <= 0.25 * _med_fr)
-                    if int(_keep.sum()) >= 5:
-                        _ref_cat[2].data = _ref_cat[2].data[_keep]
-                        _ref_cat[2].header['NAXIS2'] = int(_keep.sum())
-                        _ref_cat.writeto(_ref_cat_path, overwrite=True)
-                        print(info_g + f' [V2] Ref star-locus filter: kept '
-                                       f'{int(_keep.sum())}/{_n0} sources '
-                                       f'(SNR≥20, elong≤1.3, FLUX_RADIUS within '
-                                       f'25% of median)')
-                    else:
-                        print(warn_y + f' [V2] Ref star-locus filter would leave '
-                                       f'only {int(_keep.sum())} sources — keeping '
-                                       f'all {_n0} for PSFEx to choose from')
-                    _ref_cat.close()
-            except Exception as _ref_filt_e:
-                print(warn_y + f' [V2] Ref catalog filter failed: {_ref_filt_e}')
+                # [V2] Filter the reference SExtractor catalog to a clean stellar
+                # locus before PSFEx sees it.  The deep Legacy Survey reference
+                # picks up many galaxies, blends, and extended objects that the
+                # shallow SEDM science doesn't see, contaminating PSFEx's star
+                # sample and pushing reduced-chi² to 50–90.  Three light-touch
+                # cuts:
+                #   • SNR_WIN >= 20 (mirror of the science-side SNR>37 filter,
+                #     looser because the deep ref has fainter clean stars too),
+                #   • ELONGATION <= 1.3 (drops obvious galaxies/doubles),
+                #   • |FLUX_RADIUS − median| <= 0.25·median (drops clearly
+                #     non-stellar half-light radii — the stellar locus is a
+                #     narrow horizontal stripe in this plane).
+                # Intentionally not filtering by FWHM/MAG because PSFEx already
+                # does its own selection within whatever survives this cut.
+                try:
+                    _ref_cat_path = self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat"
+                    _ref_cat = fits.open(_ref_cat_path)
+                    if len(_ref_cat) >= 3 and _ref_cat[2].data is not None and len(_ref_cat[2].data) > 5:
+                        _t = Table(_ref_cat[2].data)
+                        _n0 = len(_t)
+                        _keep = np.ones(_n0, dtype=bool)
+                        if 'SNR_WIN' in _t.colnames:
+                            _keep &= (_t['SNR_WIN'] >= 20.0)
+                        if 'ELONGATION' in _t.colnames:
+                            _keep &= (_t['ELONGATION'] <= 1.3)
+                        if 'FLUX_RADIUS' in _t.colnames and _keep.sum() >= 5:
+                            _med_fr = float(np.nanmedian(_t['FLUX_RADIUS'][_keep]))
+                            _keep &= (np.abs(_t['FLUX_RADIUS'] - _med_fr) <= 0.25 * _med_fr)
+                        if int(_keep.sum()) >= 5:
+                            _ref_cat[2].data = _ref_cat[2].data[_keep]
+                            _ref_cat[2].header['NAXIS2'] = int(_keep.sum())
+                            _ref_cat.writeto(_ref_cat_path, overwrite=True)
+                            print(info_g + f' [V2] Ref star-locus filter: kept '
+                                           f'{int(_keep.sum())}/{_n0} sources '
+                                           f'(SNR≥20, elong≤1.3, FLUX_RADIUS within '
+                                           f'25% of median)')
+                        else:
+                            print(warn_y + f' [V2] Ref star-locus filter would leave '
+                                           f'only {int(_keep.sum())} sources — keeping '
+                                           f'all {_n0} for PSFEx to choose from')
+                        _ref_cat.close()
+                except Exception as _ref_filt_e:
+                    print(warn_y + f' [V2] Ref catalog filter failed: {_ref_filt_e}')
 
-            if self.sci_obj in ['2023ixf','SN2023ixf']:
-                #open the sextractor catalog and keep only the point sources that are in calstars4e.cat
-                self.good_ps1_ixf_stars = ascii.read(self.path+'calstars4e.cat',names=['ra','dec','u','g','r','i','z','PS1g','PS1r','PS1i','PS1z'],format='no_header',delimiter=' ')
-                print(info_g+' Using calstars4e.cat to select point sources for PSFEx for SN2023ixf')
-                self.good_ps1_ixf_stars['ra'].unit = u.deg
-                self.good_ps1_ixf_stars['dec'].unit = u.deg
+                if self.sci_obj in ['2023ixf','SN2023ixf']:
+                    #open the sextractor catalog and keep only the point sources that are in calstars4e.cat
+                    self.good_ps1_ixf_stars = ascii.read(self.path+'calstars4e.cat',names=['ra','dec','u','g','r','i','z','PS1g','PS1r','PS1i','PS1z'],format='no_header',delimiter=' ')
+                    print(info_g+' Using calstars4e.cat to select point sources for PSFEx for SN2023ixf')
+                    self.good_ps1_ixf_stars['ra'].unit = u.deg
+                    self.good_ps1_ixf_stars['dec'].unit = u.deg
 
-                self.sex_ref_orig = fits.open(self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat" ) #read in the original sextractor catalog
-                self.sex_ref = Table(self.sex_ref_orig[2].data)
-                self.ref_ali_wcs = WCS(self.ref_ali_name)   
-                self.sex_ref_wcs = self.ref_ali_wcs.all_pix2world(np.column_stack((self.sex_ref['X_IMAGE'],self.sex_ref['Y_IMAGE'])),1) #find the RA and DEC coordinates of the sextractor catalog in wcs
-                self.sex_ref_wcs = SkyCoord(ra=self.sex_ref_wcs[:,0]*u.deg, dec=self.sex_ref_wcs[:,1]*u.deg,frame='fk5')
-                self.sex_ref['RA_DEG'],self.sex_ref['DEC_DEG'] = self.sex_ref_wcs.ra,self.sex_ref_wcs.dec
-                self.sex_ref_wcs = SkyCoord(ra=np.array(self.sex_ref['RA_DEG'])*u.deg, dec=np.array(self.sex_ref['DEC_DEG'])*u.deg,frame='fk5')
-                self.good_ps1_ixf_stars_wcs = SkyCoord(ra=np.array(self.good_ps1_ixf_stars['ra'])*u.deg, dec=np.array(self.good_ps1_ixf_stars['dec'])*u.deg,frame='fk5')
+                    self.sex_ref_orig = fits.open(self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat" ) #read in the original sextractor catalog
+                    self.sex_ref = Table(self.sex_ref_orig[2].data)
+                    self.ref_ali_wcs = WCS(self.ref_ali_name)   
+                    self.sex_ref_wcs = self.ref_ali_wcs.all_pix2world(np.column_stack((self.sex_ref['X_IMAGE'],self.sex_ref['Y_IMAGE'])),1) #find the RA and DEC coordinates of the sextractor catalog in wcs
+                    self.sex_ref_wcs = SkyCoord(ra=self.sex_ref_wcs[:,0]*u.deg, dec=self.sex_ref_wcs[:,1]*u.deg,frame='fk5')
+                    self.sex_ref['RA_DEG'],self.sex_ref['DEC_DEG'] = self.sex_ref_wcs.ra,self.sex_ref_wcs.dec
+                    self.sex_ref_wcs = SkyCoord(ra=np.array(self.sex_ref['RA_DEG'])*u.deg, dec=np.array(self.sex_ref['DEC_DEG'])*u.deg,frame='fk5')
+                    self.good_ps1_ixf_stars_wcs = SkyCoord(ra=np.array(self.good_ps1_ixf_stars['ra'])*u.deg, dec=np.array(self.good_ps1_ixf_stars['dec'])*u.deg,frame='fk5')
 
                 
-                self.indx, self.d2d, self.d3d = self.sex_ref_wcs.match_to_catalog_sky(self.good_ps1_ixf_stars_wcs)
-                self.upd_indx=np.where(self.d2d<(search_rad)/3600.*u.deg)[0]
+                    self.indx, self.d2d, self.d3d = self.sex_ref_wcs.match_to_catalog_sky(self.good_ps1_ixf_stars_wcs)
+                    self.upd_indx=np.where(self.d2d<(search_rad)/3600.*u.deg)[0]
 
-                print(info_g+' Bright stars found='+str(len(self.upd_indx))+', '+str(round(3600*(self.ref_width/60),6))+'arcsec search radius')
-                self.bright_stars_sc = Table()
-                self.bright_stars_sc['ra'] = self.good_ps1_ixf_stars_wcs.ra.deg
-                self.bright_stars_sc['dec'] = self.good_ps1_ixf_stars_wcs.dec.deg
-                self.bright_stars_sc_pix = self.ref_ali_wcs.all_world2pix(np.column_stack((self.bright_stars_sc['ra'],self.bright_stars_sc['dec'])),1)
-                self.bright_stars_sc_pix_x,self.bright_stars_sc_pix_y = self.bright_stars_sc_pix[:,0],self.bright_stars_sc_pix[:,1]
-                self.bright_stars_sc['xcentroid'],self.bright_stars_sc['ycentroid'] = self.bright_stars_sc_pix_x,self.bright_stars_sc_pix_y
+                    print(info_g+' Bright stars found='+str(len(self.upd_indx))+', '+str(round(3600*(self.ref_width/60),6))+'arcsec search radius')
+                    self.bright_stars_sc = Table()
+                    self.bright_stars_sc['ra'] = self.good_ps1_ixf_stars_wcs.ra.deg
+                    self.bright_stars_sc['dec'] = self.good_ps1_ixf_stars_wcs.dec.deg
+                    self.bright_stars_sc_pix = self.ref_ali_wcs.all_world2pix(np.column_stack((self.bright_stars_sc['ra'],self.bright_stars_sc['dec'])),1)
+                    self.bright_stars_sc_pix_x,self.bright_stars_sc_pix_y = self.bright_stars_sc_pix[:,0],self.bright_stars_sc_pix[:,1]
+                    self.bright_stars_sc['xcentroid'],self.bright_stars_sc['ycentroid'] = self.bright_stars_sc_pix_x,self.bright_stars_sc_pix_y
 
-                for col in ['u','g','r','i','z','PS1g','PS1r','PS1i','PS1z']:
-                    self.bright_stars_sc[col] = self.good_ps1_ixf_stars[col]
+                    for col in ['u','g','r','i','z','PS1g','PS1r','PS1i','PS1z']:
+                        self.bright_stars_sc[col] = self.good_ps1_ixf_stars[col]
 
 
 
-                self.crossmatch_sex_ref = self.sex_ref[self.upd_indx]
+                    self.crossmatch_sex_ref = self.sex_ref[self.upd_indx]
 
-                self.sex_ref_orig[2].data = self.sex_ref_orig[2].data[self.upd_indx]
-                # print(self.crossmatch_sex_ref['RA_DEG','DEC_DEG','X_IMAGE','Y_IMAGE'])
-                # sys.exit(1)
-                self.sex_ref_orig[2].data['FLAGS'] = 0
-                # print(self.sex_ref_orig[2].data['X_IMAGE'])
+                    self.sex_ref_orig[2].data = self.sex_ref_orig[2].data[self.upd_indx]
+                    # print(self.crossmatch_sex_ref['RA_DEG','DEC_DEG','X_IMAGE','Y_IMAGE'])
+                    # sys.exit(1)
+                    self.sex_ref_orig[2].data['FLAGS'] = 0
+                    # print(self.sex_ref_orig[2].data['X_IMAGE'])
 
-                # for col in self.sex_ref_orig[2].columns.names:
-                #     for ind in self.upd_indx:
-                #         self.sex_ref_orig[2].data[col] = self.sex_ref_orig[2].data[col][self.upd_indx] 
+                    # for col in self.sex_ref_orig[2].columns.names:
+                    #     for ind in self.upd_indx:
+                    #         self.sex_ref_orig[2].data[col] = self.sex_ref_orig[2].data[col][self.upd_indx] 
 
-                #delete rows if not in upd_indx
-                # for k in range(len(self.sex_ref_orig[2].data)):
-                #     if k not in self.upd_indx:
+                    #delete rows if not in upd_indx
+                    # for k in range(len(self.sex_ref_orig[2].data)):
+                    #     if k not in self.upd_indx:
                         
 
-                self.sex_ref_orig[2].header['NAXIS2'] = len(self.upd_indx)
+                    self.sex_ref_orig[2].header['NAXIS2'] = len(self.upd_indx)
 
 
 
 
 
-                self.sex_ref_orig.writeto(self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat",overwrite=True)
+                    self.sex_ref_orig.writeto(self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat",overwrite=True)
 
 
-            if os.path.exists(self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits'):
-                os.system('rm '+self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits')
+                if os.path.exists(self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits'):
+                    os.system('rm '+self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits')
 
             
 
-            # os.system(psfex_path+" "+self.path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex")
+                # os.system(psfex_path+" "+self.path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex")
 
 
-            # sextractor_command=sex_path+" "+self.ref_ali_name+" -c "+self.path+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.path+f"config_files/pooprepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
-            # print(sextractor_command)
+                # sextractor_command=sex_path+" "+self.ref_ali_name+" -c "+self.path+"config_files/prepsfex.sex -VERBOSE_TYPE QUIET -CATALOG_NAME "+self.path+f"config_files/pooprepsfex_{self.rand_nums_string}.cat -MAG_ZEROPOINT 25.0"
+                # print(sextractor_command)
 
-            # print(psfex_path+" "+self.path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
-            # sys.exit(1)
-            # print(psfex_path+" "+self.path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE FULL")
-            # print(psfex_path+" "+self.path+f"config_files/ref_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
-            os.system(psfex_path+" "+self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
-            # sys.exit(1)
-            self.files_to_clean.append(self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat")
+                # print(psfex_path+" "+self.path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+                # sys.exit(1)
+                # print(psfex_path+" "+self.path+f"config_files/prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE FULL")
+                # print(psfex_path+" "+self.path+f"config_files/ref_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+                os.system(psfex_path+" "+self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat -c "+self.path+"config_files/psfex_conf.psfex -VERBOSE_TYPE QUIET")
+                # sys.exit(1)
+                self.files_to_clean.append(self.path+f"temp_config_files/ref_prepsfex_{self.rand_nums_string}.cat")
 
-            self.psf_ref_image_name=self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits'
-            print(info_g+' PSFEx reference image created '+self.psf_ref_image_name)
-            self.files_to_clean.append(self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits')
-            self.psf_ref_image = fits.open(self.psf_ref_image_name)
+                self.psf_ref_image_name=self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits'
+                print(info_g+' PSFEx reference image created '+self.psf_ref_image_name)
+                self.files_to_clean.append(self.path+f'out/proto_ref_prepsfex_{self.rand_nums_string}.fits')
+                self.psf_ref_image = fits.open(self.psf_ref_image_name)
 
-            self.hdu_psf_model_ref= fits.open(self.path+f'out/ref_prepsfex_{self.rand_nums_string}.psf')
-            self.files_to_clean.append(self.path+f'out/ref_prepsfex_{self.rand_nums_string}.psf')
-            self.chi_sq_psf_ref=self.hdu_psf_model_ref[1].header['CHI2']
+                self.hdu_psf_model_ref= fits.open(self.path+f'out/ref_prepsfex_{self.rand_nums_string}.psf')
+                self.files_to_clean.append(self.path+f'out/ref_prepsfex_{self.rand_nums_string}.psf')
+                self.chi_sq_psf_ref=self.hdu_psf_model_ref[1].header['CHI2']
 
 
-            # print(colored('Reduced Chi^2 of science image PSF fit:','green'),"%.1f" % self.chi_sq_psf_ref)
-            print(info_g+' Reduced Chi^2 of reference image PSF fit: '+str(self.chi_sq_psf_ref))
-            # ── ePSF fallback for reference image ─────────────────────────────
-            self._epsf_ref_kernel = None
-            if self.chi_sq_psf_ref>3:
-                # print(colored('Warning: PSF ref model may not be accurate','green'))
-                print(warn_y+' Warning: PSF ref model may not be accurate')
-                print(info_g+' Attempting ePSF fallback (build_psf) for reference image …')
-                try:
-                    from build_psf import build_psf_from_fits as _build_epsf
-                    _fwhm_guess = self._fwhm_px_guess()
-                    _epsf_ref_res = _build_epsf(
-                        self.ref_ali_name,
-                        fwhm_guess      = max(1.5, _fwhm_guess),
-                        threshold_sigma = 4.0,
-                        min_snr         = 10,
-                        max_stars       = 40,
-                        min_stars       = 3,
-                        epsf_iters      = 3,
-                    )
-                    _epsf_fwhm_limit_ref = max(15.0, 3.0 * _fwhm_guess)
-                    _epsf_ref_ok = (
-                        _epsf_ref_res['elongation'] <= 1.7 and
-                        _epsf_ref_res['fwhm'] <= _epsf_fwhm_limit_ref and
-                        _epsf_ref_res['fwhm'] >= 1.0
-                    )
-                    if _epsf_ref_ok:
-                        self._epsf_ref_kernel = _epsf_ref_res['kernel']
-                        print(
-                            info_g +
-                            f' ePSF reference fallback OK: FWHM={_epsf_ref_res["fwhm"]:.2f} px'
-                            f'  elong={_epsf_ref_res["elongation"]:.2f}'
-                            f'  n_stars={_epsf_ref_res["n_stars"]}'
-                            f'  scatter={_epsf_ref_res["fwhm_scatter"]:.3f} px'
-                        )
-                    else:
-                        print(
-                            warn_y +
-                            f' ePSF reference fallback rejected (unphysical):'
-                            f' FWHM={_epsf_ref_res["fwhm"]:.2f} px (limit {_epsf_fwhm_limit_ref:.1f})'
-                            f'  elong={_epsf_ref_res["elongation"]:.2f} (limit 1.7)'
-                            f' — using PSFEx kernel instead'
-                        )
-                except Exception as _epsf_ref_e:
-                    print(warn_y + f' ePSF reference fallback failed: {_epsf_ref_e}')
-
-            # Use ePSF fallback kernel if PSFEx chi² was bad, otherwise use the
-            # PSFEx proto kernel (trimmed and re-centred by _trim_center_psf).
-            if getattr(self, '_epsf_ref_kernel', None) is not None:
-                self.kernel_ref = self._epsf_ref_kernel
-                print(info_g+' Using ePSF kernel for reference convolution (PSFEx chi² too high)')
+                # print(colored('Reduced Chi^2 of science image PSF fit:','green'),"%.1f" % self.chi_sq_psf_ref)
+                print(info_g+' Reduced Chi^2 of reference image PSF fit: '+str(self.chi_sq_psf_ref))
+                # ── [PSF-G] guaranteed PSF for the reference (see science side) ───
+                self.kernel_ref = self._pick_kernel(
+                    self._guaranteed_psf(self.ref_ali_name, 'reference'),
+                    self.psf_ref_image, self.chi_sq_psf_ref, 'reference')
             else:
-                self.kernel_ref = self.psf_ref_image[0].data[0]
-                # [v2] Trim and re-centre the reference PSFEx kernel
-                try:
-                    _psfex_fwhm_ref = self._fwhm_px_guess()
-                    self.kernel_ref = _trim_center_psf(self.kernel_ref, _psfex_fwhm_ref, self.sp_logger)
-                except Exception as _trim_e:
-                    print(warn_y+f' [V2] PSF kernel trim skipped (ref): {_trim_e}')
+                self.chi_sq_psf_ref = None
+                self.kernel_ref = self._guaranteed_psf(self.ref_ali_name, 'reference')['kernel']
 
             # Read the Science image and convolve it with the Gaussian kernel
             # print(self.sci_ali_name)
@@ -4734,19 +4639,19 @@ class subtracted_phot(subphot_data):
         print(info_g+' Measuring PSF of science image...')
         self.sci_ali_psf_built = False
         try:
-            from psf_measure import measure_psf as _measure_psf
+            # [PSF-G] guaranteed PSF (subphot_psf) — always returns a kernel,
+            # already trimmed/apodised; quality lives in the diagnostics dict
+            from subphot_psf import measure_psf as _measure_psf
             _fwhm_guess = self._fwhm_px_guess()
             _sci_data = self.sci_ali_hdu.data.astype(float)
             if self.valid_mask is not None and not np.all(self.valid_mask):
                 _sci_data = _sci_data.copy()
                 _sci_data[~self.valid_mask] = np.nan
-            _sci_res = _measure_psf(_sci_data, fwhm_guess=_fwhm_guess, min_stars=1, threshold_sigma=4.0)
-            self.sci_ali_psf = _sci_res['psf']
-            print(info_g+f" Science PSF: FWHM={_sci_res['fwhm']:.2f}px, n_stars={_sci_res['n_stars']}")
-            # [v2] Trim to 6×FWHM and re-centre before use as convolution kernel
-            if self.sci_ali_psf is not None:
-                self.sci_ali_psf = _trim_center_psf(
-                    self.sci_ali_psf, _sci_res['fwhm'], self.sp_logger)
+            _sci_res = _measure_psf(_sci_data, seeing_hint_px=_fwhm_guess)
+            self.sci_ali_psf = _sci_res['kernel']
+            print(info_g+f" Science PSF: mode={_sci_res['mode']}, FWHM={_sci_res['fwhm']:.2f}px, n_stars={_sci_res['n_stars']}")
+            for _w in _sci_res['diagnostics'].get('warnings', []):
+                print(warn_y+f" [PSF-G] science: {_w}")
             self.sci_ali_psf_built = True
         except Exception as _e:
             print(warn_y+f" measure_psf failed ({_e})")
@@ -4795,19 +4700,18 @@ class subtracted_phot(subphot_data):
                 self.ref_ali_hdu = fits.open(self.ref_ali_name)[0]
                 print(info_g+' Measuring PSF of reference image...')
                 try:
-                    from psf_measure import measure_psf as _measure_psf
+                    # [PSF-G] guaranteed PSF (subphot_psf) for the reference
+                    from subphot_psf import measure_psf as _measure_psf
                     _fwhm_ref = self._fwhm_px_guess()
                     _ref_data = self.ref_ali_hdu.data.astype(float)
                     if self.ref_valid_mask is not None and not np.all(self.ref_valid_mask):
                         _ref_data = _ref_data.copy()
                         _ref_data[~self.ref_valid_mask] = np.nan
-                    _ref_res = _measure_psf(_ref_data, fwhm_guess=_fwhm_ref, min_stars=1, threshold_sigma=4.0)
-                    self.ref_ali_psf = _ref_res['psf']
-                    print(info_g+f" Reference PSF: FWHM={_ref_res['fwhm']:.2f}px, n_stars={_ref_res['n_stars']}")
-                    # [v2] Trim to 6×FWHM and re-centre
-                    if self.ref_ali_psf is not None:
-                        self.ref_ali_psf = _trim_center_psf(
-                            self.ref_ali_psf, _ref_res['fwhm'], self.sp_logger)
+                    _ref_res = _measure_psf(_ref_data, seeing_hint_px=_fwhm_ref)
+                    self.ref_ali_psf = _ref_res['kernel']
+                    print(info_g+f" Reference PSF: mode={_ref_res['mode']}, FWHM={_ref_res['fwhm']:.2f}px, n_stars={_ref_res['n_stars']}")
+                    for _w in _ref_res['diagnostics'].get('warnings', []):
+                        print(warn_y+f" [PSF-G] reference: {_w}")
                 except Exception as _e:
                     print(warn_y+f" measure_psf failed for reference ({_e})")
 
@@ -5356,6 +5260,100 @@ class subtracted_phot(subphot_data):
             _g = _see
         return float(max(1.5, min(_g, 15.0)))
 
+    def _guaranteed_psf(self, ali_name, label=''):
+        """[PSF-G] Guaranteed PSF measurement (subphot_psf) on an aligned
+        image.  Always returns a usable result dict; cached per file."""
+        if not hasattr(self, '_gpsf_cache'):
+            self._gpsf_cache = {}
+        if ali_name in self._gpsf_cache:
+            return self._gpsf_cache[ali_name]
+        from subphot_psf import measure_psf
+        with fits.open(ali_name) as _hdul:
+            _data = np.asarray(_hdul[0].data, dtype=float)
+            _sat = _hdul[0].header.get('SATURATE', None)
+        res = measure_psf(
+            _data,
+            saturation=0.95 * float(_sat) if _sat else None,
+            seeing_hint_px=self._fwhm_px_guess(),
+        )
+        _d = res['diagnostics']
+        print(info_g + f" [PSF-G] {label}: mode={res['mode']} "
+              f"FWHM={res['fwhm']:.2f}px elong={res['elongation']:.2f} "
+              f"beta={res['beta']:.2f} n_stars={res['n_stars']}")
+        for _w in _d.get('warnings', []):
+            print(warn_y + f' [PSF-G] {label}: {_w}')
+        self._gpsf_cache[ali_name] = res
+        return res
+
+    def _pick_kernel(self, gres, psfex_image, chi_sq, label=''):
+        """[PSF-G] Choose between the PSFEx stamp and the guaranteed kernel.
+
+        PSFEx's stamp is kept only when its shape (FWHM, elongation) agrees
+        with the independent guaranteed measurement within 30% — chi² is
+        never used as a gate because it inflates arbitrarily on resampled
+        images with correlated noise.  chi²≈0 marks a degenerate overfit.
+        """
+        from subphot_psf import _kernel_shape, _fit_moffat
+        if chi_sq is not None and chi_sq < 1e-10:
+            print(warn_y + f' [PSF-G] PSFEx {label} chi²≈0 (overfit) — '
+                           f'stamp untrusted, using guaranteed kernel')
+        else:
+            try:
+                _pk = psfex_image[0].data[0]
+                _pk = _trim_center_psf(_pk, self._fwhm_px_guess(), self.sp_logger)
+                # like-for-like: Moffat-fit the stamp (moment FWHMs are
+                # wing-inflated and would wrongly damn a good PSFEx model)
+                _mf = _fit_moffat(np.asarray(_pk, float), gres['fwhm'])
+                if _mf.get('ok'):
+                    _pfwhm, _el, _prms = _mf['fwhm'], _mf['elongation'], _mf['rms']
+                else:
+                    _f1, _f2, _th, _el = _kernel_shape(_pk)
+                    _pfwhm = float(np.sqrt(_f1 * _f2))
+                    _prms = np.inf
+                # PSFEx is preferred only when genuinely good on ALL of:
+                # shape agreement with the independent measurement, a clean
+                # smooth stamp (Moffat residual < 4% of peak — a chi²=217
+                # stamp can have the right FWHM but noisy/artifacted pixels
+                # that wreck the ZP star fits), and an unremarkable chi².
+                _ok = (abs(_pfwhm - gres['fwhm']) <= 0.3 * gres['fwhm'] and
+                       abs(_el - gres['elongation']) <= 0.3 * max(gres['elongation'], 1.0) and
+                       _prms <= 0.04 and
+                       (chi_sq is None or chi_sq <= 10.0))
+                if _ok:
+                    print(info_g + f' [PSF-G] Using PSFEx {label} kernel '
+                          f'(shape {_pfwhm:.2f}px/{_el:.2f} vs guaranteed '
+                          f'{gres["fwhm"]:.2f}px/{gres["elongation"]:.2f}, '
+                          f'stamp rms {_prms:.3f}, chi²={chi_sq:.1f})')
+                    return _pk
+                print(warn_y + f' [PSF-G] PSFEx {label} stamp not preferred: '
+                      f'{_pfwhm:.2f}px/{_el:.2f} vs guaranteed '
+                      f'{gres["fwhm"]:.2f}px/{gres["elongation"]:.2f}, '
+                      f'stamp rms {_prms:.3f}, chi²={chi_sq:.1f}')
+            except Exception as _pk_e:
+                print(warn_y + f' [PSF-G] PSFEx {label} stamp unusable: {_pk_e}')
+        print(info_g + f' [PSF-G] Using guaranteed PSF kernel for {label} '
+              f'({gres["mode"]} mode, {gres["n_stars"]} stars)')
+        return gres['kernel']
+
+    def _gaussian_kernel(self, label=''):
+        """Normalised Gaussian PSF at the measured FWHM.
+
+        Last-resort kernel for when BOTH PSFEx and the ePSF rescue fail. Using a
+        broken PSFEx stamp (seen here with chi2=217 and a 6.5 px centroid error)
+        corrupts the convolution, the zeropoint fits and the source flux alike;
+        an approximate but well-behaved Gaussian is far safer.
+        """
+        from astropy.convolution import Gaussian2DKernel
+        _fwhm = self._fwhm_px_guess()
+        _sig = _fwhm / (2.0*np.sqrt(2.0*np.log(2.0)))
+        _n = int(max(11, np.ceil(6*_fwhm)))
+        if _n % 2 == 0:
+            _n += 1
+        _k = Gaussian2DKernel(_sig, x_size=_n, y_size=_n).array
+        print(warn_y+f' [V2] Using Gaussian PSF for {label}: FWHM={_fwhm:.2f}px, {_n}x{_n} '
+              f'(PSFEx and ePSF both unusable)')
+        return _k / _k.sum()
+
     def cutout_psf(self,data,psf_array,xpos,ypos):
         all_cutouts=[]
         for d in range(len(xpos)):
@@ -5603,11 +5601,18 @@ class subtracted_phot(subphot_data):
                             # count_lim+=5000
 
                     c+=1
-                if len(self.matched_new_pix)==0:
-                    # deep/stacked images can push every star past the fixed count
-                    # limit — rejecting all of them guarantees failure downstream,
-                    # so keep the original list and let the RSQ cuts sort it out
-                    print(warn_y+' [V2] Saturation check rejected ALL stars (deep/stacked image?) — keeping original star list')
+                # The "counts" tested here are PSF-fit amplitudes on the convolved
+                # image, which scale with exposure time — they are not detector
+                # counts.  A fixed 47000 limit therefore rejects almost every star
+                # in a long exposure (observed: 38 of 39 on a 360 s NOT frame,
+                # while 90 s frames of the same field are unaffected).  Keep the
+                # original list whenever the cut removes an implausible fraction.
+                _n_before = len(self.counts_o)
+                _n_keep_min = min(5, _n_before)
+                if len(self.matched_new_pix) < _n_keep_min:
+                    print(warn_y+f' [V2] Saturation check kept only {len(self.matched_new_pix)}/'
+                          f'{_n_before} stars (exposure-dependent count limit is unreliable here) '
+                          f'— keeping the original star list')
                 else:
                     self.matched_star_coords_pix = np.array(self.matched_new_pix)
                     self.matched_catalog_mag = np.array(self.matched_new_mag)
@@ -5796,58 +5801,70 @@ class subtracted_phot(subphot_data):
         # print(self.zp_sci>=0)
         # print(self.zp_ref>=0)
 
-        if all(val ==False for val in self.arr)==True:
+        # A single surviving calibrator is as unusable as none: the zeropoint is then
+        # set by one star and the epoch gets downgraded to a limit even when the source
+        # is detected at high S/N.  Fall back to aperture photometry below ~3 stars.
+        _MIN_ZP_STARS = 3
+        _n_surv = int(np.sum(self.arr)) if len(np.shape(self.arr)) else 0
+        if _n_surv < _MIN_ZP_STARS:
             weird_img = 'science and reference'
             if all(val_sci_rsq <self.thresh for val_sci_rsq in self.rsq_sci)==True:
                 self.weird_img = 'science'
             else:
                 self.weird_img = 'reference'
-            print(warn_r+f' All PSF-fit zeropoints failed for {self.weird_img} image ({self.sci_obj} {self.sci_filt})')
+            print(warn_r+f' Only {_n_surv} PSF-fit zeropoint star(s) survived for the '
+                  f'{self.weird_img} image ({self.sci_obj} {self.sci_filt}) — need {_MIN_ZP_STARS}')
 
-            # [v2] Aperture-photometry zeropoint fallback.
-            # When all PSF fits are poor (tracking errors, bad seeing), the combined-PSF
-            # fit is unreliable for every catalog star.  Aperture photometry is simpler and
-            # more robust in these conditions — it doesn't depend on the PSF model at all.
-            print(warn_y+' [V2] Attempting aperture-photometry zeropoint fallback...')
+            # [v2] Relaxed PSF-fit zeropoint fallback.
+            #
+            # NOTE: this used to do *aperture* photometry on the aligned,
+            # unconvolved science image.  That is a different flux system from
+            # the source measurement, which PSF-fits comb_psf to the subtracted
+            # CONVOLVED image, so the resulting zeropoint was offset by ~1.6 mag
+            # and produced confidently wrong magnitudes.
+            #
+            # Instead, keep the estimator identical to the main path — fit
+            # comb_psf to sci_conv/ref_conv cutouts — and simply drop the
+            # rsq quality gate, taking a robust median over all matched stars.
+            print(warn_y+' [V2] Falling back to relaxed PSF-fit zeropoints (no rsq cut)...')
             try:
-                from photutils.aperture import CircularAperture, aperture_photometry
-                _aper_r_pix = max(3.0, self._fwhm_px_guess())
-                _sci_ali_hdu = fits.open(self.sci_ali_name)[0]
-                _ref_ali_hdu = fits.open(self.ref_ali_name)[0]  # read once, not per-star
-                _aper_zp_sci, _aper_zp_ref = [], []
+                _zs, _zr = [], []
                 for _i, _pix in enumerate(self.matched_star_coords_pix):
                     try:
-                        _ap = CircularAperture([_pix[0], _pix[1]], r=_aper_r_pix)
-                        _phot_sci = aperture_photometry(_sci_ali_hdu.data, _ap)
-                        _flux_sci = float(_phot_sci['aperture_sum'][0])
-                        if _flux_sci > 0:
-                            _aper_zp_sci.append(self.matched_catalog_mag[_i] + 2.5*np.log10(_flux_sci))
-                        _phot_ref = aperture_photometry(_ref_ali_hdu.data, _ap)
-                        _flux_ref = float(_phot_ref['aperture_sum'][0])
-                        if _flux_ref > 0:
-                            _aper_zp_ref.append(self.matched_catalog_mag[_i] + 2.5*np.log10(_flux_ref))
+                        _cs = self.cutout_psf(data=self.sci_conv, psf_array=self.comb_psf,
+                                              xpos=[_pix[0]], ypos=[_pix[1]])[0]
+                        _cr = self.cutout_psf(data=self.ref_conv, psf_array=self.comb_psf,
+                                              xpos=[_pix[0]], ypos=[_pix[1]])[0]
+                        if np.shape(_cs) != np.shape(self.comb_psf) or \
+                           np.shape(_cr) != np.shape(self.comb_psf):
+                            continue
+                        _fs = self.psf_fit_noshift(data_cutout=[_cs], psf_array=self.comb_psf)[0][0]
+                        _fr = self.psf_fit_noshift(data_cutout=[_cr], psf_array=self.comb_psf)[0][0]
+                        if _fs > 0 and _fr > 0:      # keep paired and index-aligned
+                            _zs.append(2.5*np.log10(_fs) + self.matched_catalog_mag[_i])
+                            _zr.append(2.5*np.log10(_fr) + self.matched_catalog_mag[_i])
                     except Exception:
                         continue
-                if len(_aper_zp_sci) >= 1 and len(_aper_zp_ref) >= 1:
-                    self.zp_sci = np.array(sigma_clip(_aper_zp_sci, sigma=3, maxiters=3).compressed()
-                                          if len(_aper_zp_sci) > 3 else _aper_zp_sci)
-                    self.zp_ref = np.array(sigma_clip(_aper_zp_ref, sigma=3, maxiters=3).compressed()
-                                          if len(_aper_zp_ref) > 3 else _aper_zp_ref)
-                    print(warn_y+f' [V2] Aperture ZP fallback: {len(self.zp_sci)} sci stars, '
-                                           f'{len(self.zp_ref)} ref stars. '
-                                           f'ZP_sci={np.nanmedian(self.zp_sci):.3f}, ZP_ref={np.nanmedian(self.zp_ref):.3f}')
-                    # Dummy RSQ arrays (aperture has no RSQ concept — treat as passing)
-                    self.rsq_sci = np.ones(len(self.zp_sci))
-                    self.rsq_ref = np.ones(len(self.zp_ref))
-                    self.arr = np.ones(len(self.zp_sci), dtype=bool)
-                    self.zp_aperture_fallback = True
-                    # Skip to post-arr-filter section
+                if len(_zs) >= _MIN_ZP_STARS:
+                    _zs, _zr = np.asarray(_zs, float), np.asarray(_zr, float)
+                    if len(_zs) > 3:                 # clip on science, apply to both
+                        _keep = ~sigma_clip(_zs, sigma=3, maxiters=3).mask
+                        _zs, _zr = _zs[_keep], _zr[_keep]
+                    self.zp_sci, self.zp_ref = _zs, _zr
+                    self.rsq_sci = np.ones(len(_zs))
+                    self.rsq_ref = np.ones(len(_zr))
+                    self.arr = np.ones(len(_zs), dtype=bool)
+                    self.zp_relaxed_fallback = True
+                    print(warn_y+f' [V2] Relaxed PSF-fit ZP: {len(_zs)} stars, '
+                          f'ZP_sci={np.nanmedian(_zs):.3f} (sd {np.nanstd(_zs):.3f}), '
+                          f'ZP_ref={np.nanmedian(_zr):.3f}')
                 else:
-                    print(warn_r+' [V2] Aperture ZP fallback also found 0 valid stars — exiting')
+                    print(warn_r+f' [V2] Relaxed PSF-fit ZP found only {len(_zs)} star(s) '
+                          f'(<{_MIN_ZP_STARS}) — cannot calibrate, exiting')
                     self.sys_exit = True
                     return
-            except Exception as _aper_e:
-                print(warn_r+f' [V2] Aperture ZP fallback failed: {_aper_e} — exiting')
+            except Exception as _zpe:
+                print(warn_r+f' [V2] Relaxed PSF-fit ZP failed: {_zpe} — exiting')
                 self.sys_exit = True
                 return
 
@@ -6220,11 +6237,39 @@ class subtracted_phot(subphot_data):
             from scipy.ndimage import binary_erosion
             _struct = np.ones((2*_half_psf+1, 2*_half_psf+1), dtype=bool)
             _eroded = binary_erosion(_inj_mask, structure=_struct)
-            _vy, _vx = np.where(_eroded)
-            # Express positions relative to SN position (matching the x/y offset grid above)
-            _valid_offsets = list(zip((_vx - sn_x).astype(int), (_vy - sn_y).astype(int)))
-            np.random.shuffle(_valid_offsets)
-            print(info_g+f' [V2] Injection pool: {len(_valid_offsets)} valid positions in valid-data region')
+            # [SN-fix] Keep the LOCAL grid geometry and simply drop points that
+            # fall outside the valid region.  The old behaviour drew RANDOM
+            # positions over the whole frame, so the noise estimate sampled
+            # edge-aberration and galaxy residuals far from the target —
+            # inflating the error 2-5x with run-to-run jitter (the S/N of the
+            # same frame varied 1.9-2.4 between identical runs).
+            _grid_ok = []
+            for _xg, _yg in zip(x, y):
+                _cx, _cy = int(round(sn_x + _xg)), int(round(sn_y + _yg))
+                if 0 <= _cy < _h and 0 <= _cx < _w and _eroded[_cy, _cx]:
+                    _grid_ok.append((_xg, _yg))
+            if len(_grid_ok) >= 40:
+                _valid_offsets = _grid_ok
+            else:
+                # sparse valid area: top up with the valid pixels CLOSEST to
+                # the target (spaced >= one PSF box apart), never random
+                # frame-wide draws
+                _vy, _vx = np.where(_eroded)
+                _dd = np.hypot(_vx - sn_x, _vy - sn_y)
+                _order = np.argsort(_dd)[:200000]
+                _valid_offsets = list(_grid_ok)
+                for _i in _order:
+                    _ox, _oy = int(_vx[_i] - sn_x), int(_vy[_i] - sn_y)
+                    if np.hypot(_ox, _oy) <= radius:
+                        continue
+                    if any((_ox - _a) ** 2 + (_oy - _b) ** 2 < psf_size ** 2
+                           for _a, _b in _valid_offsets[-64:]):
+                        continue
+                    _valid_offsets.append((_ox, _oy))
+                    if len(_valid_offsets) >= 300:
+                        break
+            print(info_g+f' [SN-fix] Injection positions: {len(_valid_offsets)} '
+                         f'local grid-aligned points in valid-data region')
         else:
             _valid_offsets = None  # no restriction; use the grid offsets as-is
 
@@ -6298,17 +6343,23 @@ class subtracted_phot(subphot_data):
         # Scatter-based limits: use median absolute deviation (MAD) for robustness
         # MAD is much less sensitive to outliers from residuals, cosmic rays, and subtraction artifacts
         # [v2] Use MAD to detect and mitigate residual-inflated noise estimates
-        _bkg_std  = np.nanstd(flux_bkg_list)
-        _bkg_mad  = 1.4826 * np.nanmedian(np.abs(np.asarray(flux_bkg_list) - np.nanmedian(flux_bkg_list)))
+        _bkg_arr = np.ma.compressed(flux_bkg_list) if np.ma.isMaskedArray(flux_bkg_list) \
+            else np.asarray(flux_bkg_list, dtype=float)
+        _bkg_std_original = float(np.nanstd(_bkg_arr))
+        _bkg_mad = float(1.4826 * np.nanmedian(np.abs(_bkg_arr - np.nanmedian(_bkg_arr))))
 
-        _bkg_std_original = _bkg_std
-        # If std is significantly higher than MAD (>2.5x), use MAD instead (indicates residual outliers)
-        if _bkg_mad > 0 and _bkg_std > 2.5 * _bkg_mad:
-            print(warn_y+f' [v2] Background noise inflated by residuals: std={_bkg_std_original:.1f} vs MAD={_bkg_mad:.1f}')
-            _bkg_std = _bkg_mad  # Use the robust MAD estimate
-            print(info_g+f' [v2] Using robust MAD-based noise estimate: {_bkg_std:.1f} counts')
+        # [SN-fix] MAD is the PRIMARY noise estimator.  The background-flux
+        # distribution is Gaussian sky scatter plus a heavy tail of faint
+        # subtraction residuals; std absorbs the tail (2x inflation even
+        # near the target) while MAD tracks the sky term the target
+        # measurement actually sits on.
+        if _bkg_mad > 0:
+            if _bkg_std_original > 2.5 * _bkg_mad:
+                print(warn_y+f' [v2] Background noise inflated by residuals: std={_bkg_std_original:.1f} vs MAD={_bkg_mad:.1f}')
+            _bkg_std = _bkg_mad
+            print(info_g+f' [SN-fix] Noise estimate: MAD={_bkg_mad:.1f} counts (std would be {_bkg_std_original:.1f})')
         else:
-            _bkg_std = _bkg_std if _bkg_std > 0 else 1e-30  # guard against zero std from contaminated lists
+            _bkg_std = _bkg_std_original if _bkg_std_original > 0 else 1e-30  # guard against zero std from contaminated lists
         _flux_1sig = 1.0 * _bkg_std
         _flux_3sig = 3.0 * _bkg_std
         _flux_5sig = 5.0 * _bkg_std
@@ -6334,10 +6385,11 @@ class subtracted_phot(subphot_data):
                 np.abs(_new_sn_arr - np.nanmedian(_new_sn_arr))))
         else:
             _new_sn_mad = _new_sn_std_raw
-        if _new_sn_mad > 0 and _new_sn_std_raw > 2.5 * _new_sn_mad:
-            print(warn_y + f' [v2] Artificial-SN scatter inflated by residuals: '
-                          f'std={_new_sn_std_raw:.1f} vs MAD={_new_sn_mad:.1f} '
-                          f'— using MAD for photometric uncertainty')
+        # [SN-fix] MAD-primary, mirroring the background estimator above
+        if _new_sn_mad > 0:
+            if _new_sn_std_raw > 2.5 * _new_sn_mad:
+                print(warn_y + f' [v2] Artificial-SN scatter inflated by residuals: '
+                              f'std={_new_sn_std_raw:.1f} vs MAD={_new_sn_mad:.1f}')
             _new_sn_std = _new_sn_mad
         else:
             _new_sn_std = max(_new_sn_std_raw, 1e-30)

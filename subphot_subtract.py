@@ -206,6 +206,12 @@ parser.add_argument('--wcs_match_min','-wcsmin',type=float,default=0.15,
 parser.add_argument('--trans_max','-transmax',type=float,default=0.75,
                     help="Reject frames from a stack whose transparency is more than this many magnitudes below the best frame in the group (default 0.75; 0 disables). Catches cloud-affected frames, which the seeing check cannot.")
 
+parser.add_argument('--file_exclude','-fexcl',default=None,nargs='+',
+                    help="Skip files matching these glob pattern(s) in -f folder mode, e.g. -fexcl '*_astro_*' to drop duplicate products of the same epoch. Applied after -fpat.")
+
+parser.add_argument('--file_pattern','-fpat',default=None,nargs='+',
+                    help="Only consider files matching these glob pattern(s) in -f folder mode, e.g. -fpat '*_g_g.fits' '*_r_r.fits'. Useful for SEDM, where a folder holds several products per exposure.")
+
 parser.add_argument('--stack_headers','-stkh',action='store_true',default=False,
                     help="Group images for stacking from FITS HEADERS (object+filter+time) instead of filename patterns. Telescope-agnostic; use for any facility, and for datasets with missing/irregular exposure numbering.")
 
@@ -312,6 +318,11 @@ parser.add_argument('--position','-pos',default='header',nargs='+',
 
 parser.add_argument('--use_psfex','-psfex',action='store_false',default=True,
                     help="Use PSFEx for PSF modelling (default True). Pass -psfex to disable and use the Python fallback instead.")
+
+parser.add_argument('--psfex_prefer','-psfex_prefer',action='store_true',default=False,
+                    help="Legacy behaviour: run SExtractor+PSFEx and prefer the PSFEx stamp when it passes "
+                         "quality checks (shape agreement with the subphot_psf measurement, clean stamp, sane chi^2). "
+                         "By default the subphot_psf measured kernel is always used and PSFEx is not run.")
 
 parser.add_argument('--telescope_facility','-tel',default='auto',
                     help="Telescope facility. Default 'auto' detects it from the TELESCOP keyword of the first input FITS; pass LT, SEDM, HCT, SLT etc. to override.")
@@ -523,6 +534,46 @@ if not os.path.exists(path+'config_files/psfex_conf.psfex')  or mk_new==True:
     psfexfile(args.termoutp)
 
 FILTERS = {'g':'SDSS-G','r':'SDSS-R','i':'SDSS-I','z':'SDSS-Z','u':'SDSS-U','B':'Bessell-B','V':'Bessell-V','R':'Bessell-R','I':'Bessell-I'}
+
+def canonical_filter(header, facility=None):
+    """Canonical filter name (e.g. 'SDSS-G') from any telescope's header.
+
+    Reading FILTER1/FILTER only works for a subset of telescopes: NOT stores it
+    in SEQID ('g_3x90s'), LOT/SLT use Astrodon names ('gp_Astrodon_2019'), TJO
+    writes 'SDSS g'.  Consult the telescope's header_kw entry first, then fall
+    back to the usual keywords, and finally reduce whatever we find to its
+    ugriz/BVRI letter.
+    """
+    fac = {'LT':'Liverpool Telescope','SEDM':'SEDM-P60','NTT':'ESO-NTT'}.get(facility, facility)
+    keys = []
+    kw = header_kw.get(fac, {}).get('filter') if fac else None
+    if kw and kw not in ('-', 'user'):
+        keys.append(kw)
+    keys += ['FILTER1', 'FILTER', 'SEQID', 'FILTERS', 'FILTER2']
+
+    raw = None
+    for k in keys:
+        if k in header and str(header[k]).strip() not in ('', '-'):
+            raw = str(header[k]).strip(); break
+    if raw is None:
+        return None
+    if raw in FILTERS.values():          # already canonical
+        return raw
+
+    low = raw.lower()
+    if 'astrodon' in low:                # 'gp_Astrodon_2019' -> g
+        low = low.split('p_')[0]
+    for pre in ('sdss-', 'sdss_', 'sdss ', 'ps1-', 'ps1_'):
+        if low.startswith(pre):
+            low = low[len(pre):]
+    tok = low.replace('-', '_').replace(' ', '_').split('_')[0]
+    for cand in (tok, tok[:1]):          # 'rp' -> 'r', 'g' -> 'g'
+        if cand in FILTERS:
+            return FILTERS[cand]
+    for ch in low:                       # last resort: first ugriz letter
+        if ch in FILTERS:
+            return FILTERS[ch]
+    return None
 if args.bands==['All']:
     args.bands_to_process=['g','r','i','z','u']#,'B','V','R','I']
 else:
@@ -651,9 +702,19 @@ class multi_subtract():
         # FITS headers rather than from filename patterns.  Telescope-agnostic and
         # immune to missing or irregular exposure numbering.
         if getattr(args, 'stack_headers', False):
-            _recs = []
+            import fnmatch
+            _pats = getattr(args, 'file_pattern', None)
+            _excl = getattr(args, 'file_exclude', None)
+            _recs, _nseen = [], 0
             for _f in sorted(os.listdir(f"{self.data1_path}{self.FOLDER}")):
                 if not _f.endswith('.fits') or _f.startswith('.') or 'tpv' in _f:
+                    continue
+                _nseen += 1
+                # restrict to the requested products (e.g. SEDM writes several
+                # files per exposure; only the *_g_g.fits style ones are wanted)
+                if _pats and not any(fnmatch.fnmatch(_f, _p) for _p in _pats):
+                    continue
+                if _excl and any(fnmatch.fnmatch(_f, _p) for _p in _excl):
                     continue
                 try:
                     _h = fits.open(f"{self.data1_path}{self.FOLDER}/{_f}")[0].header
@@ -661,7 +722,9 @@ class multi_subtract():
                     print(warn_y+f' Skipping unreadable {_f}: {_e}')
                     continue
                 _obj = str(_h.get('OBJECT','?')).split('_')[0].split(' ')[0].strip()
-                _filt = str(_h.get('FILTER1', _h.get('FILTER','?'))).strip()
+                # canonical, so telescopes that hide the filter in SEQID/Astrodon
+                # names still group per band instead of lumping every band together
+                _filt = canonical_filter(_h, args.telescope_facility) or '?'
                 _mjd = None
                 for _kw in ('MJD','MJD-OBS','MJD_OBS'):
                     if _kw in _h:
@@ -691,6 +754,9 @@ class multi_subtract():
                             self.fits_files.append([[_n],1,f"{_n}.fits"]); _ngroups += 1
                     else:
                         self.fits_files.append([_names,len(_names),f"{_names[0]}.fits"]); _ngroups += 1
+            if _pats or _excl:
+                print(info_g+f' File selection (keep={_pats}, drop={_excl}): '
+                      f'kept {len(_recs)} of {_nseen} non-tpv files')
             print(info_g+f' Header grouping: {len(_recs)} images -> {_ngroups} '
                   f'{"stack group(s)" if args.stack else "entry(s)"} '
                   f'(gap {getattr(args,"stack_gap",10.0):.0f} min)')
@@ -745,20 +811,11 @@ class multi_subtract():
                 # print(self.fits_files[i][2])
                 self.fits_hdu = fits.open(self.data1_path+str(self.FOLDER)+"/"+str(self.fits_files[i][2]))[0].header
             # print(self.fits_hdu['FILTER'])
-            try:
-                self.fits_filt,self.fits_obj = self.fits_hdu['FILTER1'],self.fits_hdu['OBJECT']
-            except:
-                # print(warn_y+' No FILTER1 or OBJECT1 in header, trying FILTER and OBJECT')
-
-                try:
-                    self.fits_filt,self.fits_obj = self.fits_hdu['FILTER'],self.fits_hdu['OBJECT']
-                    if 'p_Astrodon' in self.fits_filt:
-                        self.fits_filt = FILTERS[self.fits_filt.split('p_')[0]]
-
-                    # print(info_g+' Found FILTER and OBJECT in header',self.fits_filt,self.fits_obj)
-                except:
-                    # print(warn_r+' No FILTER1 or OBJECT in header, skipping file')
-                    continue 
+            self.fits_filt = canonical_filter(self.fits_hdu, args.telescope_facility)
+            self.fits_obj  = str(self.fits_hdu.get('OBJECT', '')).strip()
+            if self.fits_filt is None or self.fits_obj == '':
+                print(warn_y+f' No usable FILTER/OBJECT in {self.fits_files[i][-1]} — skipping')
+                continue 
 
             if ' ' and self.fits_hdu['TELESCOP']=='60': #specifically for P60
                 # print(self.fits_filt,self.fits_obj)
@@ -913,9 +970,13 @@ def run_subtraction(data_dict):
                 sys.stderr.flush()
 
             if file_array[1]=='1' or file_array[1]==1:
-                fits_file=file_array[0][0]
+                # the stored name has no extension, but the guard below requires
+                # one — without this every single-frame group was silently skipped
+                fits_file = file_array[2] if len(file_array) > 2 else file_array[0][0]
+                if not str(fits_file).endswith('.fits'):
+                    fits_file = f'{fits_file}.fits'
                 sub_file = [re.sub('.fits','',file_array[0][0])]
-        
+
             else:
                 fits_file = file_array[2]      
                 sub_file = file_array[0]
@@ -939,7 +1000,8 @@ def run_subtraction(data_dict):
 
             # Extract filter / object name / date from header
             sci_hdr = fits.open(f'{data1_path}{FOLDER}/{fits_file}')[0].header
-            filt = next((sci_hdr[k] for k in filt_kws if k in sci_hdr), None)
+            filt = canonical_filter(sci_hdr, args.telescope_facility) \
+                   or next((sci_hdr[k] for k in filt_kws if k in sci_hdr), None)
             name = next((sci_hdr[k] for k in name_kws if k in sci_hdr), None)
             date_obs = next((sci_hdr[k] for k in date_obs_kws if k in sci_hdr), None)
             if filt is None or name is None or date_obs is None:
