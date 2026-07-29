@@ -231,6 +231,56 @@ def _neighbor_ratio(data_sub, x, y):
     return float(nb[2]) / c            # 2nd-brightest: robust to one hot column
 
 
+def _coverage_mask(data, block=32, margin=25):
+    """
+    Mask coadd borders / zero-coverage / junk-dominated regions so border
+    artifacts can never enter the star sample (audit finding: on some NOT
+    coadds 100% of flux-sorted 'stars' were unmasked border junk with
+    block noise ~100x the interior).  A block is bad when it is >20%
+    zeros/NaNs or its ROBUST scatter (MAD — insensitive to a real bright
+    star occupying <~10% of the block) exceeds 15x the frame's.
+    """
+    ny, nx = data.shape
+    ok = np.ones((ny, nx), bool)
+    finite = np.isfinite(data)
+    v = data[finite & (data != 0)]
+    if v.size < 1000:
+        return ok
+    med = float(np.median(v))
+    gmad = float(1.4826 * np.median(np.abs(v - med)))
+    if gmad <= 0:
+        return ok
+    bad_any = False
+    for i0 in range(0, ny, block):
+        for j0 in range(0, nx, block):
+            sl = (slice(i0, i0 + block), slice(j0, j0 + block))
+            b = data[sl]
+            zfrac = float((~np.isfinite(b)).mean() + (b == 0).mean())
+            if zfrac > 0.2:
+                ok[sl] = False
+                bad_any = True
+                continue
+            bf = b[np.isfinite(b)]
+            bmed = float(np.median(bf))
+            bmad = float(1.4826 * np.median(np.abs(bf - bmed)))
+            if bmad > 15.0 * gmad:
+                ok[sl] = False
+                bad_any = True
+                continue
+            # sparse-spike junk (audit criterion): >3% of the block beyond
+            # 25 sigma — but scattered in >=4 separate clumps, so a single
+            # real bright star (one connected core) never masks its block
+            spk = np.isfinite(b) & (np.abs(b - med) > 25.0 * gmad)
+            if float(spk.mean()) > 0.03:
+                _, n_comp = ndimage.label(spk)
+                if n_comp >= 4:
+                    ok[sl] = False
+                    bad_any = True
+    if bad_any:
+        ok = ndimage.minimum_filter(ok, size=2 * margin + 1)
+    return ok
+
+
 def _mode_centers(vals, bin_w=0.4):
     """Ascending centres of the dense modes of a 1-D size distribution."""
     v = np.asarray(vals, float)
@@ -527,6 +577,13 @@ def measure_psf(
             warnings_list.append(
                 f'correlated noise: SNR scale deflated by {_s0:.2f}x')
 
+    cov = _coverage_mask(data)
+    if not cov.all():
+        snr_img = np.where(cov, snr_img, 0.0)
+        warnings_list.append(
+            f'coverage mask: {100 * (1 - cov.mean()):.0f}% of frame excluded '
+            f'(border/junk regions)')
+
     x, y, det_snr = _detect_sources(snr_img, threshold_sigma)
     n_detect = len(x)
     if n_detect == 0:
@@ -565,7 +622,7 @@ def measure_psf(
                 if np.isfinite(fwhm_hm[i]) and abs(fwhm_hm[i] - _mc) <= _win]
         if len(_mem) < 3 and len(_modes) > 1:
             continue
-        _fit_fw = []
+        _fit_fw, _fit_el = [], []
         for i in _mem[:6]:
             _r = int(max(8, np.ceil(3.0 * _mc)))
             _xi, _yi = int(round(x[i])), int(round(y[i]))
@@ -576,10 +633,14 @@ def measure_psf(
             if (_f.get('ok') and _f['fwhm'] >= 1.5 and
                     np.hypot(_f['x0'] - _r, _f['y0'] - _r) <= 2.0):
                 _fit_fw.append(_f['fwhm'])
+                _fit_el.append(_f['elongation'])
         if len(_fit_fw) >= min(3, max(1, len(_mem))):
             _med = float(np.median(_fit_fw))
             _mad = 1.4826 * float(np.median(np.abs(np.array(_fit_fw) - _med)))
-            if _med >= 1.5 and (len(_fit_fw) < 3 or _mad <= 0.35 * _med):
+            # real PSFs never exceed elongation ~1.7 (audit, 25 frames);
+            # a compact mode fitting at median elong >1.8 is CR tracks
+            if _med >= 1.5 and float(np.median(_fit_el)) <= 1.8 and \
+                    (len(_fit_fw) < 3 or _mad <= 0.35 * _med):
                 fwhm_frame, fwhm_scatter = _med, _mad
                 break
     if not np.isfinite(fwhm_frame):
