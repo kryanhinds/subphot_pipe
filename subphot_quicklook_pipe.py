@@ -6265,20 +6265,21 @@ class subtracted_phot(subphot_data):
                 sn_mag=-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)
                 print(warn_y+" New magnitude = %.3f"%sn_mag)
 
+        self._latch_candidate = None
         if self.forced_phot==False:
             # [SN-fix] Latch guard: a centroid shift should REFINE the flux,
             # never create it.  If the shifted fit finds >1.5x the flux of a
-            # forced fit at the known position, chi2_shift latched onto a
-            # nearby subtraction residual (max-statistics bias on faint
-            # sources; a real <=1px WCS error costs <~15% flux, never 50%).
+            # forced fit at the known position, chi2_shift may have latched
+            # onto a nearby subtraction residual (max-statistics bias).  But
+            # a HIGH-S/N source found within the shift window is real (e.g.
+            # a residual alignment error puts the true source a few px from
+            # the forced position), so the revert decision is DEFERRED until
+            # the background scatter is known: only a <10-sigma shifted fit
+            # gets reverted (see below, after _bkg_std).
             _ns_fit = self.psf_fit_noshift([self.sn_cutout], psf_array=psf)[0]
             _sh_flux, _ns_flux = float(self.main_sn_psf_fit[0]), float(_ns_fit[0])
             if _sh_flux > 0 and (_ns_flux <= 0 or _sh_flux > 1.5 * _ns_flux):
-                print(warn_y+f' [SN-fix] Shifted PSF-fit flux {_sh_flux:.1f} vs forced-position '
-                             f'{_ns_flux:.1f} — shift latched onto a residual; using forced fit')
-                self.main_sn_psf_fit = _ns_fit
-                sn_flux = _ns_flux
-                sn_mag = (-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)) if sn_flux > 0 else 99.0
+                self._latch_candidate = _ns_fit
 
         psf_size=np.shape(psf)[0]+1
         #chose num number of coordinates to calculate the magnitude error within the image size but outside the psf
@@ -6444,6 +6445,19 @@ class subtracted_phot(subphot_data):
         _lim_5sig = -2.5*np.log10(_flux_5sig) + _zp
 
         SNR = sn_flux / _bkg_std
+        # [SN-fix] Deferred latch-guard decision: revert to the forced-position
+        # fit only when the shifted fit is WEAK — a >=10-sigma source found
+        # within the shift window is genuine (residual alignment error), while
+        # a marginal one is most likely the fit latching onto a residual.
+        if self._latch_candidate is not None and SNR < 10.0:
+            _ns_fit = self._latch_candidate
+            print(warn_y + f' [SN-fix] Shifted PSF-fit flux {sn_flux:.1f} '
+                           f'(S/N {SNR:.1f}) vs forced-position {_ns_fit[0]:.1f} '
+                           f'— shift latched onto a residual; using forced fit')
+            self.main_sn_psf_fit = _ns_fit
+            sn_flux = float(_ns_fit[0])
+            sn_mag = (-2.5*np.log10(sn_flux)+np.nanmedian(zp_sci)) if sn_flux > 0 else 99.0
+            SNR = sn_flux / _bkg_std
         self.SNR = SNR
 
         # [v2] Robust artificial-SN flux scatter.  Mirror the MAD-based fallback
