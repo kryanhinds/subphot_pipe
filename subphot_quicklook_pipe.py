@@ -4038,52 +4038,8 @@ class subtracted_phot(subphot_data):
                 plt.close(ali_fig)
 
         if self.cutout_tf!=False:
-            self.fig,self.ax = plt.subplots(nrows=1, ncols=3)
-            self.sci_img_ali_hdu = fits.open(self.sci_ali_name)[0]
-            self.percentile = np.percentile(self.sci_img_ali_hdu.data,[5,10,20,30,40,50,60,70,80,90]) 
-            self.cmap = 'gray'
-            self.coords_sn_sci_ali=wcs_to_pixels(self.sci_ali_name,np.column_stack((self.sci_c.ra.deg,self.sci_c.dec.deg)))[0]
-            self.coords_sn_sci_ali_x,self.coords_sn_sci_ali_y = self.coords_sn_sci_ali
-            # self.vmin,self.vmax,self.cmap = -((1.5*self.percentile[1])-self.percentile[3]),(3*self.percentile[5]) - self.percentile[7],'gray'
-            self.vmin_sci,self.vmax_sci = visualization.ZScaleInterval().get_limits(self.sci_img_ali_hdu.data)
-            self.coords_sn_sub=wcs_to_pixels(self.sci_ali_name,np.column_stack((self.sci_c.ra.deg,self.sci_c.dec.deg)))
-            self.coords_sn_sub_x,self.coords_sn_sub_y = self.coords_sn_sub[0]
-            self.ax[0].imshow(self.sci_img_ali_hdu.data,cmap=self.cmap,vmin=self.vmin_sci, vmax=self.vmax_sci)
-            # print(self.coords_sn_sub_x,self.coords_sn_sub_y)
-            self.ax[0].plot([self.coords_sn_sci_ali_x-30,self.coords_sn_sci_ali_x-10],[self.coords_sn_sci_ali_y,self.coords_sn_sci_ali_y],color='lime',lw=2.5),self.ax[0].plot([self.coords_sn_sci_ali_x+10,self.coords_sn_sci_ali_x+30],[self.coords_sn_sci_ali_y,self.coords_sn_sci_ali_y],color='lime',lw=2.5)
-            self.ax[0].plot([self.coords_sn_sci_ali_x,self.coords_sn_sci_ali_x],[self.coords_sn_sci_ali_y-30,self.coords_sn_sci_ali_y-10],color='lime',lw=2.5),self.ax[0].plot([self.coords_sn_sci_ali_x,self.coords_sn_sci_ali_x],[self.coords_sn_sci_ali_y+10,self.coords_sn_sci_ali_y+30],color='lime',lw=2.5)
-            self.ax[0].set_xlim(self.coords_sn_sci_ali_x-50,self.coords_sn_sci_ali_x+50)
-            self.ax[0].set_ylim(self.coords_sn_sci_ali_y-50,self.coords_sn_sci_ali_y+50)
-
-            self.ax[0].axis('off') 
-            self.ax[1].axis('off') 
-            self.ax[2].axis('off') 
-            self.ax[0].set_title('New')
-            if self.out_dir=="photometry/":       
-                self.cutout_name = self.path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
-            else:
-                self.cutout_name = self.path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
-
-            self.fig.savefig(self.cutout_name)
-
-        if self.cutout_tf!=False:
-            self.ref_img_ali_hdu = fits.open(self.ref_ali_name)[0]
-            self.coords_sn_ref_ali=wcs_to_pixels(self.ref_ali_name,np.column_stack((self.sci_c.ra.deg,self.sci_c.dec.deg)))[0]
-            self.coords_sn_ref_ali_x,self.coords_sn_ref_ali_y = self.coords_sn_ref_ali
-
-            self.vmin_ref,self.vmax_ref = visualization.ZScaleInterval().get_limits(self.ref_img_ali_hdu.data)
-            self.ax[1].imshow(self.ref_img_ali_hdu.data,cmap=self.cmap,vmin=self.vmin_ref, vmax=self.vmax_ref)
-            self.ax[1].plot([self.coords_sn_ref_ali_x-30,self.coords_sn_ref_ali_x-10],[self.coords_sn_ref_ali_y,self.coords_sn_ref_ali_y],color='lime',lw=4),self.ax[1].plot([self.coords_sn_ref_ali_x+10,self.coords_sn_ref_ali_x+30],[self.coords_sn_ref_ali_y,self.coords_sn_ref_ali_y],color='lime',lw=2.5)
-            self.ax[1].plot([self.coords_sn_ref_ali_x,self.coords_sn_ref_ali_x],[self.coords_sn_ref_ali_y-30,self.coords_sn_ref_ali_y-10],color='lime',lw=2.5),self.ax[1].plot([self.coords_sn_ref_ali_x,self.coords_sn_ref_ali_x],[self.coords_sn_ref_ali_y+10,self.coords_sn_ref_ali_y+30],color='lime',lw=2.5)
-            self.ax[1].set_xlim(self.coords_sn_ref_ali_x-50,self.coords_sn_ref_ali_x+50)
-            self.ax[1].set_ylim(self.coords_sn_ref_ali_y-50,self.coords_sn_ref_ali_y+50)
-            self.ax[1].set_title('Ref')
-            self.ax[1].axis('off')        
-
-            self.fig.savefig(self.cutout_name)
-
-
-
+            # [CUT] New+Ref panel (subtraction not made yet at this stage)
+            self._render_cutout_panel(self._cutout_panel_path(), include_sub=False)
 
         return self.ref_ali_name,self.ref_img_hdu,self.ref_img, self.sci_ali_name
     
@@ -5413,6 +5369,188 @@ class subtracted_phot(subphot_data):
         print(warn_y+f' [V2] Using Gaussian PSF for {label}: FWHM={_fwhm:.2f}px, {_n}x{_n} '
               f'(PSFEx and ePSF both unusable)')
         return _k / _k.sum()
+
+    # ── [CUT] cutout panel rendering ─────────────────────────────────────────
+    @staticmethod
+    def _cut_stamp(data, x, y, half_px):
+        """Square stamp centred on (x, y); NaN-padded if it runs off the edge."""
+        data = np.asarray(data, dtype=float)
+        ny, nx = data.shape
+        x0, x1 = int(round(x - half_px)), int(round(x + half_px)) + 1
+        y0, y1 = int(round(y - half_px)), int(round(y + half_px)) + 1
+        out = np.full((y1 - y0, x1 - x0), np.nan, dtype=float)
+        sx0, sx1 = max(0, x0), min(nx, x1)
+        sy0, sy1 = max(0, y0), min(ny, y1)
+        if sx1 > sx0 and sy1 > sy0:
+            out[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0] = data[sy0:sy1, sx0:sx1]
+        return out
+
+    @staticmethod
+    def _stamp_norm(stamp, signed=False):
+        """Display normalisation computed FROM THE STAMP (not the full frame).
+
+        Scaling the whole aligned image made every panel useless: the science
+        panel came out flat grey, the deep reference saturated white, and the
+        subtraction — whose full-frame distribution is dominated by residuals
+        around bright field stars — came out blank.
+
+        signed=True (subtraction): linear, symmetric about the local median at
+        +/-6 MAD, so a positive source is visible and over/under-subtraction
+        reads as black/white rather than being clipped away.
+        Otherwise (science/reference): zscale limits from the stamp with an
+        asinh stretch, so the host core and the faint wings show together.
+        """
+        from astropy.visualization import ImageNormalize, ZScaleInterval, AsinhStretch
+        v = stamp[np.isfinite(stamp)]
+        if v.size < 10:
+            return None
+        med = float(np.median(v))
+        mad = float(1.4826 * np.median(np.abs(v - med)))
+        if signed:
+            if not np.isfinite(mad) or mad <= 0:
+                mad = float(np.std(v)) or 1.0
+            return ImageNormalize(vmin=med - 6 * mad, vmax=med + 6 * mad)
+        try:
+            vmin, vmax = ZScaleInterval(contrast=0.25).get_limits(v)
+        except Exception:
+            vmin, vmax = np.nanpercentile(v, [5, 99.5])
+        if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
+            vmin, vmax = med - 2 * (mad or 1.0), med + 8 * (mad or 1.0)
+        return ImageNormalize(vmin=vmin, vmax=vmax, stretch=AsinhStretch(0.15))
+
+    @staticmethod
+    def _pixscale_of(name_or_hdr, fallback=0.37):
+        """Pixel scale [arcsec/px] from a FITS header/WCS, with a fallback."""
+        try:
+            from astropy.wcs.utils import proj_plane_pixel_scales
+            _w = WCS(name_or_hdr) if not isinstance(name_or_hdr, WCS) else name_or_hdr
+            _ps = float(np.mean(np.abs(proj_plane_pixel_scales(_w.celestial))) * 3600.0)
+            if 0.01 < _ps < 30:
+                return _ps
+        except Exception:
+            pass
+        try:
+            return float(fallback)
+        except Exception:
+            return 0.37
+
+    def _render_cutout_panel(self, out_path, include_sub=True, box_arcsec=40.0):
+        """New / Ref / Sub cutout panel with per-stamp scaling.
+
+        Every panel covers the SAME angular box (set in arcsec, converted per
+        image via its own WCS) so the science and reference are comparable even
+        when their grids differ.
+        """
+        try:
+            _panels = []
+
+            # --- science -------------------------------------------------
+            _sci_hdu = fits.open(self.sci_ali_name)[0]
+            _sx, _sy = wcs_to_pixels(self.sci_ali_name, np.column_stack(
+                (self.sci_c.ra.deg, self.sci_c.dec.deg)))[0]
+            _sps = self._pixscale_of(_sci_hdu.header, getattr(self, 'sci_ps', 0.37))
+            _shalf = max(12.0, 0.5 * box_arcsec / _sps)
+            _panels.append(('New', self._cut_stamp(_sci_hdu.data, _sx, _sy, _shalf),
+                            _sps, False))
+
+            # --- reference -----------------------------------------------
+            try:
+                _ref_hdu = fits.open(self.ref_ali_name)[0]
+                _rx, _ry = wcs_to_pixels(self.ref_ali_name, np.column_stack(
+                    (self.sci_c.ra.deg, self.sci_c.dec.deg)))[0]
+                _rps = self._pixscale_of(_ref_hdu.header, _sps)
+                _rhalf = max(12.0, 0.5 * box_arcsec / _rps)
+                _panels.append(('Ref', self._cut_stamp(_ref_hdu.data, _rx, _ry, _rhalf),
+                                _rps, False))
+            except Exception:
+                pass
+
+            # --- subtraction ---------------------------------------------
+            if include_sub and getattr(self, 'sub_img', None) is not None:
+                try:
+                    _sub_data = self.sub_img.data
+                    _ux = float(getattr(self, 'coords_sn_sub_x', _sx))
+                    _uy = float(getattr(self, 'coords_sn_sub_y', _sy))
+                    _panels.append(('Sub', self._cut_stamp(_sub_data, _ux, _uy, _shalf),
+                                    _sps, True))
+                except Exception:
+                    pass
+
+            _n = len(_panels)
+            if _n == 0:
+                return None
+            fig, axes = plt.subplots(1, _n, figsize=(3.5 * _n, 4.0))
+            if _n == 1:
+                axes = [axes]
+
+            for _ax, (_lbl, _st, _ps, _signed) in zip(axes, _panels):
+                _norm = self._stamp_norm(_st, signed=_signed)
+                _ax.imshow(_st, origin='lower', cmap='gray', norm=_norm,
+                           interpolation='nearest')
+                _h = _st.shape[0] / 2.0 - 0.5
+                _w = _st.shape[1] / 2.0 - 0.5
+                # crosshair with a gap so the source itself stays visible
+                _g, _L = 0.10 * _st.shape[0], 0.22 * _st.shape[0]
+                _col = 'red' if _signed else 'lime'
+                _ax.plot([_w - _L, _w - _g], [_h, _h], color=_col, lw=1.6)
+                _ax.plot([_w + _g, _w + _L], [_h, _h], color=_col, lw=1.6)
+                _ax.plot([_w, _w], [_h - _L, _h - _g], color=_col, lw=1.6)
+                _ax.plot([_w, _w], [_h + _g, _h + _L], color=_col, lw=1.6)
+                # scale bar
+                _bar_as = 10.0
+                _bar_px = _bar_as / max(_ps, 1e-6)
+                if _bar_px < 0.8 * _st.shape[1]:
+                    _y0 = 0.06 * _st.shape[0]
+                    _x0 = 0.06 * _st.shape[1]
+                    _ax.plot([_x0, _x0 + _bar_px], [_y0, _y0], color='white', lw=2.5)
+                    _ax.text(_x0 + _bar_px / 2, _y0 + 0.035 * _st.shape[0],
+                             f'{_bar_as:.0f}"', color='white', ha='center',
+                             va='bottom', fontsize=8.5)
+                _ax.set_title(_lbl, fontsize=12)
+                _ax.set_xticks([]); _ax.set_yticks([])
+                for _s in _ax.spines.values():
+                    _s.set_color('0.6')
+
+            # header line: what this epoch measured
+            _bits = [str(getattr(self, 'sci_obj', '')), str(getattr(self, 'sci_filt', ''))]
+            try:
+                _bits.append(f'MJD {float(self.sci_mjd):.4f}')
+            except Exception:
+                pass
+            try:
+                _m = float(self.mag[0])
+                _snr = float(getattr(self, 'SNR', np.nan))
+                if _m < 40:
+                    _bits.append(f'{_m:.2f} +/- {float(self.mag[2]):.2f}'
+                                 + (f'  (S/N {_snr:.1f})' if np.isfinite(_snr) else ''))
+                else:
+                    _bits.append(f'limit {float(self.mag[3]):.2f}'
+                                 + (f'  (S/N {_snr:.1f})' if np.isfinite(_snr) else ''))
+            except Exception:
+                pass
+            fig.suptitle('   '.join(b for b in _bits if b), fontsize=11, y=0.98)
+            fig.tight_layout(rect=(0, 0, 1, 0.94))
+
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            fig.savefig(out_path, dpi=150, bbox_inches='tight', facecolor='white')
+            if getattr(self.args, 'show_plots', False):
+                plt.show()
+            plt.close(fig)
+            return out_path
+        except Exception as _cut_e:
+            print(warn_y + f' [CUT] cutout panel failed: {_cut_e}')
+            try:
+                plt.close('all')
+            except Exception:
+                pass
+            return None
+
+    def _cutout_panel_path(self):
+        if self.out_dir == "photometry/":
+            return (self.path + f'photometry_date/{self.folder}/cut_outs/'
+                    + self.sci_img_name[:-11] + "_cutout_panel" + self.img_type + ".png")
+        return (self.path + f'{self.out_dir}cut_outs/'
+                + self.sci_img_name[:-11] + "_cutout_panel" + self.img_type + ".png")
 
     def cutout_psf(self,data,psf_array,xpos,ypos):
         all_cutouts=[]
@@ -6749,65 +6887,12 @@ class subtracted_phot(subphot_data):
 
 
         if self.cutout_tf!=False:
-            self.fig,self.ax = plt.subplots(nrows=1, ncols=3)
-            self.sci_img_ali_hdu = fits.open(self.sci_ali_name)[0]
-            self.cmap = 'gray'
-            self.coords_sn_sci_ali=wcs_to_pixels(self.sci_ali_name,np.column_stack((self.sci_c.ra.deg,self.sci_c.dec.deg)))[0]
-            self.coords_sn_sci_ali_x,self.coords_sn_sci_ali_y = self.coords_sn_sci_ali
-            self.vmin_sci,self.vmax_sci = visualization.ZScaleInterval().get_limits(self.sci_img_ali_hdu.data)
+            # [CUT] full New/Ref/Sub panel with per-stamp scaling
+            self.cutout_name = self._cutout_panel_path()
+            _cut_ok = self._render_cutout_panel(self.cutout_name, include_sub=True)
+            if _cut_ok:
+                print(info_g+f" Saving cutout panel to {self.cutout_name}")
 
-            self.ax[0].imshow(self.sci_img_ali_hdu.data,cmap=self.cmap,vmin=self.vmin_sci, vmax=self.vmax_sci)
-            self.ax[0].plot([self.coords_sn_sci_ali_x-30,self.coords_sn_sci_ali_x-10],[self.coords_sn_sci_ali_y,self.coords_sn_sci_ali_y],color='lime',lw=2.5),self.ax[0].plot([self.coords_sn_sci_ali_x+10,self.coords_sn_sci_ali_x+30],[self.coords_sn_sci_ali_y,self.coords_sn_sci_ali_y],color='lime',lw=2.5)
-            self.ax[0].plot([self.coords_sn_sci_ali_x,self.coords_sn_sci_ali_x],[self.coords_sn_sci_ali_y-30,self.coords_sn_sci_ali_y-10],color='lime',lw=2.5),self.ax[0].plot([self.coords_sn_sci_ali_x,self.coords_sn_sci_ali_x],[self.coords_sn_sci_ali_y+10,self.coords_sn_sci_ali_y+30],color='lime',lw=2.5)
-            self.ax[0].set_xlim(self.coords_sn_sci_ali_x-50,self.coords_sn_sci_ali_x+50)
-            self.ax[0].set_ylim(self.coords_sn_sci_ali_y-50,self.coords_sn_sci_ali_y+50)
-            self.ax[0].axis('off') 
-            self.ax[1].axis('off') 
-            self.ax[2].axis('off') 
-            self.ax[0].set_title('New')
-
-            if self.out_dir=="photometry/":       
-                self.cutout_name = self.path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
-            else:
-                self.cutout_name = self.path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_panel"+self.img_type+".png"
-
-            print(info_g+f" Saving cutout panel to {self.cutout_name}")
-            self.fig.savefig(self.cutout_name)
-
-            self.ref_img_ali_hdu = fits.open(self.ref_ali_name)[0]
-            self.coords_sn_ref_ali=wcs_to_pixels(self.ref_ali_name,np.column_stack((self.sci_c.ra.deg,self.sci_c.dec.deg)))[0]
-            self.coords_sn_ref_ali_x,self.coords_sn_ref_ali_y = self.coords_sn_ref_ali
-
-            self.vmin_ref,self.vmax_ref = visualization.ZScaleInterval().get_limits(self.ref_img_ali_hdu.data)
-            self.ax[1].imshow(self.ref_img_ali_hdu.data,cmap=self.cmap,vmin=self.vmin_ref, vmax=self.vmax_ref)
-            self.ax[1].plot([self.coords_sn_ref_ali_x-30,self.coords_sn_ref_ali_x-10],[self.coords_sn_ref_ali_y,self.coords_sn_ref_ali_y],color='lime',lw=2.5),self.ax[1].plot([self.coords_sn_ref_ali_x+10,self.coords_sn_ref_ali_x+30],[self.coords_sn_ref_ali_y,self.coords_sn_ref_ali_y],color='lime',lw=2.5)
-            self.ax[1].plot([self.coords_sn_ref_ali_x,self.coords_sn_ref_ali_x],[self.coords_sn_ref_ali_y-30,self.coords_sn_ref_ali_y-10],color='lime',lw=2.5),self.ax[1].plot([self.coords_sn_ref_ali_x,self.coords_sn_ref_ali_x],[self.coords_sn_ref_ali_y+10,self.coords_sn_ref_ali_y+30],color='lime',lw=2.5)
-            self.ax[1].set_xlim(self.coords_sn_ref_ali_x-50,self.coords_sn_ref_ali_x+50)
-            self.ax[1].set_ylim(self.coords_sn_ref_ali_y-50,self.coords_sn_ref_ali_y+50)
-            self.ax[1].set_title('Ref')
-            self.ax[1].axis('off')        
-
-            self.fig.savefig(self.cutout_name)
-
-            try:
-                self.vmin,self.vmax = visualization.ZScaleInterval().get_limits(self.sub_img.data)
-                self.ax[2].imshow(self.sub_img.data,cmap=self.cmap,vmin=self.vmin, vmax=self.vmax)
-                #add crosshairs to the image
-                self.ax[2].plot([self.coords_sn_sub_x-30,self.coords_sn_sub_x-10],[self.coords_sn_sub_y,self.coords_sn_sub_y],color='lime',lw=2.5),self.ax[2].plot([self.coords_sn_sub_x+10,self.coords_sn_sub_x+30],[self.coords_sn_sub_y,self.coords_sn_sub_y],color='lime',lw=2.5)
-                self.ax[2].plot([self.coords_sn_sub_x,self.coords_sn_sub_x],[self.coords_sn_sub_y-30,self.coords_sn_sub_y-10],color='lime',lw=2.5),self.ax[2].plot([self.coords_sn_sub_x,self.coords_sn_sub_x],[self.coords_sn_sub_y+10,self.coords_sn_sub_y+30],color='lime',lw=2.5)
-                self.ax[2].set_xlim(self.coords_sn_sub_x-50,self.coords_sn_sub_x+50)
-                self.ax[2].set_ylim(self.coords_sn_sub_y-50,self.coords_sn_sub_y+50)
-                self.ax[2].axis('off') 
-                self.ax[2].set_title('Sub')      
-                if self.out_dir=="photometry/":
-                    self.sub_cutout_name = self.path+f'photometry_date/{self.folder}/cut_outs/'+self.sci_img_name[:-11]+"_cutout_sub"+self.img_type+".png"
-                else:
-                    self.sub_cutout_name = self.path+f'{self.out_dir}cut_outs/'+self.sci_img_name[:-11]+"_cutout_sub"+self.img_type+".png" 
-                self.fig.savefig(self.cutout_name)
-            except:
-                pass
-            plt.show()
-            plt.close()
 
         # print(self.mag_all_err**0.5)
         # print(np.nanstd(self.zp_ref),len(self.zp_ref),(np.nanstd(self.zp_ref)/(len(self.zp_ref)**0.5)))
