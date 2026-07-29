@@ -250,7 +250,7 @@ def check_seeing(ims,s=5,sp_logger=None):
         if seeing < s:
             good_seeing.append(ims[i][:-5])
         else:
-            sp_print(warn_y+f' {ims[i]} has seeing of {seeing}, rejecting')
+            print(warn_y+f' {ims[i]} has seeing of {seeing}, rejecting')
     # sys.exit(1)
     return good_seeing
 
