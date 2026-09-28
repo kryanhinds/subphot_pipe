@@ -16,7 +16,6 @@ import csv
 import astroplan
 import typing
 from astroplan import Observer
-from astropy.coordinates import EarthLocation
 from typing import Mapping, Optional
 from astropy.time import Time
 from bs4 import BeautifulSoup
@@ -54,22 +53,21 @@ warn_r = f"{Fore.RED}[WARNING] ::{Style.RESET_ALL}"
 warn_y = f"{Fore.YELLOW}[WARNING] ::{Style.RESET_ALL}"
 process_g = f"{Fore.GREEN}[PROCESS] ::{Style.RESET_ALL}"
 
-# Observatory coordinates from astropy-data coordinates/sites.json (IRAF
-# Observatory Database), used when astropy cannot download its site list
-# (e.g. a sandbox with no network), where Observer.at_site() would raise.
-_SITES_OFFLINE = {
-    'lapalma': dict(lon=342.12, lat=28.758333333333333, height=2327),
-    'palomar': dict(lon=243.137, lat=33.356, height=1706),
-}
+# Site longitudes (deg east) from astropy-data coordinates/sites.json (IRAF
+# Observatory Database); only used to work out the observing-night date.
+_SITE_LON = {'lapalma': 342.12, 'palomar': 243.137}
 
-def observer_at_site(site):
-    """Observer.at_site(site), falling back to built-in coordinates offline."""
-    try:
-        return Observer.at_site(site)
-    except Exception:
-        _s = _SITES_OFFLINE[site.lower()]
-        return Observer(location=EarthLocation.from_geodetic(_s['lon']*u.deg, _s['lat']*u.deg, _s['height']*u.m),
-                        name=site)
+def night_date(site='lapalma', now=None):
+    """Date of the current observing night at `site` as 'YYYYMMDD'.
+
+    Noon-to-noon in local mean solar time: from local noon onwards the night
+    carries today's date, before local noon it is still last night. Needs no
+    ephemeris, network or timezone database.
+    """
+    if now is None:
+        now = datetime.datetime.now(datetime.timezone.utc)
+    lon = (_SITE_LON[site.lower()] + 180.) % 360. - 180.
+    return (now + datetime.timedelta(hours=lon/15. - 12.)).strftime('%Y%m%d')
 
 def estimate_seeing(filename):
     print(info_g+f' Estimating the seeing based on the mode of the FWHM of point sources in the field')
@@ -1390,17 +1388,8 @@ class subphot_data():
         #setting correct date of observation
         year,month,dayy = t.strftime("%Y"),t.strftime("%m"),t.strftime("%d")
         today = Time(f'{year}-{month}-{dayy} {TIME}')
-        apo = observer_at_site("lapalma")
-        sun_set_today = apo.sun_set_time(today, which="nearest") #sun set on day of observing
-        time_suns_today = "{0.iso}".format(sun_set_today)[-12:]
-        sun_set_tomorrow = apo.sun_set_time(today,which="next")
-        time_suns_tomorrow = "{0.iso}".format(sun_set_tomorrow)[-12:]
-
-        
-        if time_suns_today<TIME<'23:59:59' and day == '':
-            DAY = TODAY
-        if '00:00:00'<TIME<time_suns_tomorrow and day == '':
-            DAY = lt_data.yesterday(TODAY)
+        if day == '':
+            DAY = night_date('lapalma')
   
         if day !='':
             DAY = str(day)
@@ -1451,17 +1440,8 @@ class subphot_data():
         #setting correct date of observation
         year,month,dayy = t.strftime("%Y"),t.strftime("%m"),t.strftime("%d")
         today = Time(f'{year}-{month}-{dayy} {TIME}')
-        apo = observer_at_site("lapalma")
-        sun_set_today = apo.sun_set_time(today, which="nearest") #sun set on day of observing
-        time_suns_today = "{0.iso}".format(sun_set_today)[-12:]
-        sun_set_tomorrow = apo.sun_set_time(today,which="next")
-        time_suns_tomorrow = "{0.iso}".format(sun_set_tomorrow)[-12:]
-
-        
-        if time_suns_today<TIME<'23:59:59' and day == '':
-            DAY = TODAY
-        if '00:00:00'<TIME<time_suns_tomorrow and day == '':
-            DAY = re.sub('-','',str(t-timedelta(days=1)))
+        if day == '':
+            DAY = night_date('lapalma')
             
 
         if day !='':

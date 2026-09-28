@@ -24,8 +24,8 @@ runs in cloud sessions (`CLAUDE_CODE_REMOTE=true`). It:
 4. Writes `config_files/`. Every file comes from the pipeline's own
    generators except `sex.conv`, which is SExtractor's default 3x3 FWHM=2
    mask (the same filter `autoastrometry.py` writes).
-5. Sets astropy's `auto_download = False` for IERS tables. They are used only
-   for the sunset times printed at start-up.
+5. Sets astropy's `auto_download = False` for IERS tables, so astropy never
+   tries to fetch them in the background.
 
 ## Local inputs to provide
 
@@ -40,8 +40,7 @@ runs in cloud sessions (`CLAUDE_CODE_REMOTE=true`). It:
 
 | Call (file) | Host | When it fires | Offline status |
 |---|---|---|---|
-| `Observer.at_site()` (`subphot_subtract.py`, `subphot_quicklook_pipe.py`) | astropy site list (`astropy.org` / `astropy.github.io`) | **every run**, at start-up. Sunset is used only to decide which night's date (`DATE`) names the output folders; photometry doesn't use it | **Fixed**: `observer_at_site()` falls back to built-in La Palma/Palomar coordinates, so the date logic is unchanged. Before this it raised `UnknownSiteException` offline and the run never started |
-| astropy IERS tables | `datacenter.iers.org`, `maia.usno.navy.mil` | every run (sunset times) | disabled by the hook |
+| astropy IERS tables | `datacenter.iers.org`, `maia.usno.navy.mil` | only if something needs UT1/polar motion; the date logic no longer does | auto-download disabled by the hook |
 | `panstarrs_query` (`subphot_functions.py`) | `archive.stsci.edu` | g/r/i/z zeropoint, alignment and distortion catalogues, stack WCS check | cached: reads `ps_catalogs/ps_<ra>_<dec>_<rad>.xml` when present. On a cache miss it downloads, and offline the reduction crashes |
 | `sdss_query` (`subphot_functions.py`) | `skyserver.sdss.org` | u band or `-s SDSS` / `-sdsscat`, **only when `-refcat` is `auto`** | not called when the CFHT u-band catalogue is passed with `-refcat`. Note it isn't cached |
 | `make_sdss_ref` / `sdss_query_image` | `skyserver.sdss.org`, `dr16.sdss.org` | u band or SDSS references when `-refimg` is `auto` | avoided with `-refimg` |
@@ -52,3 +51,9 @@ runs in cloud sessions (`CLAUDE_CODE_REMOTE=true`). It:
 | LT archive / quicklook downloads | `telescope.livjm.ac.uk` | only morning-roundup / `-qdl` download modes | not used; no passwords are present |
 
 `astropy_ps1_astrometry.py` (MAST) is not imported by the v2 pipeline.
+
+The observing-night date used for folder and log names (`DATE`) comes from
+`night_date()` in `subphot_functions.py`: noon-to-noon in local mean solar time
+at La Palma, or at Palomar for SEDM. It needs no network, ephemeris or site
+download. It replaces the old astroplan sunset calculation, which fetched
+astropy's site list on every start-up.

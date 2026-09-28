@@ -472,19 +472,8 @@ TIME = datetime.datetime.now().strftime("%H:%M:%S")
 year,month,dayy = t.strftime("%Y"),t.strftime("%m"),t.strftime("%d")
 today = Time(f'{year}-{month}-{dayy} {TIME}')
 TODAY = t.strftime("%Y%m%d") #todays date in YYYYMMDD format
-apo = observer_at_site("palomar" if args.telescope_facility in SEDM else "lapalma")
-sun_set_today = apo.sun_set_time(today, which="nearest") #sun set on day of observing
-time_suns_today = "{0.iso}".format(sun_set_today)[-12:]
-sun_set_tomorrow = apo.sun_set_time(today,which="next")
-time_suns_tomorrow = "{0.iso}".format(sun_set_tomorrow)[-12:]
-
-
-if time_suns_today<TIME<'23:59:59':
-    date_ = TODAY
-    DATE = re.sub("-","",date_)
-if '00:00:00'<TIME<time_suns_tomorrow:
-    date_ = str(t - datetime.timedelta(days=1))
-    DATE=re.sub("-","",date_)
+# observing-night date (YYYYMMDD) for folder and log names
+DATE = night_date("palomar" if args.telescope_facility in SEDM else "lapalma")
 
 
 if args.mroundup!=False:
