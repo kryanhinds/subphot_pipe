@@ -1,0 +1,28 @@
+# Python dependencies for subphot_pipe (pip). Versions follow subphot_env.yml
+# where they install on Python 3.11+; see CLOUD_SETUP.md.
+numpy>=1.26,<2
+scipy>=1.11
+pandas>=2.2
+matplotlib>=3.8
+astropy>=6.1,<7
+astroquery>=0.4.7
+astroscrappy>=1.1
+astroalign>=2.5
+astroplan>=0.10
+photutils>=1.13,<2
+reproject>=0.13
+sep>=1.2
+scikit-image>=0.22
+image-registration>=0.2.9
+sip-tpv>=1.1
+shapely>=2.0
+ephem
+requests
+urllib3
+beautifulsoup4
+colorama
+termcolor
+tabulate
+panstamps>=0.6.7
+pytest
+ruff
