@@ -16,6 +16,7 @@ import csv
 import astroplan
 import typing
 from astroplan import Observer
+from astropy.coordinates import EarthLocation
 from typing import Mapping, Optional
 from astropy.time import Time
 from bs4 import BeautifulSoup
@@ -52,6 +53,23 @@ info_b = f"{Fore.CYAN}[INFO]    ::{Style.RESET_ALL}"
 warn_r = f"{Fore.RED}[WARNING] ::{Style.RESET_ALL}"
 warn_y = f"{Fore.YELLOW}[WARNING] ::{Style.RESET_ALL}"
 process_g = f"{Fore.GREEN}[PROCESS] ::{Style.RESET_ALL}"
+
+# Observatory coordinates from astropy-data coordinates/sites.json (IRAF
+# Observatory Database), used when astropy cannot download its site list
+# (e.g. a sandbox with no network), where Observer.at_site() would raise.
+_SITES_OFFLINE = {
+    'lapalma': dict(lon=342.12, lat=28.758333333333333, height=2327),
+    'palomar': dict(lon=243.137, lat=33.356, height=1706),
+}
+
+def observer_at_site(site):
+    """Observer.at_site(site), falling back to built-in coordinates offline."""
+    try:
+        return Observer.at_site(site)
+    except Exception:
+        _s = _SITES_OFFLINE[site.lower()]
+        return Observer(location=EarthLocation.from_geodetic(_s['lon']*u.deg, _s['lat']*u.deg, _s['height']*u.m),
+                        name=site)
 
 def estimate_seeing(filename):
     print(info_g+f' Estimating the seeing based on the mode of the FWHM of point sources in the field')
@@ -1372,7 +1390,7 @@ class subphot_data():
         #setting correct date of observation
         year,month,dayy = t.strftime("%Y"),t.strftime("%m"),t.strftime("%d")
         today = Time(f'{year}-{month}-{dayy} {TIME}')
-        apo = Observer.at_site("lapalma")
+        apo = observer_at_site("lapalma")
         sun_set_today = apo.sun_set_time(today, which="nearest") #sun set on day of observing
         time_suns_today = "{0.iso}".format(sun_set_today)[-12:]
         sun_set_tomorrow = apo.sun_set_time(today,which="next")
@@ -1433,7 +1451,7 @@ class subphot_data():
         #setting correct date of observation
         year,month,dayy = t.strftime("%Y"),t.strftime("%m"),t.strftime("%d")
         today = Time(f'{year}-{month}-{dayy} {TIME}')
-        apo = Observer.at_site("lapalma")
+        apo = observer_at_site("lapalma")
         sun_set_today = apo.sun_set_time(today, which="nearest") #sun set on day of observing
         time_suns_today = "{0.iso}".format(sun_set_today)[-12:]
         sun_set_tomorrow = apo.sun_set_time(today,which="next")

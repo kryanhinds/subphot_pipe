@@ -996,7 +996,7 @@ class subtracted_phot(subphot_data):
         self.TODAY = self.t.strftime("%Y%m%d") #todays date in YYYYMMDD format
         # observing site from the telescope facility flag: Palomar for SEDM/P60, La Palma otherwise
         self.obs_site = "palomar" if self.args.telescope_facility in SEDM else "lapalma"
-        self.apo = Observer.at_site(self.obs_site)
+        self.apo = observer_at_site(self.obs_site)
         self.sun_set_today = self.apo.sun_set_time(self.today, which="nearest") #sun set on day of observing
         self.time_suns_today = "{0.iso}".format(self.sun_set_today)[-12:]
         self.sun_set_tomorrow = self.apo.sun_set_time(self.today,which="next")

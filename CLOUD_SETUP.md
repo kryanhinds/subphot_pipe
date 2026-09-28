@@ -1,75 +1,54 @@
 # Claude Code cloud environment setup
 
-How to run `subphot_pipe` in a Claude Code on the web session (Ubuntu 24.04
-container), for example to rework the GRB 260310A / ZTF26aakjzdt SEDM
-photometry.
+How to run `subphot_pipe` offline in a Claude Code on the web session (Ubuntu
+24.04 container), for example to rework the GRB 260310A photometry.
+
+The cloud environment holds **no credentials**. `subphot_credentials_template.py`
+leaves the Fritz token and LT-archive passwords blank on purpose, and the
+environment's network policy blocks the astronomy services anyway. Every input
+has to be local.
 
 ## What the SessionStart hook does
 
-`.claude/hooks/session-start.sh` (registered in `.claude/settings.json`) runs
-at the start of every cloud session. It does nothing on local machines, where
-`CLAUDE_CODE_REMOTE` is unset. It:
+`.claude/hooks/session-start.sh` (registered in `.claude/settings.json`) only
+runs in cloud sessions (`CLAUDE_CODE_REMOTE=true`). It:
 
-1. `apt-get install`s SExtractor 2.28, SWarp 2.41 and PSFEx 3.24 from the
-   Ubuntu archive, and adds `sex` and `swarp` symlinks because Ubuntu names the
-   binaries `source-extractor` and `SWarp`.
+1. `apt-get install`s SExtractor 2.28, SWarp 2.41 and PSFEx 3.24 and adds
+   `sex` and `swarp` symlinks, because Ubuntu names the binaries
+   `source-extractor` and `SWarp`.
 2. Creates `.venv/` and installs `requirements.txt` into it. Ubuntu's patched
-   system setuptools breaks the sdist builds of `sip-tpv` and `docopt`, so pip
-   has to run in a venv. `.venv/bin` is put first on `PATH` for the session.
-3. Copies `subphot_credentials_template.py` to `subphot_credentials.py` if
-   that file is missing. The template reads everything from environment
-   variables and finds the binaries on `PATH`.
+   system setuptools breaks the `sip-tpv` and `docopt` builds, so pip has to
+   run in a venv.
+3. Copies the credential-free template to `subphot_credentials.py` if that
+   file is missing.
 4. Writes `config_files/`. Every file comes from the pipeline's own
    generators except `sex.conv`, which is SExtractor's default 3x3 FWHM=2
    mask (the same filter `autoastrometry.py` writes).
+5. Sets astropy's `auto_download = False` for IERS tables. They are used only
+   for the sunset times printed at start-up.
 
-The hook is idempotent. It takes about 75 s on a fresh container and about
-13 s on a warm one.
+## Local inputs to provide
 
-## Things you must set in the environment settings
-
-Open the cloud environment menu in the session title bar and choose **Edit**.
-
-### 1. Network access (required)
-
-With the default network policy, the proxy refuses every astronomy service
-the pipeline uses. Add these hosts to the allowed domains, or choose a broader
-access level:
-
-| Host | Used for |
+| Put in the repo root | Used for |
 |---|---|
-| `www.legacysurvey.org` | Legacy Survey reference cutouts (`-s legacy`, which the GRB run used) |
-| `ps1images.stsci.edu` | PS1 reference images |
-| `catalogs.mast.stsci.edu`, `archive.stsci.edu`, `mast.stsci.edu` | PS1 catalogue for zeropoints and astrometry |
-| `skyserver.sdss.org`, `dr16.sdss.org`, `dr12.sdss.org` | SDSS catalogue and images (`-s SDSS`) |
-| `tdc-www.harvard.edu` | `autoastrometry` catalogue queries |
-| `fritz.science` | Fritz upload and queries (`-up`) |
-| `datacenter.iers.org`, `hpiers.obspm.fr` | astropy IERS table updates (optional) |
+| `data/<object>/*.fits` | science frames |
+| `ref_imgs/...` (NOT references, passed with `-refimg`) | template images, so there is no PS1/Legacy/SDSS download |
+| `ps_catalogs/ps_<ra>_<dec>_<rad>.xml` | cached PS1 catalogues; the whole folder from the machine that already ran the reduction |
+| a u-band catalogue file, passed with `-refcat` | u-band zeropoint (see below) |
 
-PyPI, `archive.ubuntu.com` and conda-forge are already reachable.
+## Every outbound call in the pipeline and what triggers it
 
-### 2. Secrets (optional)
+| Call (file) | Host | When it fires | Offline status |
+|---|---|---|---|
+| `Observer.at_site()` (`subphot_subtract.py`, `subphot_quicklook_pipe.py`) | astropy site list (`astropy.org` / `astropy.github.io`) | **every run**, at start-up | **Fixed**: `observer_at_site()` falls back to built-in La Palma/Palomar coordinates. Before this it raised `UnknownSiteException` offline |
+| astropy IERS tables | `datacenter.iers.org`, `maia.usno.navy.mil` | every run (sunset times) | disabled by the hook |
+| `panstarrs_query` (`subphot_functions.py`) | `archive.stsci.edu` | g/r/i/z zeropoint, alignment and distortion catalogues, stack WCS check | cached: reads `ps_catalogs/ps_<ra>_<dec>_<rad>.xml` when present. On a cache miss it downloads, and offline the reduction crashes |
+| `sdss_query` (`subphot_functions.py`) | `skyserver.sdss.org` | **u band** (or `-s SDSS` / `-sdsscat`) whenever `-refcat` is `auto` | **not cached.** Pass `-refcat <file>` for u band |
+| `make_sdss_ref` / `sdss_query_image` | `skyserver.sdss.org`, `dr16.sdss.org` | u band or SDSS references when `-refimg` is `auto` | avoided with `-refimg` |
+| `panstamps` | `ps1images.stsci.edu` | g/r/i/z references when `-refimg` is `auto` and nothing is cached | avoided with `-refimg` |
+| `download_legacy_survey_fits` | `www.legacysurvey.org` | `-s legacy` when `-refimg` is `auto`; skips the download if already in `ref_imgs/` | avoided with `-refimg` |
+| `autoastrometry` | `tdc-www.harvard.edu`, `skyserver.sdss.org` | only with `-reastrom` on non-SEDM frames | don't pass `-reastrom` |
+| Fritz `api` / `SN_data_phot` / photometry POST | `fritz.science` | only with `-up` / `-upf` | don't pass these; the token is blank |
+| LT archive / quicklook downloads | `telescope.livjm.ac.uk` | only morning-roundup / `-qdl` download modes | not used; no passwords are present |
 
-Set these as environment variables. Never commit them.
-
-- `FRITZ_TOKEN`: the Fritz SkyPortal API token. Only needed for `-up`.
-- `SUBPHOT_EMAIL_USER` and `SUBPHOT_EMAIL_PASSWORD`: only needed for `-e`.
-
-Tuning overrides: `SUBPHOT_IMAGE_SIZE`, `SUBPHOT_STARSCALE`,
-`SUBPHOT_SEARCH_RAD`, `SUBPHOT_PATH`.
-
-## Getting the GRB data into the session
-
-The science frames are not in git (`data/` and `grb*/` are ignored). To make
-them available, pick one of these:
-
-- Put `data/ZTF26aakjzdt/` (the SEDM `rc*_ZTF26aakjzdt_*.fits` frames) and,
-  optionally, `ref_imgs/ZTF26aakjzdt_legacysurvey_*.fits` in Google Drive and
-  ask Claude to fetch them through the Drive connector.
-- Push them to a separate data branch or release asset.
-
-Then run:
-
-```bash
-python subphot_subtract.py -f data/ZTF26aakjzdt/ -s legacy -tel SEDM
-```
+`astropy_ps1_astrometry.py` (MAST) is not imported by the v2 pipeline.

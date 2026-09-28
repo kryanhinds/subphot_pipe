@@ -472,7 +472,7 @@ TIME = datetime.datetime.now().strftime("%H:%M:%S")
 year,month,dayy = t.strftime("%Y"),t.strftime("%m"),t.strftime("%d")
 today = Time(f'{year}-{month}-{dayy} {TIME}')
 TODAY = t.strftime("%Y%m%d") #todays date in YYYYMMDD format
-apo = Observer.at_site("palomar" if args.telescope_facility in SEDM else "lapalma")
+apo = observer_at_site("palomar" if args.telescope_facility in SEDM else "lapalma")
 sun_set_today = apo.sun_set_time(today, which="nearest") #sun set on day of observing
 time_suns_today = "{0.iso}".format(sun_set_today)[-12:]
 sun_set_tomorrow = apo.sun_set_time(today,which="next")

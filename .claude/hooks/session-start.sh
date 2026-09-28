@@ -59,5 +59,18 @@ if not cf('align_temp.param'): saq.writeparfile(path)
 if not cf('align_sex.config'): saq.writeconfigfile()
 PY
 
+# No network in the sandbox: stop astropy trying to fetch IERS tables
+# (maia.usno.navy.mil, datacenter.iers.org). Only sunset times use them; the
+# bundled astropy-iers-data tables are ample for that.
+mkdir -p "$HOME/.astropy/config"
+if ! grep -qs '^\[utils.iers.iers\]' "$HOME/.astropy/config/astropy.cfg"; then
+  cat >> "$HOME/.astropy/config/astropy.cfg" <<'CFG'
+
+[utils.iers.iers]
+auto_download = False
+iers_degraded_accuracy = warn
+CFG
+fi
+
 echo 'export PATH="'"$CLAUDE_PROJECT_DIR"'/.venv/bin:$PATH"' >> "$CLAUDE_ENV_FILE"
 echo 'export PYTHONPATH="'"$CLAUDE_PROJECT_DIR"'${PYTHONPATH:+:$PYTHONPATH}"' >> "$CLAUDE_ENV_FILE"
