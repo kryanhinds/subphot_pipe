@@ -60,14 +60,14 @@ _SITE_LON = {'lapalma': 342.12, 'palomar': 243.137}
 def night_date(site='lapalma', now=None):
     """Date of the current observing night at `site` as 'YYYYMMDD'.
 
-    Noon-to-noon in local mean solar time: from local noon onwards the night
-    carries today's date, before local noon it is still last night. Needs no
-    ephemeris, network or timezone database.
+    The night rolls over at 18:00 local mean solar time: from 18:00 onwards
+    the night carries today's date, before 18:00 it is still last night.
+    Needs no ephemeris, network or timezone database.
     """
     if now is None:
         now = datetime.datetime.now(datetime.timezone.utc)
     lon = (_SITE_LON[site.lower()] + 180.) % 360. - 180.
-    return (now + datetime.timedelta(hours=lon/15. - 12.)).strftime('%Y%m%d')
+    return (now + datetime.timedelta(hours=lon/15. - 18.)).strftime('%Y%m%d')
 
 def estimate_seeing(filename):
     print(info_g+f' Estimating the seeing based on the mode of the FWHM of point sources in the field')

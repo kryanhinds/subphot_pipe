@@ -53,7 +53,7 @@ runs in cloud sessions (`CLAUDE_CODE_REMOTE=true`). It:
 `astropy_ps1_astrometry.py` (MAST) is not imported by the v2 pipeline.
 
 The observing-night date used for folder and log names (`DATE`) comes from
-`night_date()` in `subphot_functions.py`: noon-to-noon in local mean solar time
-at La Palma, or at Palomar for SEDM. It needs no network, ephemeris or site
+`night_date()` in `subphot_functions.py`. It rolls over at 18:00 local mean solar
+time at La Palma, or at Palomar for SEDM. It needs no network, ephemeris or site
 download. It replaces the old astroplan sunset calculation, which fetched
 astropy's site list on every start-up.
