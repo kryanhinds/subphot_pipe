@@ -34,16 +34,16 @@ runs in cloud sessions (`CLAUDE_CODE_REMOTE=true`). It:
 | `data/<object>/*.fits` | science frames |
 | `ref_imgs/...` (NOT references, passed with `-refimg`) | template images, so there is no PS1/Legacy/SDSS download |
 | `ps_catalogs/ps_<ra>_<dec>_<rad>.xml` | cached PS1 catalogues; the whole folder from the machine that already ran the reduction |
-| a u-band catalogue file, passed with `-refcat` | u-band zeropoint (see below) |
+| CFHT u-band catalogue, passed with `-refcat` | u-band zeropoint and catalogue fine-registration |
 
 ## Every outbound call in the pipeline and what triggers it
 
 | Call (file) | Host | When it fires | Offline status |
 |---|---|---|---|
-| `Observer.at_site()` (`subphot_subtract.py`, `subphot_quicklook_pipe.py`) | astropy site list (`astropy.org` / `astropy.github.io`) | **every run**, at start-up | **Fixed**: `observer_at_site()` falls back to built-in La Palma/Palomar coordinates. Before this it raised `UnknownSiteException` offline |
+| `Observer.at_site()` (`subphot_subtract.py`, `subphot_quicklook_pipe.py`) | astropy site list (`astropy.org` / `astropy.github.io`) | **every run**, at start-up. Sunset is used only to decide which night's date (`DATE`) names the output folders; photometry doesn't use it | **Fixed**: `observer_at_site()` falls back to built-in La Palma/Palomar coordinates, so the date logic is unchanged. Before this it raised `UnknownSiteException` offline and the run never started |
 | astropy IERS tables | `datacenter.iers.org`, `maia.usno.navy.mil` | every run (sunset times) | disabled by the hook |
 | `panstarrs_query` (`subphot_functions.py`) | `archive.stsci.edu` | g/r/i/z zeropoint, alignment and distortion catalogues, stack WCS check | cached: reads `ps_catalogs/ps_<ra>_<dec>_<rad>.xml` when present. On a cache miss it downloads, and offline the reduction crashes |
-| `sdss_query` (`subphot_functions.py`) | `skyserver.sdss.org` | **u band** (or `-s SDSS` / `-sdsscat`) whenever `-refcat` is `auto` | **not cached.** Pass `-refcat <file>` for u band |
+| `sdss_query` (`subphot_functions.py`) | `skyserver.sdss.org` | u band or `-s SDSS` / `-sdsscat`, **only when `-refcat` is `auto`** | not called when the CFHT u-band catalogue is passed with `-refcat`. Note it isn't cached |
 | `make_sdss_ref` / `sdss_query_image` | `skyserver.sdss.org`, `dr16.sdss.org` | u band or SDSS references when `-refimg` is `auto` | avoided with `-refimg` |
 | `panstamps` | `ps1images.stsci.edu` | g/r/i/z references when `-refimg` is `auto` and nothing is cached | avoided with `-refimg` |
 | `download_legacy_survey_fits` | `www.legacysurvey.org` | `-s legacy` when `-refimg` is `auto`; skips the download if already in `ref_imgs/` | avoided with `-refimg` |
