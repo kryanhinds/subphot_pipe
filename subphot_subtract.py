@@ -1351,7 +1351,7 @@ for filt_band in args.bands_to_process:
 # per-image run log (run_logs/runlog_YYYYMMDD.jsonl): what was requested, the
 # stage each image reached, the photometry and its sanity flags.  Summarise
 # with subphot_run_summary.py.
-runlog.install(data1_path)
+runlog.install(path)   # pipeline root: data1_path may be '' and resolve to cron's cwd '/'
 runlog.instrument(subtracted_phot)
 
 if len(args.ims)>0:
@@ -1364,7 +1364,7 @@ if len(args.ims)>0:
         if str(_im).endswith(('.fz','.fits.gz')):
             _src = _im if os.path.exists(_im) else data1_path+str(_im)
             try:
-                _flat = flatten_multiext_fits(_src, data1_path+'trimmed_sci_imgs')
+                _flat = flatten_multiext_fits(_src, path+'trimmed_sci_imgs')
                 ims[_k] = os.path.relpath(_flat, data1_path)
                 runlog.alias(ims[_k], _im)
                 print(info_g+f' Flattened compressed input {_im} -> {ims[_k]}')
