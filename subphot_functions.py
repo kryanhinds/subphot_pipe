@@ -7,6 +7,8 @@ from urllib3.util.retry import Retry
 from astropy import wcs
 from astropy.io import fits
 from astropy.io.votable import parse_single_table
+from astropy.io import ascii
+import io
 import numpy as np
 import os
 from astropy.coordinates import SkyCoord
@@ -516,42 +518,85 @@ NTHREADS        0               # Number of simultaneous threads for
 ##################################
 # PS1 QUERYY
 
+PS1_CATALOGS_API = 'https://catalogs.mast.stsci.edu/api/v0.1/panstarrs/dr2/mean.csv'
+
+
 def panstarrs_query(ra_deg, dec_deg, rad_deg, logger=None,
-                    mindet=1, 
+                    mindet=1,
                     maxsources=10000,
-                    server=('https://archive.stsci.edu/panstarrs/search.php')): 
+                    server=('https://archive.stsci.edu/panstarrs/search.php')):
     """
-    Query Pan-STARRS DR1 @ MAST
-    parameters: ra_deg, dec_deg, rad_deg: RA, Dec, field 
+    Query Pan-STARRS @ MAST, caching the result in ps_catalogs/.
+    parameters: ra_deg, dec_deg, rad_deg: RA, Dec, field
                                           radius in degrees
                 mindet: minimum number of detection (optional)
                 maxsources: maximum number of sources
-                server: servername
+                server: legacy PS1 DR1 search URL
     returns: astropy.table object
-    """
-    if not os.path.exists(data1_path+'ps_catalogs'):
-      os.makedirs(data1_path+'ps_catalogs')
-    
 
-    if not os.path.exists(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml'):  
-        r = requests.get(server, 
-                params= {'RA': ra_deg, 'DEC': dec_deg, 
-                'SR': rad_deg, 'max_records': maxsources, 
-                'outputformat': 'VOTable', 
-                'ndetections': ('>%d' % mindet)})
-                
-        outf = open(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml', 'w') 
-        outf.write(r.text) 
-        outf.close() 
-        if logger!=None:logger.info(info_g+f" PS1 Catalog downloaded to: "+data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
-        else:print(info_g+f" PS1 Catalog downloaded to: "+data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
-    else:
-        if logger!=None:logger.info(info_g+f" PS1 Catalog already downloaded to: "+data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
-        else:print(info_g+f" PS1 Catalog already downloaded to: "+data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
-    # write query data into local file
-    # parse local file into astropy.table object 
-    data = parse_single_table(data1_path+'ps_catalogs/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml')
-    return data.to_table(use_names_over_ids=True) 
+    Only a real catalogue is ever cached.  The legacy search answers HTTP 200
+    even when its database is down (body "Can't connect to PWMASTDB11"), and
+    that text used to be saved as the .xml and fail every later run.  If the
+    legacy search gives no catalogue, the MAST Catalogs API (PS1 DR2 mean
+    table, same column names) is used instead; its CSV output is requested
+    because its VOTable output declares byte widths as array sizes.  A cached
+    file that cannot be parsed is deleted and fetched again.
+    """
+    _say = logger.info if logger is not None else print
+    cat_dir = data1_path+'ps_catalogs'
+    if not os.path.exists(cat_dir):
+        os.makedirs(cat_dir, exist_ok=True)
+    fname = cat_dir+'/ps_'+str(ra_deg)+'_'+str(dec_deg)+'_'+str(rad_deg)+'.xml'
+
+    if os.path.exists(fname):
+        try:
+            tab = parse_single_table(fname).to_table(use_names_over_ids=True)
+            _say(info_g+f" PS1 Catalog already downloaded to: "+fname)
+            return tab
+        except Exception as e:
+            _say(warn_y+f" Cached PS1 catalog {fname} is unreadable ({str(e)[:80]}), downloading it again")
+            try:
+                os.remove(fname)
+            except OSError:
+                pass
+
+    tab, source = None, None
+    # 1. legacy DR1 search, the source of every catalogue cached so far
+    try:
+        r = requests.get(server, timeout=120,
+                         params={'RA': ra_deg, 'DEC': dec_deg,
+                                 'SR': rad_deg, 'max_records': maxsources,
+                                 'outputformat': 'VOTable',
+                                 'ndetections': ('>%d' % mindet)})
+        if r.status_code == 200 and '<VOTABLE' in r.text[:3000]:
+            tab = parse_single_table(io.BytesIO(r.content)).to_table(use_names_over_ids=True)
+            source = 'PS1 DR1 legacy search'
+        else:
+            _say(warn_y+f" PS1 legacy search returned no catalog (HTTP {r.status_code}: {r.text[:80].strip()!r})")
+    except Exception as e:
+        _say(warn_y+f" PS1 legacy search failed ({str(e)[:120]})")
+
+    # 2. MAST Catalogs API, PS1 DR2 mean table
+    if tab is None:
+        try:
+            r = requests.get(PS1_CATALOGS_API, timeout=180,
+                             params={'ra': ra_deg, 'dec': dec_deg, 'radius': rad_deg,
+                                     'nDetections.gt': mindet, 'pagesize': maxsources})
+            if r.status_code == 200 and r.text.startswith('objName'):
+                tab = ascii.read(r.text, format='csv')
+                source = 'PS1 DR2 MAST Catalogs API'
+            else:
+                _say(warn_y+f" MAST Catalogs API returned no catalog (HTTP {r.status_code}: {r.text[:80].strip()!r})")
+        except Exception as e:
+            _say(warn_y+f" MAST Catalogs API query failed ({str(e)[:120]})")
+
+    if tab is None:
+        raise RuntimeError(f"No PS1 catalog available for RA={ra_deg} Dec={dec_deg} r={rad_deg} deg: "
+                           f"both MAST services failed (see warnings above)")
+
+    tab.write(fname, format='votable', overwrite=True)
+    _say(info_g+f" PS1 Catalog ({source}, {len(tab)} sources) downloaded to: "+fname)
+    return parse_single_table(fname).to_table(use_names_over_ids=True)
 
 ##################################
 # SDSS QUERYY
