@@ -95,9 +95,11 @@ def rel_to_data1(p):
     absolute argument (which is what a cron wrapper naturally passes, e.g.
     -i /data/sedmdrp/redux/.../image.fits) produced a doubled path like
     '/data/.../subphot_pipe//data/sedmdrp/...' and a FileNotFoundError.
-    Absolute paths inside the data root are rewritten as relative; absolute
-    paths outside it are returned unchanged and handled by the callers'
-    os.path.exists() checks.
+    Every absolute path is rewritten relative to the data root, using '../'
+    for paths outside it (e.g. /data/sedmdrp/redux/... when the root is
+    /data/sedmdrp/sedmpy/subphot_pipe/), so 'data1_path + <arg>' always
+    rebuilds the real file.  Returning outside paths unchanged only worked
+    while data1_path was ''.
     """
     try:
         _p = str(p)
@@ -107,9 +109,7 @@ def rel_to_data1(p):
         return _p
     _abs = os.path.abspath(os.path.expanduser(_p))
     _root = os.path.abspath(data1_path)
-    if _abs.startswith(_root + os.sep):
-        return os.path.relpath(_abs, _root)
-    return _p
+    return os.path.relpath(_abs, _root)
 
 
 def safe_makedirs(target, label=''):
@@ -1406,7 +1406,10 @@ if len(args.ims)>0:
             runlog.begin(ims_file, mode='single')
 
             image = re.sub('.fits','',ims_file)
-            if ims_path not in ims_file:
+            # only bare names (from the '*' search above) need the folder put
+            # back; entries with their own directory, e.g. a .fits.gz that was
+            # decompressed into trimmed_sci_imgs/, must be left alone
+            if ims_path and os.path.dirname(ims_file)=='':
                 image=ims_path+'/'+re.sub('.fits','',ims_file)
 
             fits_hdu = fits.open(data1_path+image+'.fits')[0].header
