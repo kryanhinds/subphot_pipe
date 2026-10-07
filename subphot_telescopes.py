@@ -97,3 +97,32 @@ def clean_object_name(raw, return_filter=False):
         parts = parts[:-1]
     return (''.join(parts), filt) if return_filter else ''.join(parts)
 
+
+
+# ---------------------------------------------------------------------------
+# Marshal request-id suffix
+# ---------------------------------------------------------------------------
+# Triggered observations can arrive as '<name>_<request id>', and the pipeline
+# used to drop everything after the first '_'.  EP and GRB pipeline sources are
+# named 'EP-YYMMDD_HHMMSS' / 'GRB-YYMMDD_HHMMSS' on Fritz, where the '_HHMMSS'
+# part IS the object ID, so 'EP-261003_001444' was being cut to 'EP-261003',
+# which does not exist on Fritz.
+import re as _re
+_TIMESTAMPED_NAME = _re.compile(r'^\s*(?:ACQ-)?(?:EP|GRB)-?\d{6}_\d{6}(?!\d)',
+                                _re.IGNORECASE)
+
+
+def split_request_id(raw):
+    """Split a FITS OBJECT value into (name, sep, request_id), like str.partition('_').
+
+    EP-YYMMDD_HHMMSS and GRB-YYMMDD_HHMMSS names keep their '_HHMMSS' suffix;
+    only an underscore *after* that suffix is treated as a request id.
+    All other names behave exactly as str.partition('_').
+    """
+    s = str(raw if raw is not None else '')
+    m = _TIMESTAMPED_NAME.match(s)
+    if m is None:
+        return s.partition('_')
+    head, rest = s[:m.end()], s[m.end():]
+    rest_name, sep, tail = rest.partition('_')
+    return head + rest_name, sep, tail

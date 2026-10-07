@@ -92,3 +92,6 @@ Thumbs.db
 *_fits_list.csv
 coadd.weight.fits
 science_shadow_removed.fits
+
+# per-image run log (subphot_runlog.py)
+run_logs/

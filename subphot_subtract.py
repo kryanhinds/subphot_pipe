@@ -32,6 +32,7 @@ from subphot_functions import *
 import argparse
 from subphot_quicklook_pipe import *
 from subphot_telescopes import header_kw,SEDM,clean_object_name
+import subphot_runlog as runlog
 from astropy.time import Time
 
 # ---------------------------------------------------------------------------
@@ -891,8 +892,32 @@ class multi_subtract():
         elif instrument=='SLT' or instrument=='slt':
             return [string_,'']
 
+    def expand_compressed(self):
+        # folder mode only understands plain *.fits: write a single-HDU .fits next
+        # to every .fits.gz / .fits.fz / .fz (originals kept, existing .fits reused)
+        _dir = f"{self.data1_path}{self.FOLDER}"
+        for _f in sorted(os.listdir(_dir)):
+            if _f.startswith('.') or not _f.endswith(('.fits.gz','.fits.fz','.fz')):
+                continue
+            _base = _f[:-len('.fz')] if _f.endswith('.fz') and not _f.endswith('.fits.fz') else _f.rsplit('.',1)[0]
+            if not _base.endswith('.fits'): _base += '.fits'
+            _out = os.path.join(_dir, _base)
+            if os.path.exists(_out):
+                continue
+            try:
+                with fits.open(os.path.join(_dir, _f)) as _hdul:
+                    _hdu = next((h for h in _hdul if getattr(h,'is_image',False) and h.data is not None), None)
+                    if _hdu is None:
+                        print(warn_y+f' No image data in {_f} — skipping')
+                        continue
+                    fits.PrimaryHDU(data=_hdu.data, header=_hdu.header.copy()).writeto(_out)
+                print(info_g+f' Expanded compressed input {_f} -> {_base}')
+            except Exception as _e:
+                print(warn_y+f' Could not expand {_f}: {_e}')
+
     def analyse_folder(self):
         self.fits_files,self.all_fits,self.all_in_dir = [],[],[]
+        self.expand_compressed()
 
         [self.all_in_dir.append(f) for f in os.listdir(f"{self.data1_path}{self.FOLDER}") if f.endswith('.fits')]
         # print(self.all_in_dir)
@@ -1285,6 +1310,7 @@ def run_subtraction(data_dict):
             # Run the full pipeline via the clean helper
             try:
                 print(info_g+f' Starting reduction sequence on {sub_file[0]}')
+                runlog.begin(sub_file[0] if len(sub_file)==1 else ', '.join(map(str,sub_file)), mode='folder')
                 sub_obj = subtracted_phot(ims=sub_file, args=args)
                 if sub_obj.sys_exit:
                     continue
@@ -1322,6 +1348,12 @@ FILTS=[]
 for filt_band in args.bands_to_process:
     FILTS.append(FILTERS[filt_band]) 
 
+# per-image run log (run_logs/runlog_YYYYMMDD.jsonl): what was requested, the
+# stage each image reached, the photometry and its sanity flags.  Summarise
+# with subphot_run_summary.py.
+runlog.install(data1_path)
+runlog.instrument(subtracted_phot)
+
 if len(args.ims)>0:
     # print('gfefd',args.ims)
     final_phot=[]
@@ -1334,6 +1366,7 @@ if len(args.ims)>0:
             try:
                 _flat = flatten_multiext_fits(_src, data1_path+'trimmed_sci_imgs')
                 ims[_k] = os.path.relpath(_flat, data1_path)
+                runlog.alias(ims[_k], _im)
                 print(info_g+f' Flattened compressed input {_im} -> {ims[_k]}')
             except Exception as _e:
                 print(warn_y+f' Could not flatten {_im}: {_e}')
@@ -1355,6 +1388,7 @@ if len(args.ims)>0:
         progress_start(len(ims), desc='images')
         for i, ims_file in enumerate(ims, 1):
             progress_set(i-1)
+            runlog.begin(ims_file, mode='single')
 
             image = re.sub('.fits','',ims_file)
             if ims_path not in ims_file:
@@ -1422,7 +1456,10 @@ if len(args.ims)>0:
                     pass
                 else:
 
-                    if args.redo_astrometry and sub_obj.telescope not in SEDM:
+                    # SEDM frames are only re-solved when the instrument flagged the WCS
+                    # as unsolved (IQWCS=False): then the header holds just the pointing
+                    _unsolved_sedm = sub_obj.telescope in SEDM and getattr(sub_obj,'wcs_solved',None) is False
+                    if (args.redo_astrometry and sub_obj.telescope not in SEDM) or _unsolved_sedm:
                         sub_obj.resolve_astrometry()
                     sub_obj.bkg_subtract()
                     sys_exit=sub_obj.sys_exit
@@ -1551,6 +1588,7 @@ if len(args.ims)>0:
 
 
 
+        runlog.begin(', '.join(map(str,ims)), mode='stack')
         sub_obj = subtracted_phot(ims=ims,args=args)
         sys_exit=sub_obj.sys_exit
 
@@ -1567,7 +1605,10 @@ if len(args.ims)>0:
                 pass
             else:
 
-                if args.redo_astrometry and sub_obj.telescope not in SEDM:
+                # SEDM frames are only re-solved when the instrument flagged the WCS
+                # as unsolved (IQWCS=False): then the header holds just the pointing
+                _unsolved_sedm = sub_obj.telescope in SEDM and getattr(sub_obj,'wcs_solved',None) is False
+                if (args.redo_astrometry and sub_obj.telescope not in SEDM) or _unsolved_sedm:
                     sub_obj.resolve_astrometry()
                 sub_obj.bkg_subtract()
                 sys_exit=sub_obj.sys_exit

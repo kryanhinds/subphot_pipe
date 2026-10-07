@@ -79,17 +79,25 @@ def flatten_multiext_fits(path_in, out_dir):
     fpack-compressed (.fz) and multi-extension files keep their image in a
     later HDU, which the pipeline's fits.open(...)[0] accesses would miss.
     If the primary HDU already holds data the input path is returned unchanged."""
+    base = os.path.basename(path_in)
+    for suf in ('.fits.fz','.fits.gz','.fz','.gz','.fits'):
+        if base.endswith(suf):
+            base = base[:-len(suf)]
+            break
     hdul = fits.open(path_in)
     try:
         if hdul[0].data is not None:
-            return path_in
+            # plain single-HDU file: nothing to do unless it is gzipped, since
+            # downstream code rebuilds paths as <name>.fits (a '.fits.gz' input
+            # otherwise became '<name>.gz.fits' and failed to open)
+            if not str(path_in).endswith('.gz'):
+                return path_in
+            if not os.path.exists(out_dir): os.makedirs(out_dir, exist_ok=True)
+            out = os.path.join(out_dir, base+'.fits')
+            fits.PrimaryHDU(data=hdul[0].data, header=hdul[0].header.copy()).writeto(out, overwrite=True)
+            return out
         for hdu in hdul[1:]:
             if getattr(hdu,'is_image',False) and hdu.data is not None:
-                base = os.path.basename(path_in)
-                for suf in ('.fits.fz','.fits.gz','.fz','.fits'):
-                    if base.endswith(suf):
-                        base = base[:-len(suf)]
-                        break
                 if not os.path.exists(out_dir): os.makedirs(out_dir, exist_ok=True)
                 out = os.path.join(out_dir, base+'_flat.fits')
                 fits.PrimaryHDU(data=hdu.data, header=hdu.header.copy()).writeto(out, overwrite=True)
@@ -1446,7 +1454,7 @@ class subtracted_phot(subphot_data):
                     self.sci_utstart = self.sci_img_hdu.header[self.DATE_kw].split('T')[1]
                 else:
                     self.sci_utstart = self.sci_img_hdu.header[self.UTS_kw]
-                self.sci_obj, self.sep, self.tail = self.sci_obj.partition('_')
+                self.sci_obj, self.sep, self.tail = split_request_id(self.sci_obj)
                 
                 if self.AIRM_kw=='-':
                     self.sci_airmass = ''
@@ -1478,7 +1486,7 @@ class subtracted_phot(subphot_data):
                     self.sci_prop = None
 
             
-                self.sci_obj, self.sep, self.tail = self.sci_obj.partition('_') #tail should be the request id from marshal triggering if there is one
+                self.sci_obj, self.sep, self.tail = split_request_id(self.sci_obj) #tail should be the request id from marshal triggering if there is one
                 # [OBJ] one canonical rule for every facility: strips a leading
                 # 'ACQ-' and a trailing filter token, keeps hyphenated names,
                 # and no longer truncates 'AT 2026fgk' to 'AT'
@@ -1764,7 +1772,7 @@ class subtracted_phot(subphot_data):
             
                 try:self.sci_utstart = self.sci_img_hdu.header[self.UTS_kw]
                 except:self.sci_utstart = self.sci_img_hdu.header[self.DATE_kw].split('T')[1]
-                self.sci_obj, self.sep, self.tail = self.sci_obj.partition('_')
+                self.sci_obj, self.sep, self.tail = split_request_id(self.sci_obj)
                 # [OBJ] canonical object name (see clean_object_name)
                 self.sci_obj = clean_object_name(self.sci_obj) or self.sci_obj
                 self._check_wcs_flag()
@@ -2155,7 +2163,20 @@ class subtracted_phot(subphot_data):
         # fields (this one at Dec +71.8 returns 0 objects).  Fall back through
         # the others if a query comes back empty.
         _cats = ['ub2', 'sdss', 'tmc']
-        print(info_g+f' Re-solving astrometry with autoastrometry: {_in}')
+        # seed the solve at the image centre per the header WCS, not the pointing:
+        # SEDM rc quadrant cuts sit ~5-7' from the telescope RA/DEC, far enough
+        # that the catalogue patch barely overlaps the image and nothing matches
+        _seed_ra, _seed_dec = float(self.sci_c.ra.deg), float(self.sci_c.dec.deg)
+        try:
+            _h = fits.getheader(_in)
+            _w = WCS(_h).celestial
+            if _w.has_celestial:
+                _cen = _w.pixel_to_world(_h['NAXIS1']/2., _h['NAXIS2']/2.)
+                _seed_ra, _seed_dec = float(_cen.ra.deg), float(_cen.dec.deg)
+        except Exception as _e:
+            print(warn_y+f' Could not read header WCS centre ({_e}) — seeding at pointing')
+        print(info_g+f' Re-solving astrometry with autoastrometry: {_in} '
+                     f'(seed {_seed_ra:.4f}, {_seed_dec:.4f})')
         # autoastrometry drops sex.config/sex.conv/temp.param/temp.cat into the CWD
         # and only regenerates sex.config when it is absent — a stale one in the
         # repo root points at a temp.param that no longer exists and SExtractor
@@ -2175,8 +2196,8 @@ class subtracted_phot(subphot_data):
                 if os.path.exists(_out):
                     os.remove(_out)
                 _res = autoastrometry(_in, pixelscale=float(self.sci_ps),
-                                      userra=float(self.sci_c.ra.deg),
-                                      userdec=float(self.sci_c.dec.deg),
+                                      userra=_seed_ra,
+                                      userdec=_seed_dec,
                                       catalog=_cat, outfile=_out, quiet=True)
                 if isinstance(_res, tuple) and len(_res) >= 6 and os.path.exists(_out):
                     print(info_g+f' Astrometric catalogue used: {_cat}')
@@ -6156,19 +6177,28 @@ class subtracted_phot(subphot_data):
             print(warn_y + f' [V2] Median-zp filter would leave <2 stars '
                            f'({_keep_med.sum()}) — skipping to keep all')
 
-        self.zp_sci_new,self.zp_ref_new=sigma_clip(self.zp_sci,sigma=3,maxiters=4),sigma_clip(self.zp_ref,sigma=3,maxiters=4)
-        self.zp_sci_new=self.zp_sci_new[~self.zp_sci_new.mask]
-        self.zp_ref_new=self.zp_ref_new[~self.zp_ref_new.mask]
-        if len(self.zp_sci_new)==len(self.zp_sci) or len(self.zp_ref_new)==len(self.zp_ref):
+        # one joint mask for zp_sci/zp_ref/rsq_sci/rsq_ref — clipping them separately
+        # desynchronised the arrays and crashed the rsq indexing below
+        self.zp_sci,self.zp_ref = np.asarray(self.zp_sci),np.asarray(self.zp_ref)
+        _clip_sci = np.ma.getmaskarray(sigma_clip(self.zp_sci,sigma=3,maxiters=4))
+        _clip_ref = np.ma.getmaskarray(sigma_clip(self.zp_ref,sigma=3,maxiters=4))
+        _keep = ~_clip_sci & ~_clip_ref
+        if not _clip_sci.any() or not _clip_ref.any():
             print(warn_y+' No stars removed after sigma clipping')
             if len(self.zp_sci)>=5 and len(self.zp_ref)>=5 and self.sci_filt!='u':
                 print(info_g+f' Removing stars with zp values outside 5th and 95th percentiles')
                 _p5_sci, _p95_sci = np.percentile(self.zp_sci, [5, 95])
                 _p5_ref, _p95_ref = np.percentile(self.zp_ref, [5, 95])
-                self.zp_sci_new = self.zp_sci[(self.zp_sci > _p5_sci) & (self.zp_sci < _p95_sci)]
-                self.zp_ref_new = self.zp_ref[(self.zp_ref > _p5_ref) & (self.zp_ref < _p95_ref)]
-            
-        self.zp_sci,self.zp_ref = np.array(self.zp_sci_new),np.array(self.zp_ref_new)
+                _keep_pct = _keep & (self.zp_sci > _p5_sci) & (self.zp_sci < _p95_sci) \
+                                  & (self.zp_ref > _p5_ref) & (self.zp_ref < _p95_ref)
+                if _keep_pct.sum() >= 3:
+                    _keep = _keep_pct
+        if _keep.sum() < 2:
+            _keep = np.ones(len(self.zp_sci), dtype=bool)
+
+        self.zp_sci,self.zp_ref = self.zp_sci[_keep],self.zp_ref[_keep]
+        if len(self.rsq_sci)==len(_keep):
+            self.rsq_sci,self.rsq_ref = np.asarray(self.rsq_sci)[_keep],np.asarray(self.rsq_ref)[_keep]
         print(info_g+' Number of stars after sigma clipping: '+str(len(self.zp_sci)))
         # sys.exit()
 
@@ -6461,8 +6491,21 @@ class subtracted_phot(subphot_data):
             # gets reverted (see below, after _bkg_std).
             _ns_fit = self.psf_fit_noshift([self.sn_cutout], psf_array=psf)[0]
             _sh_flux, _ns_flux = float(self.main_sn_psf_fit[0]), float(_ns_fit[0])
-            if _sh_flux > 0 and (_ns_flux <= 0 or _sh_flux > 1.5 * _ns_flux):
+            # a shift within one PSF FWHM stays on the same blob as the forced
+            # position — that is a centroid refinement (WCS offsets of ~0.5"
+            # on NOT/ALFOSC halve the forced flux), not a latch onto a residual.
+            # Shifts are in fit-grid pixels; the *_arc values use sci_ps, which
+            # is the native scale, not the aligned grid's.
+            _psf_fwhm_px = 2.0 * np.sqrt(np.sum(psf >= 0.5 * np.max(psf)) / np.pi)
+            # already reverted to a no-shift fit upstream -> 3-element result, zero shift
+            _shift_px = float(np.hypot(self.main_sn_psf_fit[3], self.main_sn_psf_fit[4])) \
+                if len(self.main_sn_psf_fit) > 4 else 0.0
+            if _sh_flux > 0 and (_ns_flux <= 0 or _sh_flux > 1.5 * _ns_flux) \
+                    and _shift_px > _psf_fwhm_px:
                 self._latch_candidate = _ns_fit
+            elif _sh_flux > 1.5 * max(_ns_flux, 0):
+                print(info_g + f' [SN-fix] Shifted fit {_shift_px:.2f} px (< PSF FWHM {_psf_fwhm_px:.2f} px) '
+                               f'recovers {_sh_flux:.1f} vs forced {_ns_flux:.1f} — keeping the shifted fit')
 
         psf_size=np.shape(psf)[0]+1
         #chose num number of coordinates to calculate the magnitude error within the image size but outside the psf
@@ -7064,12 +7107,78 @@ class subtracted_phot(subphot_data):
                 "ra":self.ra_string,"dec":self.dec_string,"exp_t":self.sci_exp_time,"flux":self.mag[11],"flux_err":self.mag[12],'seeing':self.sci_seeing,'SNR':self.SNR}
 
 
+    # ------------------------------------------------------------------
+    # Fritz upload
+    # ------------------------------------------------------------------
+    # Request policy (after Fritz admins saw ~24k POSTs in 17 min for an object
+    # that did not exist, 2026-10-03):
+    #   * only HTTP 429 is retried, at most FRITZ_MAX_RETRIES times, spaced by
+    #     FRITZ_RETRY_WAIT_S (longer if the server sends a bigger Retry-After)
+    #   * any other error (400/403/404/5xx, network) is reported and NOT retried
+    #   * nothing is posted unless the existing photometry was read successfully,
+    #     so a missing source or a failed read never leads to a blind upload
+    #   * a point is never uploaded if one with the same filter, instrument,
+    #     origin and MJD is already on Fritz.  With --upfritz_f or a stack the
+    #     old point is deleted first, and the upload only goes ahead if every
+    #     delete succeeded.
+    FRITZ_URL = 'https://fritz.science'
+    FRITZ_MAX_RETRIES = 3       # retries after the first attempt, 429 only
+    FRITZ_RETRY_WAIT_S = 60     # spacing between retries
+    FRITZ_RETRY_WAIT_MAX_S = 300
+    FRITZ_MJD_TOL = 1e-5        # days (~0.9 s): same MJD means same exposure
+    FRITZ_STACK_TOL = 0.005     # days: window for replacing a stacked point
+
+    def fritz_request(self, method, endpoint, json=None):
+        """One Fritz API call that retries only on HTTP 429.
+
+        Returns the final requests.Response, or None if the request could not
+        be sent at all (network error / timeout), which is never retried.
+        """
+        method = method.upper()
+        url = urllib.parse.urljoin(self.FRITZ_URL, endpoint)
+        headers = {'Authorization': f'token {token}'}
+        response = None
+        for attempt in range(self.FRITZ_MAX_RETRIES + 1):
+            try:
+                response = requests.request(method, url, json=json, headers=headers, timeout=60)
+            except requests.exceptions.RequestException as e:
+                print(warn_r+f' Fritz {method} {endpoint} failed ({e}), not retrying')
+                return None
+            if response.status_code != 429:
+                return response
+            if attempt == self.FRITZ_MAX_RETRIES:
+                break
+            wait = self.FRITZ_RETRY_WAIT_S
+            try:
+                wait = min(max(wait, float(response.headers.get('Retry-After'))), self.FRITZ_RETRY_WAIT_MAX_S)
+            except (TypeError, ValueError):
+                pass
+            print(warn_y+f' Fritz rate limit (429) on {method} {endpoint}, '
+                         f'retry {attempt+1}/{self.FRITZ_MAX_RETRIES} in {wait:.0f}s')
+            time.sleep(wait)
+        print(warn_r+f' Fritz still rate limiting {method} {endpoint} after '
+                     f'{self.FRITZ_MAX_RETRIES} retries, giving up')
+        return response
+
+    @staticmethod
+    def _fritz_error(response):
+        """Short description of a failed Fritz response for logging."""
+        if response is None:
+            return 'no response'
+        try:
+            msg = response.json().get('message', '')
+        except Exception:
+            msg = response.text[:200]
+        return f'HTTP {response.status_code}: {msg}'
+
     def delete_photometry(self,phot_id_data):
-        self.response = api("delete", f"api/photometry/{phot_id_data['phot_id']}")
-        if str(self.response.status_code)=='200':
+        """Delete one Fritz photometry point. Returns True on success."""
+        self.response = self.fritz_request('delete', f"api/photometry/{phot_id_data['phot_id']}")
+        if self.response is not None and self.response.status_code==200:
             print(info_g+f" Successfully deleted photometry for phot ID: {phot_id_data['phot_id']}, mjd: {phot_id_data['mjd']}")
-        else:
-            print(warn_r+f" Unable to delete photometry for phot ID: {phot_id_data['phot_id']},mjd: {phot_id_data['mjd']} STATUS CODE={self.response.status_code}")
+            return True
+        print(warn_r+f" Unable to delete photometry for phot ID: {phot_id_data['phot_id']}, mjd: {phot_id_data['mjd']} ({self._fritz_error(self.response)})")
+        return False
 
 
     def save_to_group(obj_id):
@@ -7096,32 +7205,42 @@ class subtracted_phot(subphot_data):
         return
 
     def upload_phot(self):
-        try:save_to_group(self.sci_obj,1754)
-        except:pass
+        """Upload this epoch's detection or upper limit to Fritz, at most once.
+
+        Returns the payload dict (self.data). self.fritz_uploaded says whether
+        a point was actually posted.
+        """
         print(info_g+f" Attempting to upload photometry")
+        self.fritz_uploaded = False
+        self.upload_new = False
+        self.fritz_status, self.fritz_detail = 'not_attempted', None   # read by the run log
 
-        # print(self.mag[0]+self.mag_all_err,self.mag[3],self.mag[0]+self.mag_all_err>self.mag[3])
-        if self.SNR<=3 or self.mag[0]+self.mag_all_err>self.mag[3]:
-            print(warn_r+f' S/N of {self.SNR:.2f} or mag+magerr of {self.mag[0]+self.mag_all_err:.2f} > maglim of {self.mag[3]:.2f}, uploading limit')
-            self.mag=[99.0,90.0,99.0,self.mag[3]]
-        
+        # -- detection or limit ------------------------------------------------
+        mag, lim = self.mag[0], self.mag[3]
+        is_limit = (self.SNR<=3 or not np.isfinite(mag) or mag>40
+                    or mag+self.mag_all_err>lim)
+        if is_limit:
+            print(warn_r+f' S/N of {self.SNR:.2f} or mag+magerr of {mag+self.mag_all_err:.2f} > maglim of {lim:.2f}, uploading limit')
+            self.mag = [99.0,90.0,99.0,lim]
 
-        
-        # if self.sci_obj.startswith('AT') or self.sci_obj.startswith('SN'):self.sci_obj = self.sci_obj[2:]
-        self.data = {"filter":f"sdss{self.sci_filt}","magerr": self.mag_all_err,"obj_id": self.sci_obj,
-                    "mag":self.mag[0],"limiting_mag": self.mag[3],"mjd": self.sci_mjd,"magsys": "ab","group_ids":'all'}
-        # return 
-        # Instrument & origin from the telescope. SEDM stays at Fritz instrument id 2;
-        # for LT (IO:O) the id is looked up on Fritz by instrument name at upload time.
-        # Any failure falls back to SEDM's id so uploads never silently break.
+        # -- Fritz object name -------------------------------------------------
+        # EP-/GRB- names keep their _HHMMSS suffix (see split_request_id)
+        self.name = self.sci_obj
+        if any(X in self.name for X in ['-ugriz','-griz','-gri']):
+            self.name = re.sub(r'-ugriz|-griz|-gri', '', self.name)
+        if self.name.startswith('SN') or self.name.startswith('AT'):
+            self.name = self.name[2:]
+
+        # -- instrument & origin -------------------------------------------------
+        # SEDM stays at Fritz instrument id 2; other telescopes are looked up on
+        # Fritz by instrument name, falling back to SEDM's id if that fails.
         self.fritz_instrument_id,self.fritz_origin = 2,'SEDM_SUBPHOT_KPIPE'
         if self.telescope not in SEDM:
             _inst_name = {'Liverpool Telescope':'IOO','SLT':'SLT','TJO':'MEIA3',
                           'GTC-OSIRIS':'OSIRIS','GTC-HIPERCAM':'HiPERCAM'}.get(self.telescope)
             if _inst_name is not None:
+                _r = self.fritz_request('get', 'api/instrument')
                 try:
-                    _r = requests.get('https://fritz.science/api/instrument',
-                                      headers={'Authorization': f'token {token}'})
                     _match = [i for i in _r.json()['data'] if i['name']==_inst_name]
                     if len(_match)>0:
                         self.fritz_instrument_id = int(_match[0]['id'])
@@ -7130,195 +7249,96 @@ class subtracted_phot(subphot_data):
                     else:
                         print(warn_y+f' Instrument {_inst_name} not found on Fritz; defaulting to SEDM (id 2)')
                 except Exception as _e:
-                    print(warn_y+f' Fritz instrument lookup failed ({_e}); defaulting to SEDM (id 2)')
-        self.data['instrument_id'],self.data['origin']=str(self.fritz_instrument_id),self.fritz_origin
-        self.upload_new=True
-        self.data['altdata'] = {}
-        if self.if_stacked==True:self.data['altdata']['stacked'],self.data['altdata']['no_in_stack']= True,self.no_stacked
+                    print(warn_y+f' Fritz instrument lookup failed ({self._fritz_error(_r)}); defaulting to SEDM (id 2)')
 
-        self.data['altdata']['Reducer'] = 'K-Ryan Hinds'
-        # self.data['altdata']['Proposal PI'] = 'Dan Perley'
-        # self.data['altdata']['exptime'] = self.sci_exp_time
-        # self.data['altdata']['seeing'] = self.sci_seeing
-        # if self.sci_prop!=None:
-        #     self.data['altdata']['Proposal ID']=self.sci_prop
-        #     if self.sci_prop in ['JL24A04','JL24B14']:self.data['altdata']['Proposal PI'] = 'K-Ryan Hinds'
-        #     elif self.sci_prop in ['JL24B15','JL25A01']:self.data['altdata']['Proposal PI'] = 'Jacob Wise'
-        #     elif self.sci_prop in ['JL24B10']:self.data['altdata']['Proposal PI'] = 'Chris Copperwheat'
-
-
-
-        self.name=self.sci_obj
-
-        if any(X in self.name for X in ['-ugriz','-griz','-gri']):
-            self.name = re.sub(r'-ugriz|-griz|-gri', '', self.name)
-
-        if self.name.startswith('SN') or self.name.startswith('AT'):
-            self.name = self.name[2:]
-
-        self.data['obj_id'] = self.name
+        # -- payload ---------------------------------------------------------------
+        self.data = {'filter':f"sdss{self.sci_filt}",'mjd':self.sci_mjd,'obj_id':self.name,
+                     'magsys':'ab','group_ids':'all','limiting_mag':lim,
+                     'instrument_id':str(self.fritz_instrument_id),'origin':self.fritz_origin,
+                     'altdata':{'Reducer':'K-Ryan Hinds'}}
+        if is_limit:
+            self.data.update({'mag':None,'magerr':None,'limiting_mag_nsigma':5})
+            self.data['altdata']['exptime'] = self.sci_exp_time
+            self.data['altdata']['seeing'] = self.sci_seeing
+        else:
+            self.data.update({'mag':self.mag[0],'magerr':self.mag_all_err})
+        if self.if_stacked==True:
+            self.data['altdata']['stacked'],self.data['altdata']['no_in_stack'] = True,self.no_stacked
 
         [print(key+': '+str(item)) for key,item in self.data.items()]
         print(info_g+f' Fritz page: https://fritz.science/source/{self.name}')
 
-        if self.mag[0]>40:
-            print(warn_r+f' Magnitude of {self.mag[0]} recorded, not uploading magnitude')
-            if self.mag[3]<30:
-                print(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} recorded, attempting to upload, checking if already uploaded')
-                # self.upload_new=False
-                # if self.upload_new==False:
-                #     print(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} already uploaded, not uploading')
-                #     [print(key,item) for key,item in self.data.items()]
-                #     return
-                
-                # return 
-                self.all_fritz_data = self.SN_data_phot(self.name)
-                self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==self.fritz_instrument_id and self.all_fritz_data['filter'].iloc[ind]==self.data['filter'] and self.all_fritz_data['origin'].iloc[ind]==self.fritz_origin]
-
-                self.on_fritz_mjd = [np.round(self.all_fritz_data['mjd'].iloc[ind],6) for ind in self.fritz_ind]
-                self.on_fritz_id = [self.all_fritz_data['id'].iloc[ind] for ind in self.fritz_ind]
-                self.on_fritz_mag = [np.round(self.all_fritz_data['limiting_mag'].iloc[ind],3) for ind in self.fritz_ind]
-                self.upload_new=True  #identifier to update photometry in the case of stacking
-
-                if self.sci_mjd in self.on_fritz_mjd:
-                    print(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} already uploaded, checking if it is the same')
-                    self.upload_new=False
-                    if any(abs(self.on_fritz_mag[ind]-self.mag[3])<0.1 for ind in range(len(self.on_fritz_mag))) or any(self.on_fritz_mag[ind]==np.round(self.mag[3],3) for ind in range(len(self.on_fritz_mag))):
-                        print(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} already uploaded, not uploading')
-                        self.sys_exit=True 
-                        return
-                    else:   
-                        print(info_g+f' Limiting magnitude of {np.round(self.mag[3],3)} not uploaded, uploading')
-                        self.upload_new=True
-
-                if self.upload_new==True:
-                    self.data = {'filter':f"sdss{self.sci_filt}",'mag':None,'magerr':None,'mjd':self.sci_mjd,'limiting_mag_nsigma':5,'obj_id':self.sci_obj,'origin':self.fritz_origin,
-                                        'magsys':'ab','group_ids':'all','limiting_mag':self.mag[3],'instrument_id':str(self.fritz_instrument_id),}
-                    self.data['altdata'] = {}
-
-
-                    self.data['altdata']['Reducer'] = 'K-Ryan Hinds'
-                    # self.data['altdata']['Proposal PI'] = 'Dan Perley'
-                    self.data['altdata']['exptime'] = self.sci_exp_time
-                    self.data['altdata']['seeing'] = self.sci_seeing
-                    # if self.sci_prop!=None:
-                        # self.data['altdata']['Proposal ID']=self.sci_prop
-                        # if self.sci_prop in ['JL24A04','JL24B14']:self.data['altdata']['Proposal PI'] = 'K-Ryan Hinds'
-                        # elif self.sci_prop in ['JL24B15']:self.data['altdata']['Proposal PI'] = 'Jacob Wise'
-
-                    # if self.if_stacked==True:self.data['altdata']['stacked'],self.data['altdata']['no_in_stack']= True,self.no_stacked
-                    
-
-                    self.start_upl_time = time.time()
-                    attempts=0
-                    while True:
-                        self.response = requests.post(url=f"https://fritz.science/api/photometry",headers = {'Authorization': f'token {token}'} ,json=self.data)
-
-                        if self.response.status_code==200:
-                            break
-                        if time.time()-self.start_upl_time>60 and attempts<=1:
-                            print(warn_y+f' Upload timed out, waiting 30s and trying again')
-                            time.sleep(30)
-                            attempts+=1
-                            self.start_upl_time = time.time()
-                        elif time.time()-self.start_upl_time>60 and attempts>1:
-                            print(warn_r+f' Upload timed out, giving up')
-                            break
-                    
+        if is_limit and not (np.isfinite(lim) and lim<30):
+            print(warn_r+f' No detection and limiting magnitude of {lim} is not usable, not uploading')
+            self.fritz_status, self.fritz_detail = 'skipped_unusable_limit', f'limiting mag {lim}'
             return self.data
-      
-        self.t = date.today()
-        self.now = datetime.datetime.now()
-        self.current_time = self.now.strftime("%H:%M:%S")
-        self.data_mjd = np.round(self.data['mjd'],6)
-        self.smallest_mjd=np.min(self.MJD)
-        if len(self.MJD)==1:
-            self.MJD = [self.data_mjd+0.000001,self.data_mjd,self.data_mjd-0.000001]
-        else:
-            for m in range(len(self.MJD)):
-                self.MJD.append(self.MJD[m]+0.000001)
-                self.MJD.append(self.MJD[m]-0.000001)
 
-        self.MJD = np.sort(self.MJD)
-        
-        try:
-            self.all_fritz_data = self.SN_data_phot(self.name)
-            # print(self.all_fritz_data)
-            # if len(self.all_fritz_data)==0:
-            #     self.all_fritz_data = self.SN_data_phot(self.name[2:])
-            self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==self.fritz_instrument_id and self.all_fritz_data['filter'].iloc[ind]==self.data['filter'] and self.all_fritz_data['origin'].iloc[ind]==self.fritz_origin]
+        # -- what is already on Fritz? ---------------------------------------------
+        # A failed read (missing source, no access, outage) means we cannot rule
+        # out a duplicate, so nothing is posted.
+        _r = self.fritz_request('get', f'api/sources/{self.name}/photometry')
+        if _r is None or _r.status_code!=200:
+            print(warn_r+f' Could not read Fritz photometry for {self.name} ({self._fritz_error(_r)}), not uploading. '
+                         f'Check that the source exists on Fritz under this exact name.')
+            self.fritz_status, self.fritz_detail = 'read_failed', f'{self.name}: {self._fritz_error(_r)}'
+            return self.data
+        _existing = _r.json().get('data') or []
+        self.all_fritz_data = pd.DataFrame(_existing)
+        _same = [p for p in _existing
+                 if str(p.get('instrument_id'))==str(self.fritz_instrument_id)
+                 and p.get('filter')==self.data['filter']
+                 and p.get('origin')==self.fritz_origin
+                 and p.get('mjd') is not None]
 
-            self.on_fritz_mjd = [np.round(self.all_fritz_data['mjd'].iloc[ind],6) for ind in self.fritz_ind]
-            self.on_fritz_id = [self.all_fritz_data['id'].iloc[ind] for ind in self.fritz_ind]
-            self.on_fritz_mag = [np.round(self.all_fritz_data['mag'].iloc[ind],3) for ind in self.fritz_ind]
-            self.upload_new=True  #identifier to update photometry in the case of stacking
+        _epochs = [float(self.sci_mjd)] + [float(m) for m in (self.MJD or [])]
+        def _same_epoch(p):
+            return any(abs(p['mjd']-m)<self.FRITZ_MJD_TOL for m in _epochs)
+        def _same_values(p):
+            if is_limit:
+                return (p.get('mag') is None and p.get('limiting_mag') is not None
+                        and abs(p['limiting_mag']-lim)<1e-3)
+            return p.get('mag') is not None and abs(p['mag']-self.mag[0])<1e-3
 
-            if self.if_stacked==True or self.upfritz_f==True:
-                try:
-                    self.del_ind = np.abs(self.on_fritz_mjd-self.smallest_mjd).argmin()
-                    self.del_id,self.del_mjd,self.del_mag = self.on_fritz_id[self.del_ind], self.on_fritz_mjd[self.del_ind], self.on_fritz_mag[self.del_ind]
-            
-                    #if there is photometry on fritz that was uploaded with an mjd thats within 0.005 days of this current measurement, we want to delete and replace with the stacked version
-                    #this uses the delete photometry function and then uploads this new photometric point 
-                    if abs(np.round(self.sci_mjd,6)-self.del_mjd)<0.005:  
-                        deletion_dict = {'phot_id':self.del_id,'mjd':self.del_mjd}
-                        print(info_g+f" Updating photometric point with phot ID: {self.del_id}")
-                        self.upload_new=True
-                        self.delete_photometry(deletion_dict)
-
-                        #update the photometry downloadeds
-                        self.all_fritz_data = self.SN_data_phot(self.name)
-                        self.fritz_ind = [ind for ind,val in enumerate(self.all_fritz_data['instrument_id']) if val==self.fritz_instrument_id and self.all_fritz_data['filter'].iloc[ind]==self.data['filter'] and self.all_fritz_data['origin'].iloc[ind]==self.fritz_origin]
-
-                        self.on_fritz_mjd = [np.round(self.all_fritz_data['mjd'].iloc[ind],6) for ind in self.fritz_ind]
-                        self.on_fritz_id = [self.all_fritz_data['id'].iloc[ind] for ind in self.fritz_ind]
-                        self.on_fritz_mag = [np.round(self.all_fritz_data['mag'].iloc[ind],3) for ind in self.fritz_ind]
-
-
-
-                except:
-                    print(info_g+f" No photometry to delete for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']}, proceeding with upload")
-
-            if any(x in self.on_fritz_mjd for x in self.MJD)==True and self.upload_new!=True:
-                print(info_g+f" Data taken for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']} already uploaded, not uploading")
-                # print(0,'-------------------')
-                self.upload_new=False
-
-
-            elif (all(x not in self.on_fritz_mjd for x in self.MJD)==True and self.upload_new!=False)==True or (self.if_stacked==True and self.upload_new!=False and np.round(self.sci_mjd,6) not in self.on_fritz_mjd)==True:
-                print(info_g+f" Data taken for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']} not uploaded, proceeding with upload")
-                
-                #uploading data
-                self.start_upl_time = time.time()
-                self.response = requests.post(url=f"https://fritz.science/api/photometry",headers = {'Authorization': f'token {token}'} ,json=self.data)
-                print(self.response)
-                # while True:
-                #     #sleep for 5 seconds and try again if the upload fails
-                #     time.sleep(5)
-                #     self.response = requests.post(url=f"https://fritz.science/api/photometry",headers = {'Authorization': f'token {token}'} ,json=self.data)
-                #     if self.response.status_code==200:
-                #         break
-                #     if time.time()-self.start_upl_time>60:
-                #         print(warn_r+f' Upload timed out, giving up')
-                #         break
-                    
-
-                if self.response.status_code == 200:
-                    print(info_g+f" Successfully uploaded photometry for {self.name} in {self.data['filter']} taken at {self.data['mjd']}, uploaded at {self.current_time}")
-                else:
-                    print(warn_r+f" Failed to upload photometry for {self.name} in {self.data['filter']}, status code ={self.response.status_code} ")
-            
+        _replace = self.if_stacked==True or self.upfritz_f==True
+        _old = []
+        if not _replace:
+            _dupes = [p for p in _same if _same_epoch(p)]
+            if _dupes:
+                print(info_b+f" {self.name} {self.data['filter']} at MJD {self.sci_mjd:.6f} already on Fritz "
+                             f"(phot ID {', '.join(str(p['id']) for p in _dupes)}), not uploading")
+                self.fritz_status, self.fritz_detail = 'duplicate_skipped', f"phot ID {', '.join(str(p['id']) for p in _dupes)}"
                 return self.data
+        else:
+            if any(abs(p['mjd']-self.sci_mjd)<self.FRITZ_MJD_TOL and _same_values(p) for p in _same):
+                print(info_b+f" Identical point for {self.name} {self.data['filter']} at MJD {self.sci_mjd:.6f} already on Fritz, not uploading")
+                self.fritz_status = 'duplicate_skipped'
+                return self.data
+            _tol = self.FRITZ_STACK_TOL if self.if_stacked==True else self.FRITZ_MJD_TOL
+            _old = [p for p in _same if abs(p['mjd']-self.sci_mjd)<_tol or _same_epoch(p)]
+            for p in _old:
+                print(info_g+f" Replacing photometric point with phot ID: {p['id']}")
+                if not self.delete_photometry({'phot_id':p['id'],'mjd':p['mjd']}):
+                    print(warn_r+f" Could not remove the existing point, not uploading to avoid a duplicate")
+                    self.fritz_status, self.fritz_detail = 'replace_failed', f"could not delete phot ID {p['id']}"
+                    return self.data
 
-            else:
-                print(info_b+f" Data taken for {self.sci_obj} in {self.data['filter']} at {self.data['mjd']} already uploaded, not uploading")
+        # -- upload ----------------------------------------------------------------
+        try:save_to_group(self.name,1754)
+        except Exception as _e:print(warn_y+f' Could not save {self.name} to group 1754 ({_e})')
 
-                return self.data  
+        self.upload_new = True
+        self.current_time = datetime.datetime.now().strftime("%H:%M:%S")
+        self.response = self.fritz_request('post', 'api/photometry', json=self.data)
+        if self.response is not None and self.response.status_code==200:
+            self.fritz_uploaded = True
+            self.fritz_status = 'replaced' if _replace and _old else 'uploaded'
+            print(info_g+f" Successfully uploaded {'limit' if is_limit else 'photometry'} for {self.name} in {self.data['filter']} taken at {self.data['mjd']}, uploaded at {self.current_time}")
+        else:
+            print(warn_r+f" Failed to upload photometry for {self.name} in {self.data['filter']} ({self._fritz_error(self.response)})")
+            self.fritz_status, self.fritz_detail = 'upload_failed', self._fritz_error(self.response)
+        return self.data
 
-        except Exception as e:
-            print(warn_y+f" Unable to find Fritz photometry for {self.sci_obj} "+e)
-            print(warn_r+f" Fritz error for {self.sci_obj} in {self.sci_filt} band, (ie. event not on Fritz or error retrieving photometry from Fritz, check token and Fritz status)")
-        
+
     def clean_directory(self):
         print(info_g+f" Cleaning directories")
         for self.out_file in os.listdir(self.path+"out"):
