@@ -59,7 +59,22 @@ def _norm_root(p, label):
     return _q
 
 path = _norm_root(path, 'path')
+# An empty data1_path means "inputs are given as full paths, everything else
+# lives in the pipeline root" (minar runs this way).  Normalising '' literally
+# turns it into whatever directory the process started in, which is '/' under
+# cron and in the preflight smoke test: inputs were then rewritten relative to
+# '/', re-joined onto the pipeline root (a doubled path that cannot be opened),
+# and entire_lc_imgs/, logs and -o output were all attempted under '/'.
+if not str(data1_path if data1_path is not None else '').strip():
+    print(f'[INFO]    :: [SRV] data1_path is empty, using the pipeline root {path}')
+    data1_path = path
 data1_path = _norm_root(data1_path, 'data1_path')
+# subphot_functions / subphot_quicklook_pipe imported their own copies from
+# subphot_credentials; keep them identical to the normalised values
+for _mod_name in ('subphot_functions', 'subphot_quicklook_pipe'):
+    _mod = sys.modules.get(_mod_name)
+    if _mod is not None:
+        _mod.path, _mod.data1_path = path, data1_path
 
 # Anchor the process in the pipeline directory.  All user-supplied image and
 # folder arguments are already resolved against data1_path (not CWD), so this
